@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use Exhibit A or its minted evidence bundles, please cite it."
+title: "Exhibit A: An Evidence Engine for Code That's Only Allowed to Speak With Proof"
+abstract: >-
+  Exhibit A is a code-review and bug-reproduction engine governed by one rule:
+  it may only speak with a runnable failing test that fails on the broken code
+  and passes on the fix, or it stays silent. It emits execution-validated,
+  replayable evidence bundles (the Executable Evidence Format) suitable for
+  contamination-resistant benchmark minting and artifact evaluation.
+authors:
+  - family-names: Sijwali
+    given-names: Suryansh
+type: software
+license: MIT
+repository-code: "https://github.com/suryanshss/exhibit-a"
+keywords:
+  - automated-program-repair
+  - test-generation
+  - fail-to-pass
+  - code-review
+  - reproducibility
+  - AI4SE
