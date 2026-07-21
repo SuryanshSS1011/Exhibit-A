@@ -8,6 +8,7 @@ import { EvidencePanel } from "@/components/EvidencePanel";
 import { ProsecutorExample } from "@/components/ProsecutorExample";
 import { SilenceLog } from "@/components/SilenceLog";
 import { IntentConfirmation } from "@/components/IntentConfirmation";
+import { SelfAudit } from "@/components/SelfAudit";
 
 interface InvestigationEvent {
   event: string;
@@ -19,9 +20,9 @@ interface InvestigationEvent {
  * Vertical case timeline: Claim → Hypotheses (rejected greyed) → Evidence → Verdict.
  */
 export default function Home() {
-  const [workspace, setWorkspace] = useState<"detective" | "prosecutor" | "silence">(
-    "detective",
-  );
+  const [workspace, setWorkspace] = useState<
+    "detective" | "prosecutor" | "silence" | "audit"
+  >("detective");
   const [sourceMode, setSourceMode] = useState<"local" | "git">("local");
   const [repo, setRepo] = useState("../fixtures/buggy_inventory");
   const [fixed, setFixed] = useState("../fixtures/fixed_inventory");
@@ -91,23 +92,28 @@ export default function Home() {
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-10">
+    <main className="mx-auto min-w-0 max-w-4xl overflow-x-hidden px-4 py-8 sm:px-6 sm:py-10">
       <header className="mb-8 border-b border-ink-700 pb-6">
-        <h1 className="font-serif text-4xl tracking-stamp text-ink-200">EXHIBIT A</h1>
+        <h1 className="font-serif text-3xl tracking-[0.14em] text-ink-200 sm:text-4xl sm:tracking-stamp">
+          EXHIBIT A
+        </h1>
         <p className="mt-2 max-w-2xl text-sm text-ink-400">
           An evidence engine that may only speak with proof — a runnable failing test that
           fails on the broken code and passes on the fix, or honest silence.
         </p>
       </header>
 
-      <nav aria-label="Investigation mode" className="mb-8 flex gap-6 border-b border-ink-700">
-        {(["detective", "prosecutor", "silence"] as const).map((mode) => (
+      <nav
+        aria-label="Investigation mode"
+        className="mb-8 flex min-w-0 flex-wrap gap-x-3 gap-y-3 border-b border-ink-700 sm:gap-x-6"
+      >
+        {(["detective", "prosecutor", "silence", "audit"] as const).map((mode) => (
           <button
             key={mode}
             type="button"
             onClick={() => setWorkspace(mode)}
             aria-current={workspace === mode ? "page" : undefined}
-            className={`border-b-2 px-1 pb-3 font-serif text-xs uppercase tracking-[0.16em] transition ${
+            className={`max-w-full border-b-2 px-1 pb-3 font-serif text-[11px] uppercase tracking-[0.12em] transition sm:text-xs sm:tracking-[0.16em] ${
               workspace === mode
                 ? "border-ink-200 text-ink-200"
                 : "border-transparent text-ink-500 hover:text-ink-300"
@@ -117,7 +123,9 @@ export default function Home() {
               ? "Detective"
               : mode === "prosecutor"
                 ? "Prosecutor fixture"
-                : "Silence ledger"}
+                : mode === "silence"
+                  ? "Silence ledger"
+                  : "Self audit"}
           </button>
         ))}
       </nav>
@@ -304,8 +312,10 @@ export default function Home() {
         </>
       ) : workspace === "prosecutor" ? (
         <ProsecutorExample />
-      ) : (
+      ) : workspace === "silence" ? (
         <SilenceLog />
+      ) : (
+        <SelfAudit />
       )}
     </main>
   );

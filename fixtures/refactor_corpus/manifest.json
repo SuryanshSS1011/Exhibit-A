@@ -1,0 +1,32 @@
+{
+  "schema_version": "refactor-corpus/v1",
+  "cases": [
+    {
+      "id": "rename_helper",
+      "category": "rename",
+      "claim": "The helper rename changes invoice totals for multiple line items.",
+      "expected_signature": "AssertionError",
+      "base": "rename/base",
+      "target": "rename/target",
+      "contract": "rename/contract.py"
+    },
+    {
+      "id": "extract_method",
+      "category": "extract_method",
+      "claim": "Extracting normalization into a helper changes whitespace handling.",
+      "expected_signature": "AssertionError",
+      "base": "extract/base",
+      "target": "extract/target",
+      "contract": "extract/contract.py"
+    },
+    {
+      "id": "loop_to_comprehension",
+      "category": "loop_transform",
+      "claim": "Replacing the filtering loop with a comprehension drops active users.",
+      "expected_signature": "AssertionError",
+      "base": "loop/base",
+      "target": "loop/target",
+      "contract": "loop/contract.py"
+    }
+  ]
+}

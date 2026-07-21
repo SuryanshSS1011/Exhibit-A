@@ -31,6 +31,7 @@ from .studies.reproducibility import (
     run_reproducibility_study,
     save_reproducibility_report,
 )
+from .studies.self_audit import run_self_audit, save_self_audit_report
 from .verdict.flip_check import extract_signature, signatures_match
 
 
@@ -415,6 +416,42 @@ def cmd_study(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_self_audit(args: argparse.Namespace) -> int:
+    """Measure false convictions on a validated behavior-preserving corpus."""
+
+    def engine_factory(_pair, _index):
+        engine = _build_engine(args.docker, args.offline)
+        variant = str(getattr(engine.generator, "model", type(engine.generator).__name__))
+        return engine, variant
+
+    try:
+        report = run_self_audit(
+            corpus_root=args.corpus,
+            engine_factory=engine_factory,
+        )
+        path = save_self_audit_report(report, args.out)
+    except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as exc:
+        print(f"error: self-audit failed: {exc}", file=sys.stderr)
+        return 2
+
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, default=str))
+    else:
+        estimate = report.overall
+        rate = _format_metric(estimate.rate)
+        interval = (
+            f"{estimate.lower_95:.1%}–{estimate.upper_95:.1%}"
+            if estimate.lower_95 is not None and estimate.upper_95 is not None
+            else "unavailable"
+        )
+        print(f"self-audit file: {path}")
+        print(
+            f"false-conviction rate: {rate} "
+            f"({estimate.false_convictions}/{estimate.evaluated}; 95% CI {interval})"
+        )
+    return 0
+
+
 def _format_metric(value: float | None) -> str:
     return f"{value:.0%}" if value is not None else "unavailable"
 
@@ -545,6 +582,25 @@ def main(argv: list[str] | None = None) -> int:
     )
     study.add_argument("--json", action="store_true", help="print the full study JSON")
     study.set_defaults(func=cmd_study)
+
+    audit = sub.add_parser(
+        "self-audit",
+        help="measure false convictions on behavior-preserving refactors",
+    )
+    audit.add_argument("corpus", help="versioned refactor corpus directory")
+    audit.add_argument("--docker", action="store_true", help="use the Docker executor")
+    audit.add_argument(
+        "--offline",
+        action="store_true",
+        help="use the deterministic stub for a no-model audit smoke test",
+    )
+    audit.add_argument(
+        "--out",
+        default=".exhibit-a/research/self-audit",
+        help="private audit output directory",
+    )
+    audit.add_argument("--json", action="store_true", help="print the full audit JSON")
+    audit.set_defaults(func=cmd_self_audit)
 
     args = parser.parse_args(argv)
     return args.func(args)
