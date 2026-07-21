@@ -5,6 +5,7 @@ import type { Case } from "@/lib/case";
 import { VerdictStamp } from "@/components/VerdictStamp";
 import { EvidencePanel } from "@/components/EvidencePanel";
 import { ProsecutorExample } from "@/components/ProsecutorExample";
+import { SilenceLog } from "@/components/SilenceLog";
 
 interface InvestigationEvent {
   event: string;
@@ -16,7 +17,9 @@ interface InvestigationEvent {
  * Vertical case timeline: Claim → Hypotheses (rejected greyed) → Evidence → Verdict.
  */
 export default function Home() {
-  const [workspace, setWorkspace] = useState<"detective" | "prosecutor">("detective");
+  const [workspace, setWorkspace] = useState<"detective" | "prosecutor" | "silence">(
+    "detective",
+  );
   const [sourceMode, setSourceMode] = useState<"local" | "git">("local");
   const [repo, setRepo] = useState("../fixtures/buggy_slice");
   const [fixed, setFixed] = useState("../fixtures/fixed_slice");
@@ -90,7 +93,7 @@ export default function Home() {
       </header>
 
       <nav aria-label="Investigation mode" className="mb-8 flex gap-6 border-b border-ink-700">
-        {(["detective", "prosecutor"] as const).map((mode) => (
+        {(["detective", "prosecutor", "silence"] as const).map((mode) => (
           <button
             key={mode}
             type="button"
@@ -102,7 +105,11 @@ export default function Home() {
                 : "border-transparent text-ink-500 hover:text-ink-300"
             }`}
           >
-            {mode === "detective" ? "Detective" : "Prosecutor fixture"}
+            {mode === "detective"
+              ? "Detective"
+              : mode === "prosecutor"
+                ? "Prosecutor fixture"
+                : "Silence ledger"}
           </button>
         ))}
       </nav>
@@ -224,8 +231,10 @@ export default function Home() {
 
       {result && <CaseFile c={result} />}
         </>
-      ) : (
+      ) : workspace === "prosecutor" ? (
         <ProsecutorExample />
+      ) : (
+        <SilenceLog />
       )}
     </main>
   );
