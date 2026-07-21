@@ -1,9 +1,9 @@
 ---
 layout: default
-title: Exhibit A Documentation
+title: Documentation
 ---
 
-# Exhibit A Documentation
+# Documentation
 
 Exhibit A has one rule: a runnable fail-to-pass test, or silence.
 

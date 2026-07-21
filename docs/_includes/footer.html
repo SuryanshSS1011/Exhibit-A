@@ -1,0 +1,13 @@
+{%- comment -%}
+Custom footer override. Minima's default footer prints the site title as a heading
+and again as a p-name contact item, which reads as clutter. This keeps a single,
+plain footer with the description and a link back to the source repository.
+{%- endcomment -%}
+<footer class="site-footer h-card">
+  <div class="wrapper">
+    <p>{{ site.description | escape }}</p>
+    <p>
+      <a href="https://github.com/SuryanshSS1011/Exhibit-A">Source on GitHub</a>
+    </p>
+  </div>
+</footer>

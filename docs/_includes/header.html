@@ -1,0 +1,23 @@
+{%- comment -%}
+Custom header override for the Exhibit A docs site.
+
+Home page: show the site title only. The full documentation index lives in the body
+of index.md, so the header stays clean.
+
+Any doc page: show a back arrow that returns to the home index, instead of listing
+every page in the navigation bar.
+{%- endcomment -%}
+<header class="site-header" role="banner">
+  <div class="wrapper">
+    {%- assign is_home = false -%}
+    {%- if page.url == "/" -%}{%- assign is_home = true -%}{%- endif -%}
+
+    <a class="site-title" rel="author" href="{{ "/" | relative_url }}">{{ site.title | escape }}</a>
+
+    <nav class="site-nav">
+      {%- unless is_home -%}
+        <a class="page-link" href="{{ "/" | relative_url }}">&larr; All documentation</a>
+      {%- endunless -%}
+    </nav>
+  </div>
+</header>

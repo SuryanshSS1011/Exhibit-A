@@ -9,10 +9,10 @@ abstract: >-
   contamination-resistant benchmark minting and artifact evaluation.
 authors:
   - family-names: Sijwali
-    given-names: Suryansh
+    given-names: Suryansh Singh
 type: software
 license: MIT
-repository-code: "https://github.com/suryanshss/exhibit-a"
+repository-code: "https://github.com/SuryanshSS1011/Exhibit-A"
 keywords:
   - automated-program-repair
   - test-generation

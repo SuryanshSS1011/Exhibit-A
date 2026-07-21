@@ -185,7 +185,8 @@ private Silence Ledger.
 Beyond `repro`, the CLI exposes the research surface as opt-in subcommands. These include
 `bundle` and `verify` for signed, replayable evidence bundles, `study` for reproducibility,
 `self-audit` for the false-conviction rate on innocent refactors, and `oracle-gap` for
-benchmark oracle strength. See the [documentation site](./docs/) for each.
+benchmark oracle strength. See the [documentation site](https://suryanshss1011.github.io/Exhibit-A/)
+for each.
 
 ## How Codex and GPT-5.6 were used
 
@@ -216,7 +217,8 @@ layer are implemented and tested.
 
 ## Documentation
 
-Deep-dives live in [`docs/`](./docs/), also published as a docs site.
+Deep-dives live in [`docs/`](./docs/), also published as a
+[docs site](https://suryanshss1011.github.io/Exhibit-A/).
 
 - [Operations](./docs/OPERATIONS.md)
 - [Executable Evidence Format](./docs/EEF.md)
