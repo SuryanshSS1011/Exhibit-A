@@ -52,6 +52,8 @@ export const prosecutorExample: Case = {
   license_name: "MIT",
   fail_to_pass: ["test_repro.py"],
   pass_to_pass: [],
+  existing_suite_passed: true,
+  suite_gap: true,
   created_at: "2026-07-21T00:00:00Z",
 };
 

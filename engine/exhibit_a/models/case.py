@@ -129,6 +129,10 @@ class Case:
     fail_to_pass: list[str] = field(default_factory=list)  # test node ids
     pass_to_pass: list[str] = field(default_factory=list)
 
+    # External CI comparison. The evidence engine never runs an out-of-scope suite.
+    existing_suite_passed: Optional[bool] = None
+    suite_gap: Optional[bool] = None
+
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def is_proven(self) -> bool:

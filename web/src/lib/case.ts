@@ -61,6 +61,8 @@ export interface Case {
   license_name: string | null;
   fail_to_pass: string[];
   pass_to_pass: string[];
+  existing_suite_passed: boolean | null;
+  suite_gap: boolean | null;
   created_at: string;
 }
 

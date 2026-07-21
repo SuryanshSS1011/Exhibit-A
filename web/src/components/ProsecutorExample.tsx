@@ -28,6 +28,9 @@ export function ProsecutorExample() {
           <p className="mt-1 text-xs text-ink-400">
             Five failures on the PR head; the same test passes on base.
           </p>
+          <p className="mt-2 font-mono text-[10px] uppercase tracking-wide text-ink-500">
+            Existing suite passed · Suite-gap delta: yes
+          </p>
         </div>
         <div className="border border-dashed border-silence/50 bg-ink-900 p-4">
           <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-silence">

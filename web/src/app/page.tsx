@@ -208,17 +208,6 @@ export default function Home() {
             </label>
             <label className="block">
               <span className="mb-1 block font-serif text-xs uppercase tracking-wide text-ink-400">
-                Unrelated Control State · Optional
-              </span>
-              <input
-                value={control}
-                onChange={(e) => setControl(e.target.value)}
-                className="w-full rounded-md border border-amber-500/30 bg-ink-900 p-2 font-mono text-sm text-ink-200 outline-none focus:border-amber-500"
-                placeholder="Older checkout where the candidate must pass"
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block font-serif text-xs uppercase tracking-wide text-ink-400">
                 Known Fixed State
               </span>
               <input
@@ -226,6 +215,17 @@ export default function Home() {
                 onChange={(e) => setFixed(e.target.value)}
                 className="w-full rounded-md border border-ink-700 bg-ink-900 p-2 font-mono text-sm text-ink-200 outline-none focus:border-ink-400"
                 placeholder="Optional path to a fixed checkout"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block font-serif text-xs uppercase tracking-wide text-ink-400">
+                Unrelated Control State · Optional
+              </span>
+              <input
+                value={control}
+                onChange={(e) => setControl(e.target.value)}
+                className="w-full rounded-md border border-amber-500/30 bg-ink-900 p-2 font-mono text-sm text-ink-200 outline-none focus:border-amber-500"
+                placeholder="Older checkout where the candidate must pass"
               />
             </label>
           </>
