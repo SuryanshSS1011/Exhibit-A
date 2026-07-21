@@ -1,3 +1,8 @@
+---
+layout: default
+title: Execution-based bug identity
+---
+
 # Execution-based bug identity
 
 Text similarity does not decide whether two reports describe the same bug. The dedup

@@ -1,3 +1,8 @@
+---
+layout: default
+title: Reproducibility-of-reproduction study
+---
+
 # Reproducibility-of-reproduction study
 
 `reproducibility-study/v1` repeats the same claim through fresh Exhibit A engines and

@@ -1,3 +1,8 @@
+---
+layout: default
+title: Oracle-gap probe
+---
+
 # Oracle-gap probe
 
 The oracle-gap probe audits resolved SWE-bench-style instances by applying the existing

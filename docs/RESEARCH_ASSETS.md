@@ -1,3 +1,8 @@
+---
+layout: default
+title: Private research assets
+---
+
 # Private research assets
 
 Exhibit A turns routing exhaust into three versioned, local datasets. They live

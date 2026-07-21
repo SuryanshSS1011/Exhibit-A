@@ -1,3 +1,8 @@
+---
+layout: default
+title: Cross-version evidence archaeology
+---
+
 # Cross-version evidence archaeology
 
 Archaeology freezes the runnable test from a sealed PROVEN Case and executes it across

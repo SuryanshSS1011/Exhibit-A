@@ -1,3 +1,8 @@
+---
+layout: default
+title: Verified evidence minimization
+---
+
 # Verified evidence minimization
 
 Evidence minimization is an optional post-verdict pass for full `PROVEN` flips. It

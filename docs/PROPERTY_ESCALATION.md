@@ -1,3 +1,8 @@
+---
+layout: default
+title: Property-based escalation
+---
+
 # Property-based escalation
 
 After a concrete Case is PROVEN, Exhibit A may ask Codex to generalize its single

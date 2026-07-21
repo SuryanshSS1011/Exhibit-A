@@ -1,3 +1,8 @@
+---
+layout: default
+title: Adversarial self-audit
+---
+
 # Adversarial self-audit
 
 The `self-audit/v1` harness measures whether Prosecutor falsely speaks on deliberately

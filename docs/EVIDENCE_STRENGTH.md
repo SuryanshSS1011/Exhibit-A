@@ -1,3 +1,8 @@
+---
+layout: default
+title: Evidence strength scalar
+---
+
 # Evidence strength scalar
 
 `evidence-strength/v1` is a descriptive ranking metric for evidence that has already

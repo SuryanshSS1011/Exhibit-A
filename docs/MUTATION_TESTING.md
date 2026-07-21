@@ -1,3 +1,8 @@
+---
+layout: default
+title: Mutation-testing foundation
+---
+
 # Mutation-testing foundation
 
 `exhibit_a.verdict.mutation_testing` measures how strongly a generated test

@@ -1,3 +1,8 @@
+---
+layout: default
+title: Executable Evidence Format
+---
+
 # Executable Evidence Format (EEF) v1
 
 EEF is Exhibit A's deterministic archive format for transporting a Case without

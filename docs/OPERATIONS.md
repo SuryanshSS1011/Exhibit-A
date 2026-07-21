@@ -1,3 +1,8 @@
+---
+layout: default
+title: Operational contract
+---
+
 # Operational contract
 
 ## Trigger policy

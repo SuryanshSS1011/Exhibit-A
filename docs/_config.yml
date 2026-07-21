@@ -1,0 +1,10 @@
+title: Exhibit A Documentation
+description: Runnable fail-to-pass evidence, open formats, and research instruments.
+theme: minima
+url: https://suryanshss1011.github.io
+baseurl: /Exhibit-A
+markdown: kramdown
+exclude:
+  - VERIFY_DETECTIVE.md
+  - CODEX_NEXT.md
+  - README-pages.md

@@ -1,3 +1,8 @@
+---
+layout: default
+title: Counterfactual patch triangulation
+---
+
 # Counterfactual patch triangulation
 
 Triangulation asks a second, explicitly untrusted question after a Case is PROVEN: can a
