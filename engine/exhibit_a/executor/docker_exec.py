@@ -14,6 +14,7 @@ argv list, and the container runs as an unprivileged user with dropped caps.
 from __future__ import annotations
 
 import shutil
+import shlex
 import subprocess
 import tempfile
 import time
@@ -21,7 +22,11 @@ from pathlib import Path
 
 from .base import ExecOutcome, ExecSpec, Executor, RepoState
 
-DEFAULT_IMAGE = "python:3.12-slim"
+DEFAULT_IMAGE = "exhibit-a-python-pytest:3.12"
+_RUNNER_DOCKERFILE = """FROM python:3.12-slim
+RUN pip install --no-cache-dir pytest==8.4.1
+USER 65534:65534
+"""
 
 
 class DockerExecutor(Executor):
@@ -32,9 +37,24 @@ class DockerExecutor(Executor):
         self.docker_bin = docker_bin
 
     def prepare(self, repo: RepoState) -> str | None:
-        # MVP: no per-repo image baking yet. A v1 step bakes deps into a cached
-        # image keyed by the repo's lockfile hash (SWE-smith one-image-per-repo).
-        return None
+        if self.base_image != DEFAULT_IMAGE:
+            return self.base_image
+        inspect = subprocess.run(
+            [self.docker_bin, "image", "inspect", self.base_image],
+            capture_output=True,
+            text=True,
+        )
+        if inspect.returncode != 0:
+            build = subprocess.run(
+                [self.docker_bin, "build", "-t", self.base_image, "-"],
+                input=_RUNNER_DOCKERFILE,
+                capture_output=True,
+                text=True,
+            )
+            if build.returncode != 0:
+                detail = build.stderr.strip() or build.stdout.strip()
+                raise RuntimeError(f"could not build pytest runner image: {detail[-2000:]}")
+        return self.base_image
 
     def run(self, repo: RepoState, spec: ExecSpec) -> ExecOutcome:
         src = Path(repo.path).resolve()
@@ -52,7 +72,7 @@ class DockerExecutor(Executor):
             test_abs.parent.mkdir(parents=True, exist_ok=True)
             test_abs.write_text(spec.test_code)
 
-            image = spec.image or self.base_image
+            image = spec.image or self.prepare(repo) or self.base_image
             argv = [
                 self.docker_bin,
                 "run",
@@ -61,21 +81,28 @@ class DockerExecutor(Executor):
                 "none" if not spec.network else "bridge",
                 "--cap-drop",
                 "ALL",
+                "--security-opt",
+                "no-new-privileges",
+                "--read-only",
+                "--tmpfs",
+                "/tmp:rw,noexec,nosuid,size=128m",
                 "--pids-limit",
                 "512",
                 "--memory",
                 "2g",
                 "--cpus",
                 "2",
+                "--env",
+                "PYTHONDONTWRITEBYTECODE=1",
+                "--env",
+                "PYTHONPYCACHEPREFIX=/tmp/pycache",
                 "-v",
-                f"{work}:/work",
+                f"{work}:/work:ro",
                 "-w",
                 "/work",
                 image,
-                "sh",
-                "-c",
-                self._entrypoint(spec.command),
             ]
+            argv.extend(shlex.split(spec.command))
 
             start = time.monotonic()
             try:
@@ -102,10 +129,3 @@ class DockerExecutor(Executor):
                 )
         finally:
             shutil.rmtree(workdir, ignore_errors=True)
-
-    @staticmethod
-    def _entrypoint(command: str) -> str:
-        # Ensure pytest is available even on a bare python image, then run the
-        # caller's command verbatim. `command` is engine-controlled, not PR text.
-        install = "pip install -q pytest >/dev/null 2>&1 || true"
-        return f"{install}; {command}"
