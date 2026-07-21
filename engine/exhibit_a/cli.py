@@ -19,6 +19,7 @@ from typing import Any, Callable
 from .engine import EngineConfig, EvidenceEngine, candidate_policy_reason
 from .eef import create_bundle, verify_bundle
 from .executor.base import ExecSpec, RepoState
+from .executor.instrumented import RecordingExecutor, summarize_environment_attempts
 from .executor.local_exec import LocalExecutor
 from .hypothesis.generator import Candidate, Claim, CodexGenerator, Feedback, StubGenerator
 from .intake.git_bisect import bisect_reproduction
@@ -41,6 +42,7 @@ def _build_engine(
     offline: bool,
     allow_reproduced: bool = False,
     event_sink: Callable[[dict[str, Any]], None] | None = None,
+    environment_root: str | Path | None = None,
 ) -> EvidenceEngine:
     if use_docker:
         from .executor.docker_exec import DockerExecutor
@@ -48,6 +50,8 @@ def _build_engine(
         executor = DockerExecutor()
     else:
         executor = LocalExecutor()
+    if environment_root is not None:
+        executor = RecordingExecutor(executor, environment_root)
     generator = StubGenerator() if offline else CodexGenerator()
     config = EngineConfig(allow_reproduced=allow_reproduced)
     return EvidenceEngine(generator, executor, config, event_sink=event_sink)
@@ -91,6 +95,7 @@ def cmd_repro(args: argparse.Namespace) -> int:
         offline=args.offline,
         allow_reproduced=args.reproduced,
         event_sink=event_sink,
+        environment_root=Path(args.out).parent / "environment-attempts",
     )
     if bool(args.base_sha) != bool(args.fix_sha):
         print("error: --base-sha and --fix-sha must be provided together", file=sys.stderr)
@@ -290,7 +295,7 @@ def cmd_observe(args: argparse.Namespace) -> int:
         from .executor.docker_exec import DockerExecutor
 
         with checkout_context(args.repo_url, args.upstream_sha, label="upstream") as upstream:
-            executor = DockerExecutor()
+            executor = RecordingExecutor(DockerExecutor(), Path(args.out) / "environment-attempts")
             image = executor.prepare(upstream)
             spec = ExecSpec(
                 test_path=candidate.test_path,
@@ -375,6 +380,7 @@ def cmd_study(args: argparse.Namespace) -> int:
             executor = DockerExecutor()
         else:
             executor = LocalExecutor()
+        executor = RecordingExecutor(executor, Path(args.out).parent / "environment-attempts")
         selected_model = requested_models[index % len(requested_models)]
         generator = StubGenerator() if args.offline else CodexGenerator(model=selected_model)
         variant = "offline-stub" if args.offline else generator.model
@@ -421,7 +427,11 @@ def cmd_self_audit(args: argparse.Namespace) -> int:
     """Measure false convictions on a validated behavior-preserving corpus."""
 
     def engine_factory(_pair, _index):
-        engine = _build_engine(args.docker, args.offline)
+        engine = _build_engine(
+            args.docker,
+            args.offline,
+            environment_root=Path(args.out).parent / "environment-attempts",
+        )
         variant = str(getattr(engine.generator, "model", type(engine.generator).__name__))
         return engine, variant
 
@@ -461,6 +471,7 @@ def cmd_oracle_gap(args: argparse.Namespace) -> int:
         executor = DockerExecutor()
     else:
         executor = LocalExecutor()
+    executor = RecordingExecutor(executor, Path(args.out).parent / "environment-attempts")
     try:
         report = run_oracle_gap(
             args.manifest,
@@ -481,6 +492,20 @@ def cmd_oracle_gap(args: argparse.Namespace) -> int:
             f"({report.survived}/{report.eligible} eligible mutants survived; "
             f"{report.evaluated_instances}/{report.instances} baselines valid)"
         )
+    return 0
+
+
+def cmd_environment_summary(args: argparse.Namespace) -> int:
+    try:
+        summary = summarize_environment_attempts(args.attempts)
+        destination = Path(args.out)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(json.dumps(summary, indent=2, sort_keys=True))
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"error: environment summary failed: {exc}", file=sys.stderr)
+        return 2
+    print(f"environment summary: {destination}")
+    print(f"recorded attempts: {summary['attempts']}")
     return 0
 
 
@@ -649,6 +674,18 @@ def main(argv: list[str] | None = None) -> int:
     )
     oracle.add_argument("--json", action="store_true", help="print the full report JSON")
     oracle.set_defaults(func=cmd_oracle_gap)
+
+    environments = sub.add_parser(
+        "environment-summary",
+        help="aggregate private environment setup attempts into empirical recipes",
+    )
+    environments.add_argument("attempts", help="environment-attempt JSON directory")
+    environments.add_argument(
+        "--out",
+        default=".exhibit-a/research/environment-summary.json",
+        help="summary output path",
+    )
+    environments.set_defaults(func=cmd_environment_summary)
 
     args = parser.parse_args(argv)
     return args.func(args)
