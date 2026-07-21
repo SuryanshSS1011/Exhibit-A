@@ -43,6 +43,7 @@ export interface Case {
   mode: Mode;
   repo: string | null;
   base_commit: string | null;
+  target_commit: string | null;
   target_state: TargetKind;
   claim_text: string;
   hypotheses: Hypothesis[];

@@ -61,6 +61,7 @@ class EvidenceEngine:
         mode: Mode = Mode.DETECTIVE,
         base: Optional[RepoState] = None,
         target: Optional[RepoState] = None,
+        repo_source: Optional[str] = None,
     ) -> Case:
         """Run the full evidence loop and return a Case.
 
@@ -73,9 +74,16 @@ class EvidenceEngine:
         case = Case(
             id=uuid.uuid4().hex[:12],
             mode=mode,
-            repo=claim.repo_path,
-            base_commit=base.commit if base else target.commit,
-            target_state=(TargetKind.BASE_ONLY if base is None else TargetKind.SYNTHESIZED_PATCH),
+            repo=repo_source or claim.repo_path,
+            base_commit=target.commit,
+            target_commit=base.commit if base else None,
+            target_state=(
+                TargetKind.BASE_ONLY
+                if base is None
+                else TargetKind.PR_HEAD
+                if target.commit and base.commit
+                else TargetKind.SYNTHESIZED_PATCH
+            ),
             claim_text=claim.text,
             run_command=self.config.run_command,
         )
@@ -190,6 +198,7 @@ class EvidenceEngine:
             case.run_command = spec.command
             case.test_file = TestArtifact(path=cand.test_path, code=cand.test_code)
             case.root_cause_narrative = cand.hypothesis
+            case.fail_to_pass = [cand.test_path]
             case.evidence = Evidence(
                 fail_log=target_outcomes[0].log,
                 fail_signature=flip.fail_signature,

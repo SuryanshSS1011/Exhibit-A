@@ -102,6 +102,25 @@ def test_engine_stops_at_first_admissible_candidate():
     assert case.run_command.endswith("test_repro.py")
 
 
+def test_remote_commit_proven_case_records_benchmark_provenance():
+    engine = EvidenceEngine(TwoShotGenerator(), LocalExecutor(), _cfg())
+    claim = Claim(text="last_n drops the last row", repo_path=str(FIXTURES / "buggy_slice"))
+
+    case = engine.investigate(
+        claim,
+        target=RepoState(path=str(FIXTURES / "buggy_slice"), label="target", commit="abc1234"),
+        base=RepoState(path=str(FIXTURES / "fixed_slice"), label="base", commit="def5678"),
+        repo_source="https://github.com/example/slicer.git",
+    )
+
+    assert case.repo == "https://github.com/example/slicer.git"
+    assert case.base_commit == "abc1234"
+    assert case.target_commit == "def5678"
+    assert case.target_state.value == "pr_head"
+    assert case.fail_to_pass == ["test_repro.py"]
+    assert case.pass_to_pass == []
+
+
 def test_silence_when_no_base_to_prove_pass_side():
     # BASE_ONLY: we can confirm a deterministic failure but cannot prove the flip.
     engine = EvidenceEngine(OneShotGenerator(), LocalExecutor(), _cfg())

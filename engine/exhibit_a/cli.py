@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -18,6 +19,7 @@ from .engine import EngineConfig, EvidenceEngine
 from .executor.base import RepoState
 from .executor.local_exec import LocalExecutor
 from .hypothesis.generator import Claim, CodexGenerator, StubGenerator
+from .intake.git_checkout import checkout_pair
 from .models.case import Mode
 from .store.json_store import JsonCaseStore
 
@@ -41,17 +43,43 @@ def cmd_repro(args: argparse.Namespace) -> int:
         print("error: provide --claim or --trace", file=sys.stderr)
         return 2
 
-    claim = Claim(
-        text=claim_text,
-        repo_path=str(Path(args.repo).resolve()),
-        expected_signature=args.expect,
-    )
     engine = _build_engine(use_docker=args.docker, offline=args.offline)
-    target = RepoState(path=claim.repo_path, label="target")
-    base = None
-    if args.fixed:
-        base = RepoState(path=str(Path(args.fixed).resolve()), label="base")
-    case = engine.investigate(claim, mode=Mode.DETECTIVE, target=target, base=base)
+    if bool(args.base_sha) != bool(args.fix_sha):
+        print("error: --base-sha and --fix-sha must be provided together", file=sys.stderr)
+        return 2
+    if args.fixed and args.base_sha:
+        print("error: --fixed cannot be combined with --base-sha/--fix-sha", file=sys.stderr)
+        return 2
+
+    if args.base_sha:
+        try:
+            with checkout_pair(args.repo, args.base_sha, args.fix_sha) as (target, base):
+                claim = Claim(
+                    text=claim_text,
+                    repo_path=target.path,
+                    expected_signature=args.expect,
+                )
+                case = engine.investigate(
+                    claim,
+                    mode=Mode.DETECTIVE,
+                    target=target,
+                    base=base,
+                    repo_source=args.repo,
+                )
+        except (ValueError, OSError, subprocess.SubprocessError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+    else:
+        claim = Claim(
+            text=claim_text,
+            repo_path=str(Path(args.repo).resolve()),
+            expected_signature=args.expect,
+        )
+        target = RepoState(path=claim.repo_path, label="target")
+        base = None
+        if args.fixed:
+            base = RepoState(path=str(Path(args.fixed).resolve()), label="base")
+        case = engine.investigate(claim, mode=Mode.DETECTIVE, target=target, base=base)
 
     store = JsonCaseStore(args.out)
     path = store.save(case)
@@ -70,7 +98,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("repro", help="reproduce a bug into a verified failing test")
-    p.add_argument("repo", help="path to a local repo checkout")
+    p.add_argument("repo", help="local repo path, or HTTPS repo URL with two SHA flags")
     p.add_argument("--claim", help="a bug description / concern")
     p.add_argument("--trace", help="path to a file containing a stack trace")
     p.add_argument("--expect", help="expected failure signature (e.g. 'KeyError')")
@@ -78,6 +106,8 @@ def main(argv: list[str] | None = None) -> int:
         "--fixed",
         help="path to a fixed/base checkout; required for a PROVEN fail-to-pass verdict",
     )
+    p.add_argument("--base-sha", help="buggy/base commit SHA for remote-repo intake")
+    p.add_argument("--fix-sha", help="fixing commit or PR-head SHA for remote-repo intake")
     p.add_argument("--docker", action="store_true", help="use the Docker executor")
     p.add_argument(
         "--offline",

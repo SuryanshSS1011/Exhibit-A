@@ -10,8 +10,12 @@ import { EvidencePanel } from "@/components/EvidencePanel";
  * Vertical case timeline: Claim → Hypotheses (rejected greyed) → Evidence → Verdict.
  */
 export default function Home() {
+  const [sourceMode, setSourceMode] = useState<"local" | "git">("local");
   const [repo, setRepo] = useState("../fixtures/buggy_slice");
   const [fixed, setFixed] = useState("../fixtures/fixed_slice");
+  const [repoUrl, setRepoUrl] = useState("");
+  const [baseSha, setBaseSha] = useState("");
+  const [fixSha, setFixSha] = useState("");
   const [claim, setClaim] = useState("last_n drops the last row");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +29,11 @@ export default function Home() {
       const res = await fetch("/api/investigate", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ repo, fixed, claim }),
+        body: JSON.stringify(
+          sourceMode === "local"
+            ? { repo, fixed, claim }
+            : { repoUrl, baseSha, fixSha, claim },
+        ),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "engine error");
@@ -48,6 +56,23 @@ export default function Home() {
       </header>
 
       <section aria-label="Intake" className="mb-8 space-y-3">
+        <div className="flex border-b border-ink-700" role="group" aria-label="Source type">
+          {(["local", "git"] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              aria-pressed={sourceMode === mode}
+              onClick={() => setSourceMode(mode)}
+              className={`border-x border-t px-4 py-2 font-serif text-xs uppercase tracking-wide transition ${
+                sourceMode === mode
+                  ? "border-ink-400 bg-ink-800 text-ink-200"
+                  : "border-transparent text-ink-400 hover:text-ink-200"
+              }`}
+            >
+              {mode === "local" ? "Local checkouts" : "Git commits"}
+            </button>
+          ))}
+        </div>
         <label className="block">
           <span className="mb-1 block font-serif text-xs uppercase tracking-wide text-ink-400">
             The Claim
@@ -60,30 +85,72 @@ export default function Home() {
             placeholder="Paste a stack trace, error, or a bug description…"
           />
         </label>
-        <label className="block">
-          <span className="mb-1 block font-serif text-xs uppercase tracking-wide text-ink-400">
-            Reported State (local path)
-          </span>
-          <input
-            value={repo}
-            onChange={(e) => setRepo(e.target.value)}
-            className="w-full rounded-md border border-ink-700 bg-ink-900 p-2 font-mono text-sm text-ink-200 outline-none focus:border-ink-400"
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1 block font-serif text-xs uppercase tracking-wide text-ink-400">
-            Known Fixed State
-          </span>
-          <input
-            value={fixed}
-            onChange={(e) => setFixed(e.target.value)}
-            className="w-full rounded-md border border-ink-700 bg-ink-900 p-2 font-mono text-sm text-ink-200 outline-none focus:border-ink-400"
-            placeholder="Optional path to a fixed checkout"
-          />
-          <span className="mt-1 block text-xs text-ink-400">
-            A PROVEN verdict requires both sides: fail on the reported state, pass here.
-          </span>
-        </label>
+        {sourceMode === "local" ? (
+          <>
+            <label className="block">
+              <span className="mb-1 block font-serif text-xs uppercase tracking-wide text-ink-400">
+                Reported State (local path)
+              </span>
+              <input
+                value={repo}
+                onChange={(e) => setRepo(e.target.value)}
+                className="w-full rounded-md border border-ink-700 bg-ink-900 p-2 font-mono text-sm text-ink-200 outline-none focus:border-ink-400"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block font-serif text-xs uppercase tracking-wide text-ink-400">
+                Known Fixed State
+              </span>
+              <input
+                value={fixed}
+                onChange={(e) => setFixed(e.target.value)}
+                className="w-full rounded-md border border-ink-700 bg-ink-900 p-2 font-mono text-sm text-ink-200 outline-none focus:border-ink-400"
+                placeholder="Optional path to a fixed checkout"
+              />
+            </label>
+          </>
+        ) : (
+          <div className="space-y-3 border-l-2 border-ink-700 pl-4">
+            <label className="block">
+              <span className="mb-1 block font-serif text-xs uppercase tracking-wide text-ink-400">
+                HTTPS Repository URL
+              </span>
+              <input
+                value={repoUrl}
+                onChange={(e) => setRepoUrl(e.target.value)}
+                className="w-full rounded-md border border-ink-700 bg-ink-900 p-2 font-mono text-sm text-ink-200 outline-none focus:border-ink-400"
+                placeholder="https://github.com/org/repo.git"
+              />
+            </label>
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="block">
+                <span className="mb-1 block font-serif text-xs uppercase tracking-wide text-ink-400">
+                  Base SHA · Buggy
+                </span>
+                <input
+                  value={baseSha}
+                  onChange={(e) => setBaseSha(e.target.value)}
+                  className="w-full rounded-md border border-fail/40 bg-ink-900 p-2 font-mono text-sm text-ink-200 outline-none focus:border-fail"
+                  placeholder="7–40 hex characters"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block font-serif text-xs uppercase tracking-wide text-ink-400">
+                  Fix SHA · Passing
+                </span>
+                <input
+                  value={fixSha}
+                  onChange={(e) => setFixSha(e.target.value)}
+                  className="w-full rounded-md border border-pass/40 bg-ink-900 p-2 font-mono text-sm text-ink-200 outline-none focus:border-pass"
+                  placeholder="7–40 hex characters"
+                />
+              </label>
+            </div>
+          </div>
+        )}
+        <p className="text-xs text-ink-400">
+          A PROVEN verdict requires both sides: fail on the reported state, pass on the fix.
+        </p>
         <button
           onClick={investigate}
           disabled={busy}

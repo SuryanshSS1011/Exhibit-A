@@ -16,8 +16,11 @@ const ENGINE_DIR = path.resolve(process.cwd(), "..", "engine");
 const PYTHON = process.env.EXHIBIT_A_PYTHON ?? "python3";
 
 interface Body {
-  repo: string;
+  repo?: string;
   fixed?: string;
+  repoUrl?: string;
+  baseSha?: string;
+  fixSha?: string;
   claim: string;
   expect?: string;
   docker?: boolean;
@@ -30,8 +33,13 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "invalid JSON body" }, { status: 400 });
   }
-  if (!body.repo || !body.claim) {
-    return NextResponse.json({ error: "repo and claim are required" }, { status: 400 });
+  const hasLocal = Boolean(body.repo);
+  const hasRemote = Boolean(body.repoUrl && body.baseSha && body.fixSha);
+  if (!body.claim || hasLocal === hasRemote) {
+    return NextResponse.json(
+      { error: "provide claim and exactly one local or remote repository source" },
+      { status: 400 },
+    );
   }
 
   const outDir = path.join(ENGINE_DIR, ".exhibit-a", "cases");
@@ -39,7 +47,7 @@ export async function POST(req: NextRequest) {
     "-m",
     "exhibit_a.cli",
     "repro",
-    body.repo,
+    hasRemote ? body.repoUrl! : body.repo!,
     "--claim",
     body.claim,
     "--out",
@@ -48,6 +56,7 @@ export async function POST(req: NextRequest) {
   ];
   if (body.expect) args.push("--expect", body.expect);
   if (body.fixed) args.push("--fixed", body.fixed);
+  if (hasRemote) args.push("--base-sha", body.baseSha!, "--fix-sha", body.fixSha!);
   if (body.docker) args.push("--docker");
 
   const result = await runEngine(args);

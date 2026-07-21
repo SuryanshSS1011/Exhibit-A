@@ -88,6 +88,7 @@ class Case:
     # --- provenance ---
     repo: Optional[str] = None  # url or local path
     base_commit: Optional[str] = None
+    target_commit: Optional[str] = None
     target_state: TargetKind = TargetKind.BASE_ONLY
 
     # --- the claim & reasoning ---
