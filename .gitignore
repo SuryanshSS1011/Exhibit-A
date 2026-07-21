@@ -20,3 +20,6 @@ engine/.exhibit-a/
 
 # OS / editor
 .DS_Store
+
+# Local internal notes/briefs — never committed
+.exhibit-internal/
