@@ -3,8 +3,8 @@
     exhibit-a repro <repo_path> --trace trace.txt
     exhibit-a repro <repo_path> --claim "list_users drops the last row"
 
-For the MVP this wires the StubGenerator + LocalExecutor so the loop runs offline.
-Swap in a Codex-backed generator and the DockerExecutor for real reproduction.
+By default this wires the Codex generator to the local executor. Pass `--offline`
+to exercise the deterministic stub without a model, or `--docker` to isolate runs.
 """
 
 from __future__ import annotations
@@ -15,20 +15,22 @@ import sys
 from pathlib import Path
 
 from .engine import EngineConfig, EvidenceEngine
+from .executor.base import RepoState
 from .executor.local_exec import LocalExecutor
-from .hypothesis.generator import Claim, StubGenerator
+from .hypothesis.generator import Claim, CodexGenerator, StubGenerator
 from .models.case import Mode
 from .store.json_store import JsonCaseStore
 
 
-def _build_engine(use_docker: bool) -> EvidenceEngine:
+def _build_engine(use_docker: bool, offline: bool) -> EvidenceEngine:
     if use_docker:
         from .executor.docker_exec import DockerExecutor
 
         executor = DockerExecutor()
     else:
         executor = LocalExecutor()
-    return EvidenceEngine(StubGenerator(), executor, EngineConfig())
+    generator = StubGenerator() if offline else CodexGenerator()
+    return EvidenceEngine(generator, executor, EngineConfig())
 
 
 def cmd_repro(args: argparse.Namespace) -> int:
@@ -44,8 +46,12 @@ def cmd_repro(args: argparse.Namespace) -> int:
         repo_path=str(Path(args.repo).resolve()),
         expected_signature=args.expect,
     )
-    engine = _build_engine(use_docker=args.docker)
-    case = engine.investigate(claim, mode=Mode.DETECTIVE)
+    engine = _build_engine(use_docker=args.docker, offline=args.offline)
+    target = RepoState(path=claim.repo_path, label="target")
+    base = None
+    if args.fixed:
+        base = RepoState(path=str(Path(args.fixed).resolve()), label="base")
+    case = engine.investigate(claim, mode=Mode.DETECTIVE, target=target, base=base)
 
     store = JsonCaseStore(args.out)
     path = store.save(case)
@@ -68,7 +74,16 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--claim", help="a bug description / concern")
     p.add_argument("--trace", help="path to a file containing a stack trace")
     p.add_argument("--expect", help="expected failure signature (e.g. 'KeyError')")
+    p.add_argument(
+        "--fixed",
+        help="path to a fixed/base checkout; required for a PROVEN fail-to-pass verdict",
+    )
     p.add_argument("--docker", action="store_true", help="use the Docker executor")
+    p.add_argument(
+        "--offline",
+        action="store_true",
+        help="use the deterministic stub instead of Codex (pipeline diagnostics only)",
+    )
     p.add_argument("--out", default=".exhibit-a/cases", help="case output dir")
     p.add_argument("--json", action="store_true", help="print the full Case JSON")
     p.set_defaults(func=cmd_repro)

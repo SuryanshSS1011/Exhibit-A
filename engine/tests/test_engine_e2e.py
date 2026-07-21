@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 
 from exhibit_a import EngineConfig, EvidenceEngine
-from exhibit_a.executor.base import RepoState
+from exhibit_a.executor.base import ExecSpec, Executor, RepoState
 from exhibit_a.executor.local_exec import LocalExecutor
 from exhibit_a.hypothesis.generator import Candidate, Claim, Feedback, StubGenerator
 from exhibit_a.models.case import Mode, Verdict
@@ -46,6 +46,19 @@ class OneShotGenerator:
         return None
 
 
+class TwoShotGenerator(OneShotGenerator):
+    def propose(self, claim: Claim, max_hypotheses: int = 3) -> list[Candidate]:
+        first = super().propose(claim, max_hypotheses)[0]
+        second = Candidate(
+            hypothesis="this admissible candidate must never run after proof",
+            test_path="test_second.py",
+            test_code=FLIP_TEST,
+            run_command=f"{sys.executable} -m pytest -x -q test_second.py",
+            expected_signature="AssertionError",
+        )
+        return [first, second]
+
+
 def _cfg() -> EngineConfig:
     # Fewer reruns keeps the test fast; still exercises the determinism gate.
     return EngineConfig(reruns=3, run_command=f"{sys.executable} -m pytest -x -q test_repro.py")
@@ -69,6 +82,24 @@ def test_proven_flip():
     assert case.evidence.deterministic
     assert case.evidence.fail_signature and "AssertionError" in case.evidence.fail_signature
     assert case.evidence.pass_log  # base ran and passed
+
+
+def test_engine_stops_at_first_admissible_candidate():
+    engine = EvidenceEngine(TwoShotGenerator(), LocalExecutor(), _cfg())
+    claim = Claim(text="last_n drops the last row", repo_path=str(FIXTURES / "buggy_slice"))
+
+    case = engine.investigate(
+        claim,
+        target=RepoState(path=str(FIXTURES / "buggy_slice"), label="target"),
+        base=RepoState(path=str(FIXTURES / "fixed_slice"), label="base"),
+    )
+
+    assert case.verdict is Verdict.PROVEN
+    assert [hyp.text for hyp in case.hypotheses] == [
+        "last_n drops the final element (off-by-one slice)"
+    ]
+    assert case.test_file and case.test_file.path == "test_repro.py"
+    assert case.run_command.endswith("test_repro.py")
 
 
 def test_silence_when_no_base_to_prove_pass_side():
@@ -96,3 +127,36 @@ def test_stub_generator_stays_silent():
     case = engine.investigate(claim, mode=Mode.DETECTIVE)
     assert case.verdict is Verdict.INSUFFICIENT_EVIDENCE
     assert case.silence_reason
+
+
+class ExplodingExecutor(Executor):
+    def prepare(self, repo: RepoState) -> str | None:
+        return None
+
+    def run(self, repo: RepoState, spec: ExecSpec):
+        raise AssertionError("unsafe candidate reached the executor")
+
+
+class UnsafeCommandGenerator:
+    def propose(self, claim: Claim, max_hypotheses: int = 3) -> list[Candidate]:
+        return [
+            Candidate(
+                hypothesis="attempts to broaden execution scope",
+                test_path="test_repro.py",
+                test_code="def test_repro():\n    assert False\n",
+                run_command="pytest -q test_repro.py; touch source.py",
+            )
+        ]
+
+    def refine(self, claim: Claim, feedback: Feedback):
+        return None
+
+
+def test_engine_rejects_out_of_scope_command_before_execution():
+    engine = EvidenceEngine(UnsafeCommandGenerator(), ExplodingExecutor())
+    claim = Claim(text="anything", repo_path=str(FIXTURES / "buggy_slice"))
+
+    case = engine.investigate(claim)
+
+    assert case.verdict is Verdict.INSUFFICIENT_EVIDENCE
+    assert "shell control" in (case.silence_reason or "")
