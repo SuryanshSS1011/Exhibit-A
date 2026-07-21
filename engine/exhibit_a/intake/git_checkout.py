@@ -25,8 +25,8 @@ def checkout(repo_url: str, sha: str) -> RepoState:
     the caller. Prefer :func:`checkout_context` or :func:`checkout_pair` so cleanup
     also happens when generation or execution raises.
     """
-    _validate_repo_url(repo_url)
-    _validate_sha(sha)
+    validate_repo_url(repo_url)
+    validate_sha(sha)
 
     scratch = Path(tempfile.mkdtemp(prefix="exhibit-a-git-"))
     repo_path = scratch / "repo"
@@ -114,12 +114,12 @@ def checkout_triplet(
             yield buggy, fixed, control
 
 
-def _validate_sha(sha: str) -> None:
+def validate_sha(sha: str) -> None:
     if not _SHA_RE.fullmatch(sha):
         raise ValueError("commit SHA must contain 7 to 40 hexadecimal characters")
 
 
-def _validate_repo_url(repo_url: str) -> None:
+def validate_repo_url(repo_url: str) -> None:
     parsed = urlsplit(repo_url)
     if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
         raise ValueError("repo URL must be an HTTPS URL without embedded credentials")

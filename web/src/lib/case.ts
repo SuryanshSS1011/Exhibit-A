@@ -34,6 +34,7 @@ export interface Evidence {
   fail_signature: string | null;
   pass_log: string;
   control_log: string;
+  bisect_log: string;
   reruns: number;
   deterministic: boolean;
   runs: RunResult[];
@@ -51,6 +52,8 @@ export interface Case {
   repo: string | null;
   base_commit: string | null;
   target_commit: string | null;
+  culprit_commit: string | null;
+  culprit_parent_commit: string | null;
   target_state: TargetKind;
   claim_text: string;
   hypotheses: Hypothesis[];

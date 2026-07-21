@@ -17,6 +17,8 @@ export const prosecutorExample: Case = {
   repo: "exhibit-a/demo-slicer",
   base_commit: "a11ce17",
   target_commit: "badc0de",
+  culprit_commit: null,
+  culprit_parent_commit: null,
   target_state: "pr_head",
   claim_text: "PR #17 drops the final element from every last_n result.",
   hypotheses: [
@@ -45,6 +47,7 @@ export const prosecutorExample: Case = {
     fail_signature: "AssertionError: assert [3] == [3, 4]",
     pass_log: "1 passed in 0.02s",
     control_log: "1 passed in 0.02s",
+    bisect_log: "",
     reruns: 5,
     deterministic: true,
     runs: [],

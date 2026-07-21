@@ -4,6 +4,8 @@
   "repo": "fixtures/buggy_inventory",
   "base_commit": null,
   "target_commit": null,
+  "culprit_commit": null,
+  "culprit_parent_commit": null,
   "target_state": "base_only",
   "claim_text": "stock_for should return zero for an unknown SKU instead of raising KeyError",
   "hypotheses": [
@@ -26,6 +28,7 @@
     "fail_signature": "KeyError: 'missing'",
     "pass_log": "",
     "control_log": "",
+    "bisect_log": "",
     "reruns": 5,
     "deterministic": true,
     "runs": [

@@ -98,6 +98,7 @@ class Evidence:
     fail_signature: Optional[str] = None
     pass_log: str = ""
     control_log: str = ""
+    bisect_log: str = ""
     reruns: int = 0
     deterministic: bool = False
     # Full per-run records, useful for the UI's two-tab evidence panel.
@@ -124,6 +125,8 @@ class Case:
     repo: Optional[str] = None  # url or local path
     base_commit: Optional[str] = None
     target_commit: Optional[str] = None
+    culprit_commit: Optional[str] = None
+    culprit_parent_commit: Optional[str] = None
     target_state: TargetKind = TargetKind.BASE_ONLY
 
     # --- the claim & reasoning ---

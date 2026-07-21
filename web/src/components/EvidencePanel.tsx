@@ -8,33 +8,52 @@ import type { Case } from "@/lib/case";
 export function EvidencePanel({ c }: { c: Case }) {
   const cmd = c.run_command;
   return (
-    <section
-      aria-label="Evidence"
-      className={`grid grid-cols-1 gap-4 ${c.evidence.control_log ? "lg:grid-cols-3" : "md:grid-cols-2"}`}
-    >
-      <EvidenceColumn
-        title="Fails on the buggy code"
-        accent="fail"
-        command={cmd}
-        log={c.evidence.fail_log}
-        signature={c.evidence.fail_signature}
-      />
-      <EvidenceColumn
-        title="Passes on the base"
-        accent="pass"
-        command={cmd}
-        log={c.evidence.pass_log}
-        signature={null}
-        empty={c.evidence.pass_log ? undefined : "No base/fixed state was proven."}
-      />
-      {c.evidence.control_log && (
+    <section aria-label="Evidence" className="space-y-4">
+      <div
+        className={`grid grid-cols-1 gap-4 ${c.evidence.control_log ? "lg:grid-cols-3" : "md:grid-cols-2"}`}
+      >
         <EvidenceColumn
-          title="Survives unrelated control"
-          accent="control"
+          title="Fails on the buggy code"
+          accent="fail"
           command={cmd}
-          log={c.evidence.control_log}
-          signature={null}
+          log={c.evidence.fail_log}
+          signature={c.evidence.fail_signature}
         />
+        <EvidenceColumn
+          title="Passes on the base"
+          accent="pass"
+          command={cmd}
+          log={c.evidence.pass_log}
+          signature={null}
+          empty={c.evidence.pass_log ? undefined : "No base/fixed state was proven."}
+        />
+        {c.evidence.control_log && (
+          <EvidenceColumn
+            title="Survives unrelated control"
+            accent="control"
+            command={cmd}
+            log={c.evidence.control_log}
+            signature={null}
+          />
+        )}
+      </div>
+      {c.culprit_commit && c.culprit_parent_commit && (
+        <div className="border-l-2 border-sky-400 bg-ink-900/50 px-4 py-3">
+          <p className="font-serif text-xs uppercase tracking-wide text-sky-300">
+            Causal boundary verified
+          </p>
+          <p className="mt-2 font-mono text-xs text-ink-300">
+            {c.culprit_parent_commit} → {c.culprit_commit}
+          </p>
+          {c.evidence.bisect_log && (
+            <details className="mt-2 text-xs text-ink-400">
+              <summary className="cursor-pointer">Show git bisect log</summary>
+              <pre className="log-scroll mt-2 max-h-48 overflow-auto bg-ink-950 p-3 font-mono text-ink-300">
+                {c.evidence.bisect_log}
+              </pre>
+            </details>
+          )}
+        </div>
       )}
     </section>
   );

@@ -19,9 +19,10 @@ from typing import Any, Callable
 from .engine import EngineConfig, EvidenceEngine
 from .executor.base import RepoState
 from .executor.local_exec import LocalExecutor
-from .hypothesis.generator import Claim, CodexGenerator, StubGenerator
-from .intake.git_checkout import checkout_pair, checkout_triplet
-from .models.case import Mode
+from .hypothesis.generator import Candidate, Claim, CodexGenerator, Feedback, StubGenerator
+from .intake.git_bisect import bisect_reproduction
+from .intake.git_checkout import checkout_context, checkout_pair, checkout_triplet
+from .models.case import Case, Mode, Verdict
 from .store.json_store import JsonCaseStore
 
 
@@ -84,6 +85,17 @@ def cmd_repro(args: argparse.Namespace) -> int:
     if bool(args.base_sha) != bool(args.fix_sha):
         print("error: --base-sha and --fix-sha must be provided together", file=sys.stderr)
         return 2
+    if bool(args.bad_sha) != bool(args.bisect_good_sha):
+        print("error: --bad-sha and --bisect-good-sha must be provided together", file=sys.stderr)
+        return 2
+    if args.bad_sha and (args.base_sha or args.fixed or args.control or args.control_sha):
+        print(
+            "error: bisect intake cannot be combined with another comparison state", file=sys.stderr
+        )
+        return 2
+    if args.bad_sha and (not args.docker or not args.reproduced):
+        print("error: bisect intake requires --docker and --reproduced", file=sys.stderr)
+        return 2
     if args.fixed and args.base_sha:
         print("error: --fixed cannot be combined with --base-sha/--fix-sha", file=sys.stderr)
         return 2
@@ -94,7 +106,38 @@ def cmd_repro(args: argparse.Namespace) -> int:
         print("error: --control-sha requires --base-sha and --fix-sha", file=sys.stderr)
         return 2
 
-    if args.base_sha:
+    if args.bad_sha:
+        try:
+            with checkout_context(args.repo, args.bad_sha, label="target") as target:
+                claim = Claim(
+                    text=claim_text,
+                    repo_path=target.path,
+                    expected_signature=args.expect,
+                )
+                case = engine.investigate(
+                    claim,
+                    mode=Mode.DETECTIVE,
+                    target=target,
+                    repo_source=args.repo,
+                )
+                if case.verdict is Verdict.REPRODUCED:
+                    image = engine.executor.prepare(target)
+                    if image is None:
+                        raise RuntimeError("bisect requires a prepared Docker image")
+                    case = _upgrade_with_bisect(
+                        case,
+                        claim,
+                        engine,
+                        args.repo,
+                        args.bad_sha,
+                        args.bisect_good_sha,
+                        image,
+                        event_sink,
+                    )
+        except (ValueError, OSError, RuntimeError, subprocess.SubprocessError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+    elif args.base_sha:
         try:
             if event_sink:
                 event_sink({"event": "phase", "phase": "checkout", "message": "Cloning commits"})
@@ -199,6 +242,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     p.add_argument("--base-sha", help="buggy/base commit SHA for remote-repo intake")
     p.add_argument("--fix-sha", help="fixing commit or PR-head SHA for remote-repo intake")
+    p.add_argument("--bad-sha", help="known-bad commit for Detective bisect intake")
+    p.add_argument(
+        "--bisect-good-sha",
+        help="known-good ancestor; the culprit parent is rechecked by the flip judge",
+    )
     p.add_argument(
         "--control",
         help="older/unrelated local checkout; the candidate must pass there",
@@ -231,6 +279,81 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
     return args.func(args)
+
+
+class _FrozenGenerator:
+    def __init__(self, candidate: Candidate):
+        self.candidate = candidate
+
+    def propose(self, claim: Claim, max_hypotheses: int = 3) -> list[Candidate]:
+        return [self.candidate]
+
+    def refine(self, claim: Claim, feedback: Feedback) -> None:
+        return None
+
+
+def _upgrade_with_bisect(
+    reproduced: Case,
+    claim: Claim,
+    engine: EvidenceEngine,
+    repo_url: str,
+    bad_sha: str,
+    good_sha: str,
+    image: str,
+    event_sink: Callable[[dict[str, Any]], None] | None,
+) -> Case:
+    test = reproduced.test_file
+    if test is None:
+        return reproduced
+    if event_sink:
+        event_sink({"event": "phase", "phase": "bisect", "message": "Tracing first bad commit"})
+    result = bisect_reproduction(
+        repo_url,
+        bad_sha=bad_sha,
+        good_sha=good_sha,
+        test_path=test.path,
+        test_code=test.code,
+        run_command=reproduced.run_command,
+        image=image,
+        docker_bin=getattr(engine.executor, "docker_bin", "docker"),
+    )
+    reproduced.culprit_commit = result.culprit
+    reproduced.culprit_parent_commit = result.parent
+    reproduced.evidence.bisect_log = result.log
+
+    candidate = Candidate(
+        hypothesis=reproduced.root_cause_narrative,
+        test_path=test.path,
+        test_code=test.code,
+        run_command=reproduced.run_command,
+        expected_signature=reproduced.evidence.fail_signature,
+    )
+    verifier = EvidenceEngine(
+        _FrozenGenerator(candidate),
+        engine.executor,
+        EngineConfig(
+            reruns=engine.config.reruns,
+            max_refine=0,
+            timeout_s=engine.config.timeout_s,
+            run_command=engine.config.run_command,
+        ),
+        event_sink=event_sink,
+    )
+    with checkout_pair(repo_url, result.culprit, result.parent) as (culprit, parent):
+        upgraded = verifier.investigate(
+            claim,
+            mode=Mode.DETECTIVE,
+            target=culprit,
+            base=parent,
+            repo_source=repo_url,
+        )
+    if upgraded.verdict is not Verdict.PROVEN:
+        return reproduced
+    upgraded.id = reproduced.id
+    upgraded.culprit_commit = result.culprit
+    upgraded.culprit_parent_commit = result.parent
+    upgraded.evidence.bisect_log = result.log
+    return upgraded
 
 
 if __name__ == "__main__":
