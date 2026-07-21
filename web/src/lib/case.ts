@@ -40,6 +40,16 @@ export interface Evidence {
   runs: RunResult[];
 }
 
+export interface EvidenceMinimization {
+  verified: boolean;
+  attempts: number;
+  accepted: number;
+  original_lines: number;
+  minimized_lines: number;
+  reduction_ratio: number;
+  reason: string | null;
+}
+
 export interface Hypothesis {
   text: string;
   rejected: boolean;
@@ -65,6 +75,8 @@ export interface Case {
   declared_behavior_delta: string | null;
   declared_delta_sources: string[];
   test_file: TestArtifact | null;
+  original_test_file: TestArtifact | null;
+  minimization: EvidenceMinimization | null;
   run_command: string;
   evidence: Evidence;
   verdict: Verdict;

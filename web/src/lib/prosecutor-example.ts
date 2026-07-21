@@ -42,6 +42,21 @@ export const prosecutorExample: Case = {
     language: "python",
     framework: "pytest",
   },
+  original_test_file: {
+    path: "test_repro.py",
+    code: testCode,
+    language: "python",
+    framework: "pytest",
+  },
+  minimization: {
+    verified: true,
+    attempts: 1,
+    accepted: 0,
+    original_lines: 4,
+    minimized_lines: 4,
+    reduction_ratio: 0,
+    reason: null,
+  },
   run_command: "python3 -m pytest -x -q test_repro.py",
   evidence: {
     fail_log: failLog,

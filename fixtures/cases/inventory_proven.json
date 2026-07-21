@@ -28,6 +28,21 @@
     "language": "python",
     "framework": "pytest"
   },
+  "original_test_file": {
+    "path": "test_inventory_repro.py",
+    "code": "from inventory import stock_for\n\ndef test_unknown_sku_has_zero_stock():\n    items = [{'sku': 'known', 'quantity': 4}]\n    missing_sku = 'missing'\n    result = stock_for(items, missing_sku)\n    assert result == 0\n",
+    "language": "python",
+    "framework": "pytest"
+  },
+  "minimization": {
+    "verified": true,
+    "attempts": 12,
+    "accepted": 3,
+    "original_lines": 7,
+    "minimized_lines": 4,
+    "reduction_ratio": 0.42857142857142855,
+    "reason": null
+  },
   "run_command": "python3 -m pytest -x -q test_inventory_repro.py",
   "evidence": {
     "fail_log": "FAILED test_inventory_repro.py::test_unknown_sku_has_zero_stock - KeyError: 'missing'",

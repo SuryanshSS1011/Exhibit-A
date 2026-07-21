@@ -2,7 +2,7 @@ from dataclasses import fields
 from pathlib import Path
 import re
 
-from exhibit_a.models.case import Case, Evidence, Hypothesis, RunResult
+from exhibit_a.models.case import Case, Evidence, EvidenceMinimization, Hypothesis, RunResult
 from exhibit_a.models.case import TestArtifact as CaseTestArtifact
 
 
@@ -14,6 +14,7 @@ def test_typescript_case_schema_matches_python_dataclasses():
         "TestArtifact": CaseTestArtifact,
         "RunResult": RunResult,
         "Evidence": Evidence,
+        "EvidenceMinimization": EvidenceMinimization,
         "Hypothesis": Hypothesis,
         "Case": Case,
     }.items():

@@ -27,6 +27,7 @@ from .models.case import (
     Case,
     derive_disposition,
     Evidence,
+    EvidenceMinimization,
     Hypothesis,
     IntentJudgment,
     Mode,
@@ -37,6 +38,7 @@ from .models.case import (
 )
 from .verdict.flip_check import extract_signature, flip_check
 from .verdict.diff_location import ChangedLines, changed_line_map
+from .verdict.minimization import minimize_proven_test
 
 
 @dataclass
@@ -52,6 +54,8 @@ class EngineConfig:
     allow_reproduced: bool = False
     check_existing_suite: bool = True
     suite_command: tuple[str, ...] = ("python3", "-m", "pytest", "-q")
+    minimize_proven: bool = True
+    minimization_max_attempts: int = 24
 
 
 class EvidenceEngine:
@@ -417,6 +421,19 @@ class EvidenceEngine:
                 deterministic=flip.deterministic,
                 runs=run_records,
             )
+            if verdict is Verdict.PROVEN and base is not None and self.config.minimize_proven:
+                self._minimize_evidence(
+                    case=case,
+                    spec=spec,
+                    expected_signature=expected,
+                    base=base,
+                    target=target,
+                    control=control,
+                    base_image=base_image,
+                    target_image=target_image,
+                    control_image=control_image,
+                    changed_lines=changed_lines,
+                )
             self._emit("verdict", verdict=verdict.value, hypothesis=cand.hypothesis)
             return None
 
@@ -449,6 +466,73 @@ class EvidenceEngine:
             admissible=False,
             reason=flip.reason,
             rejected_hypotheses=[cand.hypothesis],
+        )
+
+    def _minimize_evidence(
+        self,
+        *,
+        case: Case,
+        spec: ExecSpec,
+        expected_signature: str | None,
+        base: RepoState,
+        target: RepoState,
+        control: RepoState | None,
+        base_image: str | None,
+        target_image: str | None,
+        control_image: str | None,
+        changed_lines: ChangedLines | None,
+    ) -> None:
+        """Run an optional post-verdict shrink pass; never modify the verdict."""
+        original = TestArtifact(path=spec.test_path, code=spec.test_code)
+        case.original_test_file = original
+        self._emit(
+            "phase",
+            phase="minimizing",
+            message="Shrinking the proof under the deterministic flip check",
+        )
+        try:
+            result = minimize_proven_test(
+                executor=self.executor,
+                target=target,
+                base=base,
+                control=control,
+                spec=spec,
+                expected_signature=expected_signature,
+                reruns=self.config.reruns,
+                changed_lines=changed_lines,
+                target_image=target_image,
+                base_image=base_image,
+                control_image=control_image,
+                max_attempts=self.config.minimization_max_attempts,
+            )
+        except Exception as exc:
+            case.minimization = EvidenceMinimization(
+                original_lines=len(spec.test_code.splitlines()),
+                minimized_lines=len(spec.test_code.splitlines()),
+                reason=f"minimization could not be completed: {exc}",
+            )
+            self._emit("minimization", verified=False, reason=str(exc))
+            return
+
+        case.minimization = EvidenceMinimization(
+            verified=result.verified,
+            attempts=result.attempts,
+            accepted=result.accepted,
+            original_lines=result.original_lines,
+            minimized_lines=result.minimized_lines,
+            reduction_ratio=result.reduction_ratio,
+            reason=None if result.verified else "minimized artifact was not independently verified",
+        )
+        if result.verified:
+            case.test_file = result.artifact
+        self._emit(
+            "minimization",
+            verified=result.verified,
+            attempts=result.attempts,
+            accepted=result.accepted,
+            original_lines=result.original_lines,
+            minimized_lines=result.minimized_lines,
+            reduction_ratio=result.reduction_ratio,
         )
 
     def _emit(self, event: str, **payload: Any) -> None:

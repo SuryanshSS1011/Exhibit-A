@@ -100,7 +100,11 @@ class StaticIntentJudge:
 
 def _cfg() -> EngineConfig:
     # Fewer reruns keeps the test fast; still exercises the determinism gate.
-    return EngineConfig(reruns=3, run_command=f"{sys.executable} -m pytest -x -q test_repro.py")
+    return EngineConfig(
+        reruns=3,
+        run_command=f"{sys.executable} -m pytest -x -q test_repro.py",
+        minimize_proven=False,
+    )
 
 
 def test_proven_flip():
@@ -140,6 +144,94 @@ def test_realistic_inventory_fixture_proves_missing_sku_key_error():
     assert case.verdict is Verdict.PROVEN, case.silence_reason
     assert case.test_file and case.test_file.path == "test_inventory_repro.py"
     assert case.evidence.fail_signature and "KeyError" in case.evidence.fail_signature
+
+
+def test_proven_case_keeps_original_and_emits_verified_minimized_evidence():
+    config = EngineConfig(
+        reruns=1,
+        check_existing_suite=False,
+        minimize_proven=True,
+        minimization_max_attempts=16,
+    )
+
+    class VerboseInventoryGenerator(InventoryGenerator):
+        def propose(self, claim: Claim, max_hypotheses: int = 3) -> list[Candidate]:
+            return [
+                Candidate(
+                    hypothesis="verbose missing SKU reproduction",
+                    test_path="test_inventory_repro.py",
+                    test_code=(
+                        "from inventory import stock_for\n\n"
+                        "def test_unknown_sku_has_zero_stock():\n"
+                        "    items = [{'sku': 'known', 'quantity': 4}]\n"
+                        "    missing = 'missing'\n"
+                        "    result = stock_for(items, missing)\n"
+                        "    assert result == 0\n"
+                    ),
+                    run_command=(f"{sys.executable} -m pytest -x -q test_inventory_repro.py"),
+                    expected_signature="KeyError",
+                )
+            ]
+
+    engine = EvidenceEngine(VerboseInventoryGenerator(), LocalExecutor(), config)
+    claim = Claim(
+        text="unknown SKUs should have zero stock",
+        repo_path=str(FIXTURES / "buggy_inventory"),
+        expected_signature="KeyError",
+    )
+
+    case = engine.investigate(
+        claim,
+        target=RepoState(path=str(FIXTURES / "buggy_inventory"), label="target"),
+        base=RepoState(path=str(FIXTURES / "fixed_inventory"), label="base"),
+    )
+
+    assert case.verdict is Verdict.PROVEN
+    assert case.original_test_file is not None
+    assert case.test_file is not None
+    assert case.minimization is not None and case.minimization.verified
+    assert case.minimization.accepted > 0
+    assert case.test_file.code != case.original_test_file.code
+    assert case.minimization.minimized_lines < case.minimization.original_lines
+
+
+def test_minimization_failure_cannot_change_the_proven_verdict():
+    class FailsAfterInitialFlip(LocalExecutor):
+        def __init__(self):
+            self.run_count = 0
+
+        def run(self, repo: RepoState, spec: ExecSpec):
+            self.run_count += 1
+            if self.run_count > 2:
+                raise RuntimeError("post-verdict executor unavailable")
+            return super().run(repo, spec)
+
+    config = EngineConfig(
+        reruns=1,
+        check_existing_suite=False,
+        minimize_proven=True,
+        minimization_max_attempts=4,
+    )
+    engine = EvidenceEngine(InventoryGenerator(), FailsAfterInitialFlip(), config)
+    claim = Claim(
+        text="unknown SKUs should have zero stock",
+        repo_path=str(FIXTURES / "buggy_inventory"),
+        expected_signature="KeyError",
+    )
+
+    case = engine.investigate(
+        claim,
+        target=RepoState(path=str(FIXTURES / "buggy_inventory"), label="target"),
+        base=RepoState(path=str(FIXTURES / "fixed_inventory"), label="base"),
+    )
+
+    assert case.verdict is Verdict.PROVEN
+    assert case.test_file and case.test_file.code == INVENTORY_FLIP_TEST
+    assert case.original_test_file and case.original_test_file.code == INVENTORY_FLIP_TEST
+    assert case.minimization is not None and not case.minimization.verified
+    assert case.minimization.reason and "post-verdict executor unavailable" in (
+        case.minimization.reason
+    )
 
 
 def test_prosecutor_requires_failure_traceback_to_touch_inventory_diff():

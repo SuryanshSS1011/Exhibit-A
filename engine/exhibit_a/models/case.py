@@ -106,6 +106,19 @@ class Evidence:
 
 
 @dataclass
+class EvidenceMinimization:
+    """Descriptive provenance for the post-verdict evidence shrink pass."""
+
+    verified: bool = False
+    attempts: int = 0
+    accepted: int = 0
+    original_lines: int = 0
+    minimized_lines: int = 0
+    reduction_ratio: float = 0.0
+    reason: Optional[str] = None
+
+
+@dataclass
 class Hypothesis:
     """A single falsifiable guess produced by the hypothesis generator."""
 
@@ -143,6 +156,8 @@ class Case:
 
     # --- the evidence ---
     test_file: Optional[TestArtifact] = None
+    original_test_file: Optional[TestArtifact] = None
+    minimization: Optional[EvidenceMinimization] = None
     run_command: str = "pytest -x -q"
     evidence: Evidence = field(default_factory=Evidence)
 
