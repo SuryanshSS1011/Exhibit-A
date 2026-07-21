@@ -170,9 +170,17 @@ def cmd_repro(args: argparse.Namespace) -> int:
             print(f"error: {exc}", file=sys.stderr)
             return 2
     else:
+        repo_path = Path(args.repo).resolve()
+        if not repo_path.is_dir():
+            print(f"error: repo checkout not found: {repo_path}", file=sys.stderr)
+            return 2
+        for label, opt in (("--fixed", args.fixed), ("--control", args.control)):
+            if opt and not Path(opt).resolve().is_dir():
+                print(f"error: {label} checkout not found: {Path(opt).resolve()}", file=sys.stderr)
+                return 2
         claim = Claim(
             text=claim_text,
-            repo_path=str(Path(args.repo).resolve()),
+            repo_path=str(repo_path),
             expected_signature=args.expect,
         )
         target = RepoState(path=claim.repo_path, label="target", source=claim.repo_path)
@@ -184,13 +192,17 @@ def cmd_repro(args: argparse.Namespace) -> int:
         if args.control:
             control_path = str(Path(args.control).resolve())
             control = RepoState(path=control_path, label="control", source=control_path)
-        case = engine.investigate(
-            claim,
-            mode=Mode.DETECTIVE,
-            target=target,
-            base=base,
-            control=control,
-        )
+        try:
+            case = engine.investigate(
+                claim,
+                mode=Mode.DETECTIVE,
+                target=target,
+                base=base,
+                control=control,
+            )
+        except (OSError, ValueError, subprocess.SubprocessError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
 
     store = JsonCaseStore(args.out)
     path = store.save(case)
