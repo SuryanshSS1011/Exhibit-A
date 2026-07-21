@@ -19,7 +19,14 @@ import tempfile
 import time
 from pathlib import Path
 
-from .base import ExecOutcome, ExecSpec, Executor, RepoState
+from .base import (
+    ExecOutcome,
+    ExecSpec,
+    Executor,
+    RepoState,
+    SourceMutation,
+    apply_source_mutation,
+)
 
 
 class LocalExecutor(Executor):
@@ -29,6 +36,17 @@ class LocalExecutor(Executor):
         return None
 
     def run(self, repo: RepoState, spec: ExecSpec) -> ExecOutcome:
+        return self._run_in_copy(repo, spec)
+
+    def run_mutant(self, repo: RepoState, spec: ExecSpec, mutation: SourceMutation) -> ExecOutcome:
+        return self._run_in_copy(repo, spec, mutation)
+
+    def _run_in_copy(
+        self,
+        repo: RepoState,
+        spec: ExecSpec,
+        mutation: SourceMutation | None = None,
+    ) -> ExecOutcome:
         src = Path(repo.path).resolve()
         if not src.is_dir():
             raise FileNotFoundError(f"repo checkout not found: {src}")
@@ -38,6 +56,8 @@ class LocalExecutor(Executor):
             # Copy the checkout so the candidate test never touches the source tree.
             work = workdir / "repo"
             shutil.copytree(src, work, ignore=shutil.ignore_patterns("__pycache__", ".git"))
+            if mutation is not None:
+                apply_source_mutation(work, mutation, test_path=spec.test_path)
 
             test_abs = work / spec.test_path
             test_abs.parent.mkdir(parents=True, exist_ok=True)

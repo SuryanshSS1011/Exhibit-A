@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from exhibit_a.executor.base import EnvironmentSetupError, RepoState
+from exhibit_a.executor.base import EnvironmentSetupError, ExecSpec, RepoState, SourceMutation
 from exhibit_a.executor.docker_exec import DockerExecutor, _environment_spec
 
 
@@ -97,3 +97,34 @@ def test_existing_suite_runs_in_read_only_no_network_container(
     assert "--read-only" in argv
     assert argv[-4:] == ["python3", "-m", "pytest", "-q"]
     assert (tmp_path / "module.py").read_text() == "VALUE = 1\n"
+
+
+def test_mutant_is_applied_only_to_disposable_read_only_container_copy(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    source = tmp_path / "module.py"
+    source.write_text("FLAG = True\n")
+
+    def fake_run(argv: list[str], **kwargs) -> subprocess.CompletedProcess:
+        mount = argv[argv.index("-v") + 1]
+        work = Path(mount.removesuffix(":/work:ro"))
+        assert (work / "module.py").read_text() == "FLAG = False\n"
+        assert (work / "test_repro.py").is_file()
+        assert argv[argv.index("--network") + 1] == "none"
+        assert "--read-only" in argv
+        return subprocess.CompletedProcess(argv, 0, "1 passed", "")
+
+    monkeypatch.setattr("exhibit_a.executor.docker_exec.subprocess.run", fake_run)
+    outcome = DockerExecutor().run_mutant(
+        RepoState(str(tmp_path), "base"),
+        ExecSpec(
+            "test_repro.py",
+            "from module import FLAG\n\ndef test_flag(): assert not FLAG\n",
+            "python3 -m pytest -q test_repro.py",
+            image="exhibit-a-env:test",
+        ),
+        SourceMutation("flag", "module.py", 1, 7, 11, "True", "False"),
+    )
+
+    assert outcome.passed
+    assert source.read_text() == "FLAG = True\n"

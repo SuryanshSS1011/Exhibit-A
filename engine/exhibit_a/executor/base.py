@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import abc
 from dataclasses import dataclass
+from pathlib import Path, PurePosixPath
 from typing import Optional
 
 
@@ -45,6 +46,36 @@ class ExecSpec:
     network: bool = False
     # image is optional: Docker executor caches one image per repo (SWE-smith pattern)
     image: Optional[str] = None
+
+
+_ALLOWED_MUTATION_PAIRS = {
+    ("==", "!="),
+    ("!=", "=="),
+    ("<", "<="),
+    ("<=", "<"),
+    (">", ">="),
+    (">=", ">"),
+    ("+", "-"),
+    ("-", "+"),
+    ("*", "//"),
+    ("//", "*"),
+    ("%", "*"),
+    ("True", "False"),
+    ("False", "True"),
+}
+
+
+@dataclass(frozen=True)
+class SourceMutation:
+    """One allowlisted, location-bound edit applied only to a disposable copy."""
+
+    id: str
+    path: str
+    line: int
+    start_col: int
+    end_col: int
+    original: str
+    replacement: str
 
 
 @dataclass
@@ -96,5 +127,46 @@ class Executor(abc.ABC):
         """Run an explicitly configured existing suite, or return unsupported."""
         return None
 
+    def run_mutant(
+        self, repo: RepoState, spec: ExecSpec, mutation: SourceMutation
+    ) -> ExecOutcome | None:
+        """Run one test against one disposable source mutant, or return unsupported."""
+        return None
+
     def close(self) -> None:  # optional cleanup hook
         """Tear down any persistent resources. Default: no-op."""
+
+
+def apply_source_mutation(root: Path, mutation: SourceMutation, *, test_path: str) -> None:
+    """Apply an allowlisted token edit inside a disposable repository copy."""
+    if (mutation.original, mutation.replacement) not in _ALLOWED_MUTATION_PAIRS:
+        raise ValueError("source mutation is not an allowlisted deterministic operator")
+    relative = PurePosixPath(mutation.path)
+    if (
+        relative.is_absolute()
+        or ".." in relative.parts
+        or relative.suffix != ".py"
+        or relative.as_posix() == test_path
+    ):
+        raise ValueError("source mutation path is outside the allowed Python source scope")
+    target = root.joinpath(*relative.parts)
+    resolved_root = root.resolve()
+    try:
+        resolved_target = target.resolve(strict=True)
+    except FileNotFoundError as exc:
+        raise ValueError(f"source mutation target does not exist: {mutation.path}") from exc
+    if not resolved_target.is_relative_to(resolved_root) or not resolved_target.is_file():
+        raise ValueError("source mutation target escapes the disposable repository")
+    if mutation.line < 1 or mutation.start_col < 0 or mutation.end_col <= mutation.start_col:
+        raise ValueError("source mutation coordinates are invalid")
+
+    lines = resolved_target.read_text().splitlines(keepends=True)
+    if mutation.line > len(lines):
+        raise ValueError("source mutation line is outside the target file")
+    line = lines[mutation.line - 1]
+    if line[mutation.start_col : mutation.end_col] != mutation.original:
+        raise ValueError("source mutation no longer matches the target token")
+    lines[mutation.line - 1] = (
+        line[: mutation.start_col] + mutation.replacement + line[mutation.end_col :]
+    )
+    resolved_target.write_text("".join(lines))
