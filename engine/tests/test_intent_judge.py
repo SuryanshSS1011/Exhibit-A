@@ -21,6 +21,8 @@ def test_codex_intent_judge_labels_output_as_fallible_and_separate(tmp_path: Pat
         {
             "judgment": "unintended",
             "rationale": "The PR promises behavior preservation.",
+            "declared_behavior_delta": "Preserve behavior during the refactor.",
+            "declared_delta_sources": ["pr_description", "changelog"],
         }
     )
     judge = CodexIntentJudge(codex)  # type: ignore[arg-type]
@@ -34,12 +36,23 @@ def test_codex_intent_judge_labels_output_as_fallible_and_separate(tmp_path: Pat
     assert assessment is not None
     assert assessment.judgment is IntentJudgment.UNINTENDED
     assert assessment.model == "gpt-5.6-sol"
+    assert assessment.declared_behavior_delta == "Preserve behavior during the refactor."
+    assert assessment.declared_delta_sources == ("pr_description", "changelog")
     assert "override that evidence verdict" in codex.prompt.lower()
     assert "Choose unclear" in codex.prompt
 
 
 def test_codex_intent_judge_fails_closed_on_invalid_output(tmp_path: Path):
-    judge = CodexIntentJudge(FakeStructuredCodex({"judgment": "certain", "rationale": "x"}))  # type: ignore[arg-type]
+    judge = CodexIntentJudge(
+        FakeStructuredCodex(
+            {
+                "judgment": "certain",
+                "rationale": "x",
+                "declared_behavior_delta": None,
+                "declared_delta_sources": [],
+            }
+        )
+    )  # type: ignore[arg-type]
 
     assert judge.assess(str(tmp_path), "delta", "context") is None
     assert judge.last_error and "Intent assessment failed" in judge.last_error

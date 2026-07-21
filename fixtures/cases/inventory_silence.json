@@ -17,6 +17,8 @@
   "intent_judgment": "not_assessed",
   "intent_rationale": null,
   "intent_model": null,
+  "declared_behavior_delta": null,
+  "declared_delta_sources": [],
   "test_file": null,
   "run_command": "pytest -x -q",
   "evidence": {
@@ -35,6 +37,7 @@
     ]
   },
   "verdict": "INSUFFICIENT_EVIDENCE",
+  "disposition": "INSUFFICIENT_EVIDENCE",
   "silence_reason": "confirmed deterministic failure on target, but no base/fixed state to prove the pass side",
   "license_name": "MIT",
   "fail_to_pass": [],

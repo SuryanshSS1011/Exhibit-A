@@ -17,6 +17,8 @@
   "intent_judgment": "not_assessed",
   "intent_rationale": null,
   "intent_model": null,
+  "declared_behavior_delta": null,
+  "declared_delta_sources": [],
   "test_file": {
     "path": "test_inventory_repro.py",
     "code": "from inventory import stock_for\n\ndef test_unknown_sku_has_zero_stock():\n    assert stock_for([{'sku': 'known', 'quantity': 4}], 'missing') == 0\n",
@@ -41,6 +43,7 @@
     ]
   },
   "verdict": "PROVEN",
+  "disposition": "BEHAVIOR_CHANGE",
   "silence_reason": null,
   "license_name": "MIT",
   "fail_to_pass": ["test_inventory_repro.py"],

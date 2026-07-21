@@ -17,7 +17,7 @@ from exhibit_a.executor.base import EnvironmentSetupError, ExecSpec, Executor, R
 from exhibit_a.executor.local_exec import LocalExecutor
 from exhibit_a.hypothesis.generator import Candidate, Claim, Feedback, StubGenerator
 from exhibit_a.hypothesis.intent import IntentAssessment
-from exhibit_a.models.case import IntentJudgment, Mode, Verdict
+from exhibit_a.models.case import Disposition, IntentJudgment, Mode, Verdict
 
 FIXTURES = Path(__file__).resolve().parents[2] / "fixtures"
 
@@ -93,6 +93,8 @@ class StaticIntentJudge:
             self.judgment,
             "PR context says the refactor should preserve behavior.",
             "test-intent-model",
+            "Preserve inventory lookup behavior during the refactor.",
+            ("pr_description",),
         )
 
 
@@ -177,8 +179,35 @@ def test_prosecutor_intent_judgment_is_separate_from_proven_verdict():
 
     assert case.verdict is Verdict.PROVEN
     assert case.intent_judgment is IntentJudgment.INTENDED
+    assert case.disposition is Disposition.BEHAVIOR_CHANGE
+    assert case.declared_behavior_delta == (
+        "Preserve inventory lookup behavior during the refactor."
+    )
+    assert case.declared_delta_sources == ["pr_description"]
     assert case.intent_model == "test-intent-model"
     assert judge.calls == 1
+
+
+def test_unintended_intent_relabels_but_does_not_change_proven_verdict():
+    judge = StaticIntentJudge(IntentJudgment.UNINTENDED)
+    engine = EvidenceEngine(InventoryGenerator(), LocalExecutor(), _cfg(), intent_judge=judge)
+    claim = Claim(
+        text="PR makes unknown SKUs raise KeyError",
+        repo_path=str(FIXTURES / "buggy_inventory"),
+        expected_signature="KeyError",
+    )
+
+    case = engine.investigate(
+        claim,
+        mode=Mode.PROSECUTOR,
+        target=RepoState(path=str(FIXTURES / "buggy_inventory"), label="target"),
+        base=RepoState(path=str(FIXTURES / "fixed_inventory"), label="base"),
+        intent_context="Refactor only; preserve behavior.",
+    )
+
+    assert case.verdict is Verdict.PROVEN
+    assert case.intent_judgment is IntentJudgment.UNINTENDED
+    assert case.disposition is Disposition.PROVEN_REGRESSION
 
 
 def test_engine_stops_at_first_admissible_candidate():

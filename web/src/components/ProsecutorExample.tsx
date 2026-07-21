@@ -16,7 +16,7 @@ export function ProsecutorExample() {
             The Prosecutor may publish only the concern backed by the execution record below.
           </p>
         </div>
-        <VerdictStamp verdict={c.verdict} />
+        <VerdictStamp disposition={c.disposition} />
       </header>
 
       <section aria-label="Evidence and intent claims" className="grid gap-px bg-ink-700 md:grid-cols-2">
@@ -38,6 +38,9 @@ export function ProsecutorExample() {
           </p>
           <p className="mt-2 font-serif text-lg text-ink-200">Judged unintended</p>
           <p className="mt-1 text-xs text-ink-400">{c.intent_rationale}</p>
+          <p className="mt-2 text-xs text-ink-300">
+            Declared delta: {c.declared_behavior_delta ?? "none found"}
+          </p>
           <p className="mt-2 font-mono text-[10px] text-ink-500">{c.intent_model}</p>
         </div>
       </section>

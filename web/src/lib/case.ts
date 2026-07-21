@@ -7,6 +7,11 @@ export type Mode = "prosecutor" | "detective";
 export type Verdict = "PROVEN" | "REPRODUCED" | "INSUFFICIENT_EVIDENCE";
 export type TargetKind = "pr_head" | "synthesized_patch" | "base_only";
 export type IntentJudgment = "not_assessed" | "intended" | "unintended" | "unclear";
+export type Disposition =
+  | "PROVEN_REGRESSION"
+  | "BEHAVIOR_CHANGE"
+  | "REPRODUCED"
+  | "INSUFFICIENT_EVIDENCE";
 
 export interface TestArtifact {
   path: string;
@@ -53,10 +58,13 @@ export interface Case {
   intent_judgment: IntentJudgment;
   intent_rationale: string | null;
   intent_model: string | null;
+  declared_behavior_delta: string | null;
+  declared_delta_sources: string[];
   test_file: TestArtifact | null;
   run_command: string;
   evidence: Evidence;
   verdict: Verdict;
+  disposition: Disposition;
   silence_reason: string | null;
   license_name: string | null;
   fail_to_pass: string[];

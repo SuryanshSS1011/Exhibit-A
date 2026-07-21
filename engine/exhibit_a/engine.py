@@ -25,6 +25,7 @@ from .hypothesis.generator import Candidate, Claim, Feedback, HypothesisGenerato
 from .hypothesis.intent import IntentJudge
 from .models.case import (
     Case,
+    derive_disposition,
     Evidence,
     Hypothesis,
     IntentJudgment,
@@ -151,6 +152,7 @@ class EvidenceEngine:
             )
             if case.is_evidence():
                 self._assess_intent(case, target, intent_context)
+                case.disposition = derive_disposition(case.verdict, case.intent_judgment)
                 return case
 
             # Bounded refinement on the most recent failed candidate.
@@ -174,6 +176,7 @@ class EvidenceEngine:
                 )
                 if case.is_evidence():
                     self._assess_intent(case, target, intent_context)
+                    case.disposition = derive_disposition(case.verdict, case.intent_judgment)
                     return case
 
         # Nothing cleared the gate -> honest silence.
@@ -208,11 +211,15 @@ class EvidenceEngine:
         case.intent_judgment = assessment.judgment
         case.intent_rationale = assessment.rationale
         case.intent_model = assessment.model
+        case.declared_behavior_delta = assessment.declared_behavior_delta
+        case.declared_delta_sources = list(assessment.declared_delta_sources)
         self._emit(
             "intent",
             judgment=assessment.judgment.value,
             rationale=assessment.rationale,
             model=assessment.model,
+            declared_behavior_delta=assessment.declared_behavior_delta,
+            declared_delta_sources=list(assessment.declared_delta_sources),
         )
 
     def _try_candidate(

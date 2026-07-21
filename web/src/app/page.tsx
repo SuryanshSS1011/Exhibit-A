@@ -398,7 +398,7 @@ function CaseFile({ c }: { c: Case }) {
           <h2 className="font-serif text-xs uppercase tracking-wide text-ink-400">The Charge</h2>
           <p className="mt-1 max-w-xl text-ink-200">{c.claim_text}</p>
         </div>
-        <VerdictStamp verdict={c.verdict} />
+        <VerdictStamp disposition={c.disposition} />
       </div>
 
       <div>
@@ -422,6 +422,17 @@ function CaseFile({ c }: { c: Case }) {
 
       {isEvidence(c) ? (
         <>
+          {c.disposition === "BEHAVIOR_CHANGE" && (
+            <div className="rounded-md border border-sky-400/40 bg-sky-400/10 p-3 text-xs text-sky-200">
+              Confirm this is intended. Execution proves a behavior delta; intent remains a
+              separate, fallible interpretation.
+              {c.declared_behavior_delta && (
+                <span className="mt-2 block font-mono text-[11px] text-sky-300">
+                  Declared delta: {c.declared_behavior_delta}
+                </span>
+              )}
+            </div>
+          )}
           {c.verdict === "REPRODUCED" && (
             <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-500">
               Reproduced, not fully proven: a deterministic, signature-matched failure with

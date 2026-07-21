@@ -31,6 +31,8 @@ export const prosecutorExample: Case = {
   intent_rationale:
     "The PR description promises to preserve last_n behavior while simplifying its slice.",
   intent_model: "gpt-5.6-sol",
+  declared_behavior_delta: "Preserve last_n output while simplifying its slice.",
+  declared_delta_sources: ["pr_description"],
   test_file: {
     path: "test_repro.py",
     code: testCode,
@@ -48,6 +50,7 @@ export const prosecutorExample: Case = {
     runs: [],
   },
   verdict: "PROVEN",
+  disposition: "PROVEN_REGRESSION",
   silence_reason: null,
   license_name: "MIT",
   fail_to_pass: ["test_repro.py"],

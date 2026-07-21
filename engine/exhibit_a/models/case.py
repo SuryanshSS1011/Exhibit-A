@@ -48,6 +48,26 @@ class IntentJudgment(str, enum.Enum):
     UNCLEAR = "unclear"
 
 
+class Disposition(str, enum.Enum):
+    """Human-facing routing derived from evidence tier and fallible intent."""
+
+    PROVEN_REGRESSION = "PROVEN_REGRESSION"
+    BEHAVIOR_CHANGE = "BEHAVIOR_CHANGE"
+    REPRODUCED = "REPRODUCED"
+    INSUFFICIENT_EVIDENCE = "INSUFFICIENT_EVIDENCE"
+
+
+def derive_disposition(verdict: Verdict, intent: IntentJudgment) -> Disposition:
+    """Relabel evidence without changing what execution proved."""
+    if verdict is Verdict.PROVEN:
+        if intent is IntentJudgment.UNINTENDED:
+            return Disposition.PROVEN_REGRESSION
+        return Disposition.BEHAVIOR_CHANGE
+    if verdict is Verdict.REPRODUCED:
+        return Disposition.REPRODUCED
+    return Disposition.INSUFFICIENT_EVIDENCE
+
+
 @dataclass
 class TestArtifact:
     """The candidate test itself."""
@@ -114,6 +134,8 @@ class Case:
     intent_judgment: IntentJudgment = IntentJudgment.NOT_ASSESSED
     intent_rationale: Optional[str] = None
     intent_model: Optional[str] = None
+    declared_behavior_delta: Optional[str] = None
+    declared_delta_sources: list[str] = field(default_factory=list)
 
     # --- the evidence ---
     test_file: Optional[TestArtifact] = None
@@ -122,6 +144,7 @@ class Case:
 
     # --- the verdict ---
     verdict: Verdict = Verdict.INSUFFICIENT_EVIDENCE
+    disposition: Disposition = Disposition.INSUFFICIENT_EVIDENCE
     silence_reason: Optional[str] = None  # populated iff INSUFFICIENT_EVIDENCE
 
     # --- open-science / benchmark fields (SWE-bench compatible) ---
@@ -146,4 +169,5 @@ class Case:
 
     def to_dict(self) -> dict[str, Any]:
         """Plain-dict form for JSON / API / dataset export."""
+        self.disposition = derive_disposition(self.verdict, self.intent_judgment)
         return asdict(self)
