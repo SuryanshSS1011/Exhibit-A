@@ -33,6 +33,7 @@ from .models.case import (
     Verdict,
 )
 from .verdict.flip_check import extract_signature, flip_check
+from .verdict.diff_location import ChangedLines, changed_line_map
 
 
 @dataclass
@@ -107,6 +108,18 @@ class EvidenceEngine:
             )
             return case
 
+        changed_lines: ChangedLines | None = None
+        if mode is Mode.PROSECUTOR:
+            if base is None:
+                case.silence_reason = "Prosecutor mode requires a base checkout for diff matching"
+                self._emit(
+                    "verdict",
+                    verdict="INSUFFICIENT_EVIDENCE",
+                    reason=case.silence_reason,
+                )
+                return case
+            changed_lines = changed_line_map(base.path, target.path)
+
         self._emit("phase", phase="generating", message="Localizing the claim with Codex")
         candidates = self.generator.propose(claim)
         self._emit("phase", phase="executing", message=f"Testing {len(candidates)} hypotheses")
@@ -117,7 +130,16 @@ class EvidenceEngine:
         attempts = 0
 
         for cand in candidates:
-            result = self._try_candidate(claim, cand, base, target, case, base_image, target_image)
+            result = self._try_candidate(
+                claim,
+                cand,
+                base,
+                target,
+                case,
+                base_image,
+                target_image,
+                changed_lines,
+            )
             if case.is_evidence():
                 return case
 
@@ -129,7 +151,14 @@ class EvidenceEngine:
                 if refined is None:
                     break
                 feedback = self._try_candidate(
-                    claim, refined, base, target, case, base_image, target_image
+                    claim,
+                    refined,
+                    base,
+                    target,
+                    case,
+                    base_image,
+                    target_image,
+                    changed_lines,
                 )
                 if case.is_evidence():
                     return case
@@ -157,6 +186,7 @@ class EvidenceEngine:
         case: Case,
         base_image: str | None,
         target_image: str | None,
+        changed_lines: ChangedLines | None,
     ) -> Optional[Feedback]:
         """Execute one candidate through the gates. Mutates `case`. Returns Feedback
         if the candidate was NOT admissible (to drive refinement), or None if proven.
@@ -247,6 +277,7 @@ class EvidenceEngine:
             test_code=cand.test_code,
             expected_signature=expected,
             allow_reproduced=self.config.allow_reproduced,
+            changed_lines=changed_lines,
         )
 
         if flip.admissible:

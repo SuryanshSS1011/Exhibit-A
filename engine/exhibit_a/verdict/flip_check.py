@@ -25,6 +25,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from ..executor.base import ExecOutcome
+from .diff_location import ChangedLines, traceback_touches_changed_lines
 
 # --- failure signature extraction -------------------------------------------
 
@@ -209,6 +210,7 @@ def flip_check(
     test_code: str,
     expected_signature: Optional[str] = None,
     allow_reproduced: bool = False,
+    changed_lines: ChangedLines | None = None,
 ) -> FlipResult:
     """Apply all admissibility gates. `target_runs` are N reruns on the buggy state.
 
@@ -270,6 +272,16 @@ def flip_check(
             False,
             f"failed for the wrong reason: expected ~{expected_signature!r}, got {actual_sig!r}",
             fail_signature=actual_sig,
+        )
+
+    if changed_lines is not None and not traceback_touches_changed_lines(
+        target_runs[0], changed_lines
+    ):
+        return FlipResult(
+            False,
+            "failure traceback does not touch a changed PR line or a deterministic downstream path",
+            fail_signature=actual_sig,
+            deterministic=all(target_failed),
         )
 
     # (c) determinism confirmed for the fail side.

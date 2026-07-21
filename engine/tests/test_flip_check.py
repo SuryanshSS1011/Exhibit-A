@@ -176,3 +176,53 @@ def test_extract_signature_forms():
     assert extract_signature(_out(False, "E   KeyError: 'x'\n")) == "KeyError: 'x'"
     assert extract_signature(_out(False, "E   assert [3] == [3, 4]\n")).startswith("AssertionError")
     assert extract_signature(_out(True, "1 passed")) is None
+
+
+def test_prosecutor_location_gate_accepts_changed_failure_frame():
+    log = '  File "/work/inventory.py", line 7, in stock_for\nE   KeyError: missing\n'
+    target = [_out(False, log) for _ in range(3)]
+
+    result = flip_check(
+        target_runs=target,
+        base_run=_out(True, "1 passed"),
+        test_code=REAL_TEST_CODE,
+        expected_signature="KeyError",
+        changed_lines={"inventory.py": {7}},
+    )
+
+    assert result.admissible, result.reason
+
+
+def test_prosecutor_location_gate_rejects_same_exception_on_unrelated_path():
+    log = '  File "/work/cache.py", line 7, in load\nE   KeyError: missing\n'
+    target = [_out(False, log) for _ in range(3)]
+
+    result = flip_check(
+        target_runs=target,
+        base_run=_out(True, "1 passed"),
+        test_code=REAL_TEST_CODE,
+        expected_signature="KeyError",
+        changed_lines={"inventory.py": {7}},
+    )
+
+    assert not result.admissible
+    assert "does not touch a changed PR line" in (result.reason or "")
+
+
+def test_prosecutor_location_gate_accepts_failure_downstream_of_changed_frame():
+    log = (
+        '  File "/work/controller.py", line 12, in handle\n'
+        '  File "/work/cache.py", line 7, in load\n'
+        "E   KeyError: missing\n"
+    )
+    target = [_out(False, log) for _ in range(3)]
+
+    result = flip_check(
+        target_runs=target,
+        base_run=_out(True, "1 passed"),
+        test_code=REAL_TEST_CODE,
+        expected_signature="KeyError",
+        changed_lines={"controller.py": {12}},
+    )
+
+    assert result.admissible, result.reason

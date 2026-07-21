@@ -125,6 +125,24 @@ def test_realistic_inventory_fixture_proves_missing_sku_key_error():
     assert case.evidence.fail_signature and "KeyError" in case.evidence.fail_signature
 
 
+def test_prosecutor_requires_failure_traceback_to_touch_inventory_diff():
+    engine = EvidenceEngine(InventoryGenerator(), LocalExecutor(), _cfg())
+    claim = Claim(
+        text="PR makes unknown SKUs raise KeyError",
+        repo_path=str(FIXTURES / "buggy_inventory"),
+        expected_signature="KeyError",
+    )
+
+    case = engine.investigate(
+        claim,
+        mode=Mode.PROSECUTOR,
+        target=RepoState(path=str(FIXTURES / "buggy_inventory"), label="target"),
+        base=RepoState(path=str(FIXTURES / "fixed_inventory"), label="base"),
+    )
+
+    assert case.verdict is Verdict.PROVEN, case.silence_reason
+
+
 def test_engine_stops_at_first_admissible_candidate():
     engine = EvidenceEngine(TwoShotGenerator(), LocalExecutor(), _cfg())
     claim = Claim(text="last_n drops the last row", repo_path=str(FIXTURES / "buggy_slice"))
