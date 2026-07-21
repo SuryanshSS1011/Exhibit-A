@@ -19,6 +19,26 @@ export function ProsecutorExample() {
         <VerdictStamp verdict={c.verdict} />
       </header>
 
+      <section aria-label="Evidence and intent claims" className="grid gap-px bg-ink-700 md:grid-cols-2">
+        <div className="bg-ink-950 p-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-pass">
+            Deterministic record
+          </p>
+          <p className="mt-2 font-serif text-lg text-ink-200">Provable behavior delta</p>
+          <p className="mt-1 text-xs text-ink-400">
+            Five failures on the PR head; the same test passes on base.
+          </p>
+        </div>
+        <div className="border border-dashed border-silence/50 bg-ink-900 p-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-silence">
+            Fallible model read
+          </p>
+          <p className="mt-2 font-serif text-lg text-ink-200">Judged unintended</p>
+          <p className="mt-1 text-xs text-ink-400">{c.intent_rationale}</p>
+          <p className="mt-2 font-mono text-[10px] text-ink-500">{c.intent_model}</p>
+        </div>
+      </section>
+
       <article className="rounded-md border border-pass/40 bg-ink-900/50">
         <div className="flex items-center justify-between border-b border-ink-700 px-4 py-3">
           <span className="font-serif text-xs uppercase tracking-wide text-pass">

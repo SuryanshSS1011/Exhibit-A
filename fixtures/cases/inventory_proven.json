@@ -14,6 +14,9 @@
     }
   ],
   "root_cause_narrative": "stock_for builds a quantity map and indexes it directly, so an unknown SKU raises KeyError; the fixed state uses the documented zero default.",
+  "intent_judgment": "not_assessed",
+  "intent_rationale": null,
+  "intent_model": null,
   "test_file": {
     "path": "test_inventory_repro.py",
     "code": "from inventory import stock_for\n\ndef test_unknown_sku_has_zero_stock():\n    assert stock_for([{'sku': 'known', 'quantity': 4}], 'missing') == 0\n",

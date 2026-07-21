@@ -27,6 +27,10 @@ export const prosecutorExample: Case = {
     },
   ],
   root_cause_narrative: "The new exclusive stop index omits the final element.",
+  intent_judgment: "unintended",
+  intent_rationale:
+    "The PR description promises to preserve last_n behavior while simplifying its slice.",
+  intent_model: "gpt-5.6-sol",
   test_file: {
     path: "test_repro.py",
     code: testCode,

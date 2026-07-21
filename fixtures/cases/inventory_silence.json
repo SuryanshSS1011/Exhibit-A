@@ -14,6 +14,9 @@
     }
   ],
   "root_cause_narrative": "",
+  "intent_judgment": "not_assessed",
+  "intent_rationale": null,
+  "intent_model": null,
   "test_file": null,
   "run_command": "pytest -x -q",
   "evidence": {

@@ -6,6 +6,7 @@
 export type Mode = "prosecutor" | "detective";
 export type Verdict = "PROVEN" | "REPRODUCED" | "INSUFFICIENT_EVIDENCE";
 export type TargetKind = "pr_head" | "synthesized_patch" | "base_only";
+export type IntentJudgment = "not_assessed" | "intended" | "unintended" | "unclear";
 
 export interface TestArtifact {
   path: string;
@@ -48,6 +49,9 @@ export interface Case {
   claim_text: string;
   hypotheses: Hypothesis[];
   root_cause_narrative: string;
+  intent_judgment: IntentJudgment;
+  intent_rationale: string | null;
+  intent_model: string | null;
   test_file: TestArtifact | null;
   run_command: string;
   evidence: Evidence;
