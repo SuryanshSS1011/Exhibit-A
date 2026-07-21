@@ -22,6 +22,7 @@ from .executor.base import ExecSpec, RepoState
 from .executor.instrumented import RecordingExecutor, summarize_environment_attempts
 from .executor.local_exec import LocalExecutor
 from .hypothesis.generator import Candidate, Claim, CodexGenerator, Feedback, StubGenerator
+from .hypothesis.counterpatch import CodexCounterpatchGenerator
 from .intake.git_bisect import bisect_reproduction
 from .intake.git_checkout import checkout_context, checkout_pair, checkout_triplet
 from .models.case import Case, Mode, Verdict
@@ -36,6 +37,7 @@ from .studies.reproducibility import (
 )
 from .studies.oracle_gap import run_oracle_gap, save_oracle_gap_report
 from .studies.self_audit import run_self_audit, save_self_audit_report
+from .studies.triangulation import run_triangulation, save_triangulation_report
 from .verdict.flip_check import extract_signature, signatures_match
 
 
@@ -560,6 +562,38 @@ def cmd_archaeology(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_triangulate(args: argparse.Namespace) -> int:
+    from .executor.docker_exec import DockerExecutor
+
+    executor = RecordingExecutor(DockerExecutor(), Path(args.out).parent / "environment-attempts")
+    try:
+        report = run_triangulation(
+            args.case,
+            args.target,
+            args.sources,
+            CodexCounterpatchGenerator(),
+            executor,
+            reruns=args.reruns,
+        )
+        path = save_triangulation_report(report, args.out)
+    except (
+        OSError,
+        RuntimeError,
+        ValueError,
+        json.JSONDecodeError,
+        subprocess.SubprocessError,
+    ) as exc:
+        print(f"error: counterpatch triangulation failed: {exc}", file=sys.stderr)
+        return 2
+    print(f"triangulation file: {path}")
+    print(f"counterpatch status: {report.status.value}")
+    if report.reason:
+        print(f"reason: {report.reason}")
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2))
+    return 0
+
+
 def _format_metric(value: float | None) -> str:
     return f"{value:.0%}" if value is not None else "unavailable"
 
@@ -772,6 +806,28 @@ def main(argv: list[str] | None = None) -> int:
     )
     history.add_argument("--json", action="store_true", help="print the full report JSON")
     history.set_defaults(func=cmd_archaeology)
+
+    triangulate = sub.add_parser(
+        "triangulate",
+        help="execute an untrusted minimal counterpatch and the full suite",
+    )
+    triangulate.add_argument("case", help="sealed PROVEN Case JSON")
+    triangulate.add_argument("target", help="local buggy/target checkout")
+    triangulate.add_argument(
+        "--source",
+        dest="sources",
+        action="append",
+        required=True,
+        help="production source path the counterpatch may modify; repeat as needed",
+    )
+    triangulate.add_argument("--reruns", type=int, default=2, help="frozen-test reruns")
+    triangulate.add_argument(
+        "--out",
+        default=".exhibit-a/research/triangulation",
+        help="private counterpatch report directory",
+    )
+    triangulate.add_argument("--json", action="store_true", help="print the full report JSON")
+    triangulate.set_defaults(func=cmd_triangulate)
 
     args = parser.parse_args(argv)
     return args.func(args)
