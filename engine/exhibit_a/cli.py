@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .engine import EngineConfig, EvidenceEngine
+from .eef import create_bundle, verify_bundle
 from .executor.base import RepoState
 from .executor.local_exec import LocalExecutor
 from .hypothesis.generator import Candidate, Claim, CodexGenerator, Feedback, StubGenerator
@@ -213,6 +214,38 @@ def _print_event(event: dict[str, Any]) -> None:
     print(json.dumps(event, default=str), flush=True)
 
 
+def cmd_bundle(args: argparse.Namespace) -> int:
+    try:
+        case = json.loads(Path(args.case).read_text())
+        key = Path(args.signing_key).read_bytes()
+        path = create_bundle(
+            case,
+            args.out,
+            target_source=args.target_source,
+            base_source=args.base_source,
+            signing_key=key,
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"error: cannot create EEF bundle: {exc}", file=sys.stderr)
+        return 2
+    print(path)
+    return 0
+
+
+def cmd_verify(args: argparse.Namespace) -> int:
+    try:
+        result = verify_bundle(
+            args.bundle,
+            signing_key=Path(args.signing_key).read_bytes(),
+            execute=args.execute,
+        )
+    except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as exc:
+        print(f"error: EEF verification failed: {exc}", file=sys.stderr)
+        return 1
+    print(json.dumps(result.__dict__, indent=2))
+    return 0 if result.execution_verified is not False else 1
+
+
 def _load_replay(path: Path) -> dict[str, Any]:
     payload = json.loads(path.read_text())
     if not isinstance(payload, dict):
@@ -281,6 +314,26 @@ def main(argv: list[str] | None = None) -> int:
         help="replay a sealed Case JSON without invoking Codex or executing tests",
     )
     p.set_defaults(func=cmd_repro)
+
+    bundle = sub.add_parser("bundle", help="mint a deterministic signed EEF archive")
+    bundle.add_argument("case", help="Case JSON to package")
+    bundle.add_argument("--target-source", required=True, help="target source snapshot")
+    bundle.add_argument("--base-source", help="base source snapshot for a full flip")
+    bundle.add_argument(
+        "--signing-key", required=True, help="file containing at least 32 key bytes"
+    )
+    bundle.add_argument("--out", required=True, help="output .eef path")
+    bundle.set_defaults(func=cmd_bundle)
+
+    verify = sub.add_parser("verify", help="verify an EEF archive offline")
+    verify.add_argument("bundle", help="EEF archive to verify")
+    verify.add_argument("--signing-key", required=True, help="publisher verification key file")
+    verify.add_argument(
+        "--execute",
+        action="store_true",
+        help="rebuild with network disabled and re-run the deterministic flip check",
+    )
+    verify.set_defaults(func=cmd_verify)
 
     args = parser.parse_args(argv)
     return args.func(args)
