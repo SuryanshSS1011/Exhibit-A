@@ -69,6 +69,20 @@ def test_syntax_error_in_generated_test_rejected():
     assert not result.admissible
 
 
+def test_timeout_on_target_is_not_evidence_even_without_signature():
+    # A hang (infinite loop / deadlock / slow I/O) on the buggy state must never be
+    # stamped as a reproduced bug, even when no expected_signature constrains it.
+    timed_out = ExecOutcome(exit_code=124, stdout="TIMEOUT", stderr="", timed_out=True)
+    assert detect_infra_failure(timed_out) is not None
+    target = [timed_out for _ in range(3)]
+    base = _out(True, "1 passed")
+    result = flip_check(
+        target_runs=target, base_run=base, test_code=REAL_TEST_CODE, expected_signature=None
+    )
+    assert not result.admissible
+    assert "timed out" in (result.reason or "")
+
+
 # --- a legitimate failure still passes the gate ------------------------------
 
 REAL_FAIL = (

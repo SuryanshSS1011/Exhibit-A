@@ -176,6 +176,11 @@ def detect_infra_failure(outcome: ExecOutcome) -> Optional[str]:
     infra-failure signal on its own.
     """
     log = outcome.log
+    # A timed-out run is NOT evidence of a bug — the code hung (infinite loop, deadlock,
+    # slow I/O) rather than raising. Must be rejected even with no expected_signature,
+    # or a hang on the buggy state would be stamped as a false PROVEN.
+    if outcome.timed_out:
+        return "target run timed out (hang/deadlock/slow I/O), not a reproduced bug"
     # pytest: exit 1 = tests failed (legitimate), exit 2 = collection/usage error.
     if outcome.exit_code == 2 and "failed" not in log.lower():
         return "pytest reported a collection/usage error (exit code 2), not a test failure"
