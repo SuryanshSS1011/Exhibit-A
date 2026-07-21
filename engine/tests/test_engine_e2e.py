@@ -16,7 +16,8 @@ from exhibit_a import EngineConfig, EvidenceEngine
 from exhibit_a.executor.base import EnvironmentSetupError, ExecSpec, Executor, RepoState
 from exhibit_a.executor.local_exec import LocalExecutor
 from exhibit_a.hypothesis.generator import Candidate, Claim, Feedback, StubGenerator
-from exhibit_a.models.case import Mode, Verdict
+from exhibit_a.hypothesis.intent import IntentAssessment
+from exhibit_a.models.case import IntentJudgment, Mode, Verdict
 
 FIXTURES = Path(__file__).resolve().parents[2] / "fixtures"
 
@@ -81,6 +82,20 @@ class InventoryGenerator:
         return None
 
 
+class StaticIntentJudge:
+    def __init__(self, judgment: IntentJudgment):
+        self.judgment = judgment
+        self.calls = 0
+
+    def assess(self, repo_path: str, delta: str, context: str) -> IntentAssessment:
+        self.calls += 1
+        return IntentAssessment(
+            self.judgment,
+            "PR context says the refactor should preserve behavior.",
+            "test-intent-model",
+        )
+
+
 def _cfg() -> EngineConfig:
     # Fewer reruns keeps the test fast; still exercises the determinism gate.
     return EngineConfig(reruns=3, run_command=f"{sys.executable} -m pytest -x -q test_repro.py")
@@ -141,6 +156,29 @@ def test_prosecutor_requires_failure_traceback_to_touch_inventory_diff():
     )
 
     assert case.verdict is Verdict.PROVEN, case.silence_reason
+
+
+def test_prosecutor_intent_judgment_is_separate_from_proven_verdict():
+    judge = StaticIntentJudge(IntentJudgment.INTENDED)
+    engine = EvidenceEngine(InventoryGenerator(), LocalExecutor(), _cfg(), intent_judge=judge)
+    claim = Claim(
+        text="PR makes unknown SKUs raise KeyError",
+        repo_path=str(FIXTURES / "buggy_inventory"),
+        expected_signature="KeyError",
+    )
+
+    case = engine.investigate(
+        claim,
+        mode=Mode.PROSECUTOR,
+        target=RepoState(path=str(FIXTURES / "buggy_inventory"), label="target"),
+        base=RepoState(path=str(FIXTURES / "fixed_inventory"), label="base"),
+        intent_context="This PR intentionally makes missing inventory an error.",
+    )
+
+    assert case.verdict is Verdict.PROVEN
+    assert case.intent_judgment is IntentJudgment.INTENDED
+    assert case.intent_model == "test-intent-model"
+    assert judge.calls == 1
 
 
 def test_engine_stops_at_first_admissible_candidate():

@@ -22,10 +22,12 @@ from typing import Any, Callable, Optional
 
 from .executor.base import EnvironmentSetupError, ExecSpec, Executor, RepoState
 from .hypothesis.generator import Candidate, Claim, Feedback, HypothesisGenerator
+from .hypothesis.intent import IntentJudge
 from .models.case import (
     Case,
     Evidence,
     Hypothesis,
+    IntentJudgment,
     Mode,
     RunResult,
     TargetKind,
@@ -56,11 +58,13 @@ class EvidenceEngine:
         executor: Executor,
         config: Optional[EngineConfig] = None,
         event_sink: Optional[Callable[[dict[str, Any]], None]] = None,
+        intent_judge: IntentJudge | None = None,
     ):
         self.generator = generator
         self.executor = executor
         self.config = config or EngineConfig()
         self.event_sink = event_sink
+        self.intent_judge = intent_judge
 
     def investigate(
         self,
@@ -70,6 +74,7 @@ class EvidenceEngine:
         base: Optional[RepoState] = None,
         target: Optional[RepoState] = None,
         repo_source: Optional[str] = None,
+        intent_context: str | None = None,
     ) -> Case:
         """Run the full evidence loop and return a Case.
 
@@ -141,6 +146,7 @@ class EvidenceEngine:
                 changed_lines,
             )
             if case.is_evidence():
+                self._assess_intent(case, target, intent_context)
                 return case
 
             # Bounded refinement on the most recent failed candidate.
@@ -161,6 +167,7 @@ class EvidenceEngine:
                     changed_lines,
                 )
                 if case.is_evidence():
+                    self._assess_intent(case, target, intent_context)
                     return case
 
         # Nothing cleared the gate -> honest silence.
@@ -176,6 +183,31 @@ class EvidenceEngine:
                 reason=case.silence_reason,
             )
         return case
+
+    def _assess_intent(self, case: Case, target: RepoState, intent_context: str | None) -> None:
+        if (
+            case.mode is not Mode.PROSECUTOR
+            or not case.is_proven()
+            or self.intent_judge is None
+            or not intent_context
+        ):
+            return
+        assessment = self.intent_judge.assess(target.path, case.claim_text, intent_context)
+        if assessment is None:
+            case.intent_judgment = IntentJudgment.UNCLEAR
+            case.intent_rationale = getattr(
+                self.intent_judge, "last_error", "Intent assessment returned no result"
+            )
+            return
+        case.intent_judgment = assessment.judgment
+        case.intent_rationale = assessment.rationale
+        case.intent_model = assessment.model
+        self._emit(
+            "intent",
+            judgment=assessment.judgment.value,
+            rationale=assessment.rationale,
+            model=assessment.model,
+        )
 
     def _try_candidate(
         self,

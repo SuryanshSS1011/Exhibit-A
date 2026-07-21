@@ -41,6 +41,13 @@ class TargetKind(str, enum.Enum):
     BASE_ONLY = "base_only"  # Detective on a single buggy checkout
 
 
+class IntentJudgment(str, enum.Enum):
+    NOT_ASSESSED = "not_assessed"
+    INTENDED = "intended"
+    UNINTENDED = "unintended"
+    UNCLEAR = "unclear"
+
+
 @dataclass
 class TestArtifact:
     """The candidate test itself."""
@@ -102,6 +109,10 @@ class Case:
     claim_text: str = ""
     hypotheses: list[Hypothesis] = field(default_factory=list)
     root_cause_narrative: str = ""
+    # Separate, fallible interpretation of PR/issue intent. Never part of PROVEN.
+    intent_judgment: IntentJudgment = IntentJudgment.NOT_ASSESSED
+    intent_rationale: Optional[str] = None
+    intent_model: Optional[str] = None
 
     # --- the evidence ---
     test_file: Optional[TestArtifact] = None
