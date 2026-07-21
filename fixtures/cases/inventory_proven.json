@@ -1,0 +1,45 @@
+{
+  "id": "demo-inventory-proven",
+  "mode": "detective",
+  "repo": "fixtures/buggy_inventory",
+  "base_commit": null,
+  "target_commit": null,
+  "target_state": "synthesized_patch",
+  "claim_text": "stock_for should return zero for an unknown SKU instead of raising KeyError",
+  "hypotheses": [
+    {
+      "text": "stock_for indexes the quantity map with a missing SKU instead of using the documented zero default",
+      "rejected": false,
+      "reason": null
+    }
+  ],
+  "root_cause_narrative": "stock_for builds a quantity map and indexes it directly, so an unknown SKU raises KeyError; the fixed state uses the documented zero default.",
+  "test_file": {
+    "path": "test_inventory_repro.py",
+    "code": "from inventory import stock_for\n\ndef test_unknown_sku_has_zero_stock():\n    assert stock_for([{'sku': 'known', 'quantity': 4}], 'missing') == 0\n",
+    "language": "python",
+    "framework": "pytest"
+  },
+  "run_command": "python3 -m pytest -x -q test_inventory_repro.py",
+  "evidence": {
+    "fail_log": "FAILED test_inventory_repro.py::test_unknown_sku_has_zero_stock - KeyError: 'missing'",
+    "fail_signature": "KeyError: 'missing'",
+    "pass_log": "1 passed",
+    "reruns": 5,
+    "deterministic": true,
+    "runs": [
+      {"state": "target", "exit_code": 1, "passed": false, "log": "FAILED test_inventory_repro.py::test_unknown_sku_has_zero_stock - KeyError: 'missing'", "signature": "KeyError: 'missing'", "duration_s": 0.31},
+      {"state": "target", "exit_code": 1, "passed": false, "log": "FAILED test_inventory_repro.py::test_unknown_sku_has_zero_stock - KeyError: 'missing'", "signature": "KeyError: 'missing'", "duration_s": 0.29},
+      {"state": "target", "exit_code": 1, "passed": false, "log": "FAILED test_inventory_repro.py::test_unknown_sku_has_zero_stock - KeyError: 'missing'", "signature": "KeyError: 'missing'", "duration_s": 0.3},
+      {"state": "target", "exit_code": 1, "passed": false, "log": "FAILED test_inventory_repro.py::test_unknown_sku_has_zero_stock - KeyError: 'missing'", "signature": "KeyError: 'missing'", "duration_s": 0.28},
+      {"state": "target", "exit_code": 1, "passed": false, "log": "FAILED test_inventory_repro.py::test_unknown_sku_has_zero_stock - KeyError: 'missing'", "signature": "KeyError: 'missing'", "duration_s": 0.3},
+      {"state": "base", "exit_code": 0, "passed": true, "log": "1 passed", "signature": null, "duration_s": 0.27}
+    ]
+  },
+  "verdict": "PROVEN",
+  "silence_reason": null,
+  "license_name": "MIT",
+  "fail_to_pass": ["test_inventory_repro.py"],
+  "pass_to_pass": [],
+  "created_at": "2026-07-21T12:00:00+00:00"
+}

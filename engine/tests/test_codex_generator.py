@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
+import exhibit_a.hypothesis.generator as generator_module
 from exhibit_a.hypothesis.generator import Claim, CodexGenerator, Feedback
 
 
@@ -62,3 +65,33 @@ def test_refine_can_decline_an_unjustified_retry(tmp_path: Path):
 
     assert generator.refine(Claim("claim", str(tmp_path)), feedback) is None
     assert "test did not collect" in generator.prompts[0]
+
+
+def test_codex_binary_honors_environment_override(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("EXHIBIT_A_CODEX_BIN", "/opt/codex/bin/codex")
+    monkeypatch.setattr(
+        generator_module.shutil,
+        "which",
+        lambda command: command if command == "/opt/codex/bin/codex" else None,
+    )
+
+    assert generator_module._resolve_codex_binary() == "/opt/codex/bin/codex"
+
+
+def test_codex_binary_uses_known_app_location(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    app_binary = tmp_path / "codex"
+    app_binary.touch(mode=0o755)
+    monkeypatch.delenv("EXHIBIT_A_CODEX_BIN", raising=False)
+    monkeypatch.setattr(generator_module.shutil, "which", lambda command: None)
+    monkeypatch.setattr(generator_module, "_default_codex_paths", lambda: (app_binary,))
+
+    assert generator_module._resolve_codex_binary() == str(app_binary)
+
+
+def test_codex_binary_error_is_actionable(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.delenv("EXHIBIT_A_CODEX_BIN", raising=False)
+    monkeypatch.setattr(generator_module.shutil, "which", lambda command: None)
+    monkeypatch.setattr(generator_module, "_default_codex_paths", tuple)
+
+    with pytest.raises(RuntimeError, match="EXHIBIT_A_CODEX_BIN"):
+        generator_module._resolve_codex_binary()

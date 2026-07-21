@@ -27,6 +27,12 @@ FLIP_TEST = (
     "    assert last_n([1, 2, 3, 4], 2) == [3, 4]\n"
 )
 
+INVENTORY_FLIP_TEST = (
+    "from inventory import stock_for\n\n"
+    "def test_unknown_sku_has_zero_stock():\n"
+    "    assert stock_for([{'sku': 'known', 'quantity': 4}], 'missing') == 0\n"
+)
+
 
 class OneShotGenerator:
     """Emits a single, real fail-to-pass candidate for the slicer fixture."""
@@ -59,6 +65,22 @@ class TwoShotGenerator(OneShotGenerator):
         return [first, second]
 
 
+class InventoryGenerator:
+    def propose(self, claim: Claim, max_hypotheses: int = 3) -> list[Candidate]:
+        return [
+            Candidate(
+                hypothesis="stock_for indexes a missing SKU instead of returning zero",
+                test_path="test_inventory_repro.py",
+                test_code=INVENTORY_FLIP_TEST,
+                run_command=f"{sys.executable} -m pytest -x -q test_inventory_repro.py",
+                expected_signature="KeyError",
+            )
+        ]
+
+    def refine(self, claim: Claim, feedback: Feedback):
+        return None
+
+
 def _cfg() -> EngineConfig:
     # Fewer reruns keeps the test fast; still exercises the determinism gate.
     return EngineConfig(reruns=3, run_command=f"{sys.executable} -m pytest -x -q test_repro.py")
@@ -82,6 +104,25 @@ def test_proven_flip():
     assert case.evidence.deterministic
     assert case.evidence.fail_signature and "AssertionError" in case.evidence.fail_signature
     assert case.evidence.pass_log  # base ran and passed
+
+
+def test_realistic_inventory_fixture_proves_missing_sku_key_error():
+    engine = EvidenceEngine(InventoryGenerator(), LocalExecutor(), _cfg())
+    claim = Claim(
+        text="stock_for should return zero for an unknown SKU instead of raising KeyError",
+        repo_path=str(FIXTURES / "buggy_inventory"),
+        expected_signature="KeyError",
+    )
+
+    case = engine.investigate(
+        claim,
+        target=RepoState(path=str(FIXTURES / "buggy_inventory"), label="target"),
+        base=RepoState(path=str(FIXTURES / "fixed_inventory"), label="base"),
+    )
+
+    assert case.verdict is Verdict.PROVEN, case.silence_reason
+    assert case.test_file and case.test_file.path == "test_inventory_repro.py"
+    assert case.evidence.fail_signature and "KeyError" in case.evidence.fail_signature
 
 
 def test_engine_stops_at_first_admissible_candidate():

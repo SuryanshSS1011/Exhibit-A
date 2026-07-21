@@ -41,6 +41,30 @@ def _build_engine(
 
 
 def cmd_repro(args: argparse.Namespace) -> int:
+    if args.replay:
+        if args.repo:
+            print("error: a repo cannot be combined with --replay", file=sys.stderr)
+            return 2
+        try:
+            case = _load_replay(Path(args.replay))
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            print(f"error: cannot replay Case: {exc}", file=sys.stderr)
+            return 2
+        if args.events:
+            _print_event(
+                {"event": "phase", "phase": "replay", "message": "Opening sealed Case File"}
+            )
+            _print_event({"event": "case", "case": case})
+        else:
+            print(f"\n=== REPLAYED VERDICT: {case['verdict']} ===")
+            print(f"case file: {Path(args.replay).resolve()}")
+            if args.json:
+                print(json.dumps(case, indent=2))
+        return 0 if case["verdict"] == "PROVEN" else 1
+
+    if not args.repo:
+        print("error: provide a repo, or use --replay <case.json>", file=sys.stderr)
+        return 2
     claim_text = args.claim or ""
     if args.trace:
         claim_text = Path(args.trace).read_text()
@@ -113,12 +137,31 @@ def _print_event(event: dict[str, Any]) -> None:
     print(json.dumps(event, default=str), flush=True)
 
 
+def _load_replay(path: Path) -> dict[str, Any]:
+    payload = json.loads(path.read_text())
+    if not isinstance(payload, dict):
+        raise ValueError("Case JSON must contain an object")
+    if not isinstance(payload.get("id"), str) or not payload["id"]:
+        raise ValueError("Case JSON is missing a valid id")
+    if payload.get("verdict") not in {"PROVEN", "INSUFFICIENT_EVIDENCE"}:
+        raise ValueError("Case JSON has an invalid verdict")
+    if not isinstance(payload.get("evidence"), dict):
+        raise ValueError("Case JSON is missing evidence")
+    if not isinstance(payload.get("hypotheses"), list):
+        raise ValueError("Case JSON is missing hypotheses")
+    return payload
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="exhibit-a", description=__doc__)
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("repro", help="reproduce a bug into a verified failing test")
-    p.add_argument("repo", help="local repo path, or HTTPS repo URL with two SHA flags")
+    p.add_argument(
+        "repo",
+        nargs="?",
+        help="local repo path, or HTTPS repo URL with two SHA flags",
+    )
     p.add_argument("--claim", help="a bug description / concern")
     p.add_argument("--trace", help="path to a file containing a stack trace")
     p.add_argument("--expect", help="expected failure signature (e.g. 'KeyError')")
@@ -137,6 +180,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--out", default=".exhibit-a/cases", help="case output dir")
     p.add_argument("--json", action="store_true", help="print the full Case JSON")
     p.add_argument("--events", action="store_true", help="print progress and final Case as JSONL")
+    p.add_argument(
+        "--replay",
+        metavar="CASE_JSON",
+        help="replay a sealed Case JSON without invoking Codex or executing tests",
+    )
     p.set_defaults(func=cmd_repro)
 
     args = parser.parse_args(argv)

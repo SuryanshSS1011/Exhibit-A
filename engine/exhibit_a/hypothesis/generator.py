@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 from dataclasses import dataclass, field
@@ -143,6 +144,39 @@ _REFINE_SCHEMA = {
     },
 }
 
+_CODEX_BIN_ENV = "EXHIBIT_A_CODEX_BIN"
+
+
+def _default_codex_paths() -> tuple[Path, ...]:
+    return (
+        Path("/Applications/ChatGPT.app/Contents/Resources/codex"),
+        Path.home() / ".local" / "bin" / "codex",
+    )
+
+
+def _resolve_codex_binary(configured: str | None = None) -> str:
+    requested = configured or os.environ.get(_CODEX_BIN_ENV)
+    if requested:
+        resolved = shutil.which(requested)
+        if resolved:
+            return resolved
+        raise RuntimeError(
+            f"Codex CLI not found at {requested!r}. Set {_CODEX_BIN_ENV} to the "
+            "executable path, or install the Codex CLI and add it to PATH."
+        )
+
+    resolved = shutil.which("codex")
+    if resolved:
+        return resolved
+    for candidate in _default_codex_paths():
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    raise RuntimeError(
+        f"Codex CLI not found on PATH or in a known app location. Set {_CODEX_BIN_ENV} "
+        "to the executable path (for example, "
+        "/Applications/ChatGPT.app/Contents/Resources/codex)."
+    )
+
 
 class CodexGenerator:
     """Generate pytest reproductions with Codex while keeping verdicts deterministic.
@@ -156,7 +190,7 @@ class CodexGenerator:
     def __init__(
         self,
         *,
-        codex_bin: str = "codex",
+        codex_bin: str | None = None,
         model: str | None = None,
         timeout_s: int = 240,
         test_runner: str = "python3 -m pytest",
@@ -241,7 +275,7 @@ TARGET EXECUTION LOG:
             schema_path.write_text(json.dumps(schema))
 
             argv = [
-                self.codex_bin,
+                _resolve_codex_binary(self.codex_bin),
                 "exec",
                 "--ephemeral",
                 "--sandbox",
