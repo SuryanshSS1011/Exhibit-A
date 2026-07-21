@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+/* Dark mode is the default (developer audience, plan §4). The .light class on
+   <html> flips to the parchment dossier look. */
+html {
+  background: #0c0c0e;
+  color: #cbcbd2;
+}
+
+html.light {
+  background: #faf7f0;
+  color: #1d1d21;
+  color-scheme: light;
+}
+
+body {
+  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The evidence panels scroll internally; the page never scrolls sideways. */
+.log-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
