@@ -31,6 +31,7 @@ from .studies.reproducibility import (
     run_reproducibility_study,
     save_reproducibility_report,
 )
+from .studies.oracle_gap import run_oracle_gap, save_oracle_gap_report
 from .studies.self_audit import run_self_audit, save_self_audit_report
 from .verdict.flip_check import extract_signature, signatures_match
 
@@ -452,6 +453,37 @@ def cmd_self_audit(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_oracle_gap(args: argparse.Namespace) -> int:
+    """Measure weak-oracle exposure in resolved benchmark instances."""
+    if args.docker:
+        from .executor.docker_exec import DockerExecutor
+
+        executor = DockerExecutor()
+    else:
+        executor = LocalExecutor()
+    try:
+        report = run_oracle_gap(
+            args.manifest,
+            executor,
+            reruns=args.reruns,
+            max_mutants=args.max_mutants,
+        )
+        path = save_oracle_gap_report(report, args.out)
+    except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as exc:
+        print(f"error: oracle-gap probe failed: {exc}", file=sys.stderr)
+        return 2
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2))
+    else:
+        print(f"oracle-gap file: {path}")
+        print(
+            f"oracle gap: {_format_metric(report.oracle_gap)} "
+            f"({report.survived}/{report.eligible} eligible mutants survived; "
+            f"{report.evaluated_instances}/{report.instances} baselines valid)"
+        )
+    return 0
+
+
 def _format_metric(value: float | None) -> str:
     return f"{value:.0%}" if value is not None else "unavailable"
 
@@ -601,6 +633,22 @@ def main(argv: list[str] | None = None) -> int:
     )
     audit.add_argument("--json", action="store_true", help="print the full audit JSON")
     audit.set_defaults(func=cmd_self_audit)
+
+    oracle = sub.add_parser(
+        "oracle-gap",
+        help="measure mutants surviving official tests on resolved benchmark instances",
+    )
+    oracle.add_argument("manifest", help="versioned resolved-instance manifest")
+    oracle.add_argument("--docker", action="store_true", help="use the Docker executor")
+    oracle.add_argument("--reruns", type=int, default=2, help="deterministic runs per mutant")
+    oracle.add_argument("--max-mutants", type=int, default=128, help="maximum mutants per instance")
+    oracle.add_argument(
+        "--out",
+        default=".exhibit-a/research/oracle-gap",
+        help="private oracle-gap output directory",
+    )
+    oracle.add_argument("--json", action="store_true", help="print the full report JSON")
+    oracle.set_defaults(func=cmd_oracle_gap)
 
     args = parser.parse_args(argv)
     return args.func(args)
