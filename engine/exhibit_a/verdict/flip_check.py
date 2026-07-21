@@ -99,6 +99,54 @@ def detect_tamper(test_code: str) -> Optional[str]:
     return None
 
 
+# --- infrastructure-failure detection ----------------------------------------
+
+# The "fail for the wrong reason" trap (SWE-Doctor 2026): a candidate can "fail on
+# target, pass on base" for reasons that have nothing to do with the claimed bug —
+# a missing dependency, a broken import, a pytest collection error, a syntax error
+# in the generated test. These are HARNESS/ENVIRONMENT failures, not evidence.
+#
+# We reject them regardless of whether an expected_signature was supplied, because
+# the most dangerous case is Detective mode with expected_signature=None, where an
+# env failure would otherwise sail through as PROVEN. A signature naming the bug is
+# a *positive* filter; this is the *negative* one that must always run.
+_INFRA_SIGNATURES = (
+    "ModuleNotFoundError",
+    "ImportError",
+    "collection error",
+    "errors during collection",
+    "INTERNALERROR",
+    "no tests ran",
+    "no tests collected",
+    "usage error",
+    "unrecognized arguments",
+    "fixture ",  # e.g. "fixture 'foo' not found"
+    "SyntaxError",
+    "IndentationError",
+    "ERROR collecting",
+)
+
+
+def detect_infra_failure(outcome: ExecOutcome) -> Optional[str]:
+    """Return a reason if a run failed for an environmental/harness reason.
+
+    This is the SWE-Doctor "right failure, wrong reason" guard applied to the
+    *infrastructure* axis: a repro is only evidence if the code under test raised,
+    not if the environment failed to load it. pytest's exit code 2 signals a
+    collection/usage error (as opposed to 1 = tests failed), which is a strong
+    infra-failure signal on its own.
+    """
+    log = outcome.log
+    # pytest: exit 1 = tests failed (legitimate), exit 2 = collection/usage error.
+    if outcome.exit_code == 2 and "failed" not in log.lower():
+        return "pytest reported a collection/usage error (exit code 2), not a test failure"
+    lowered = log.lower()
+    for marker in _INFRA_SIGNATURES:
+        if marker.lower() in lowered:
+            return f"target failed for an environmental/harness reason ({marker.strip()}), not the claimed bug"
+    return None
+
+
 # --- the flip check ----------------------------------------------------------
 
 
@@ -143,6 +191,19 @@ def flip_check(
                 deterministic=False,
             )
         return FlipResult(False, "test does not fail on the target (buggy) state")
+
+    # (a'') infra-failure gate — the target must fail because the CODE raised, not
+    # because the environment/harness broke (missing dep, import/collection/syntax
+    # error). This runs even when no expected_signature is supplied, closing the
+    # env-failure -> false-PROVEN hole (SWE-Doctor "fail for the wrong reason").
+    infra = detect_infra_failure(target_runs[0])
+    if infra:
+        return FlipResult(
+            False,
+            infra,
+            fail_signature=extract_signature(target_runs[0]),
+            deterministic=all(target_failed),
+        )
 
     # (a') signature match — failed for the reason claimed.
     actual_sig = extract_signature(target_runs[0])
