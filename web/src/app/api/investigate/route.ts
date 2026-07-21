@@ -17,6 +17,7 @@ const PYTHON = process.env.EXHIBIT_A_PYTHON ?? "python3";
 
 interface Body {
   repo: string;
+  fixed?: string;
   claim: string;
   expect?: string;
   docker?: boolean;
@@ -46,6 +47,7 @@ export async function POST(req: NextRequest) {
     "--json",
   ];
   if (body.expect) args.push("--expect", body.expect);
+  if (body.fixed) args.push("--fixed", body.fixed);
   if (body.docker) args.push("--docker");
 
   const result = await runEngine(args);

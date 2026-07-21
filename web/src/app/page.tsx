@@ -11,6 +11,7 @@ import { EvidencePanel } from "@/components/EvidencePanel";
  */
 export default function Home() {
   const [repo, setRepo] = useState("../fixtures/buggy_slice");
+  const [fixed, setFixed] = useState("../fixtures/fixed_slice");
   const [claim, setClaim] = useState("last_n drops the last row");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +25,7 @@ export default function Home() {
       const res = await fetch("/api/investigate", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ repo, claim }),
+        body: JSON.stringify({ repo, fixed, claim }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "engine error");
@@ -61,13 +62,27 @@ export default function Home() {
         </label>
         <label className="block">
           <span className="mb-1 block font-serif text-xs uppercase tracking-wide text-ink-400">
-            Repo (local path)
+            Reported State (local path)
           </span>
           <input
             value={repo}
             onChange={(e) => setRepo(e.target.value)}
             className="w-full rounded-md border border-ink-700 bg-ink-900 p-2 font-mono text-sm text-ink-200 outline-none focus:border-ink-400"
           />
+        </label>
+        <label className="block">
+          <span className="mb-1 block font-serif text-xs uppercase tracking-wide text-ink-400">
+            Known Fixed State
+          </span>
+          <input
+            value={fixed}
+            onChange={(e) => setFixed(e.target.value)}
+            className="w-full rounded-md border border-ink-700 bg-ink-900 p-2 font-mono text-sm text-ink-200 outline-none focus:border-ink-400"
+            placeholder="Optional path to a fixed checkout"
+          />
+          <span className="mt-1 block text-xs text-ink-400">
+            A PROVEN verdict requires both sides: fail on the reported state, pass here.
+          </span>
         </label>
         <button
           onClick={investigate}
