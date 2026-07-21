@@ -14,8 +14,10 @@ per the plan; on exhaustion the verdict is honest silence, not a guess.
 
 from __future__ import annotations
 
+import shlex
 import uuid
 from dataclasses import dataclass
+from pathlib import PurePosixPath
 from typing import Optional
 
 from .executor.base import ExecSpec, Executor, RepoState
@@ -73,19 +75,21 @@ class EvidenceEngine:
             mode=mode,
             repo=claim.repo_path,
             base_commit=base.commit if base else target.commit,
-            target_state=(
-                TargetKind.BASE_ONLY if base is None else TargetKind.SYNTHESIZED_PATCH
-            ),
+            target_state=(TargetKind.BASE_ONLY if base is None else TargetKind.SYNTHESIZED_PATCH),
             claim_text=claim.text,
             run_command=self.config.run_command,
         )
 
         candidates = self.generator.propose(claim)
+        if not candidates:
+            generator_error = getattr(self.generator, "last_error", None)
+            if generator_error:
+                case.silence_reason = generator_error
         attempts = 0
 
         for cand in candidates:
             result = self._try_candidate(claim, cand, base, target, case)
-            if result is not None and case.is_proven():
+            if case.is_proven():
                 return case
 
             # Bounded refinement on the most recent failed candidate.
@@ -121,6 +125,20 @@ class EvidenceEngine:
         """
         hyp = Hypothesis(text=cand.hypothesis)
         case.hypotheses.append(hyp)
+
+        policy_reason = _candidate_policy_reason(cand)
+        if policy_reason:
+            hyp.rejected = True
+            hyp.reason = policy_reason
+            case.silence_reason = policy_reason
+            return Feedback(
+                candidate=cand,
+                fail_log="",
+                passed_on_target=False,
+                admissible=False,
+                reason=policy_reason,
+                rejected_hypotheses=[cand.hypothesis],
+            )
 
         spec = ExecSpec(
             test_path=cand.test_path,
@@ -169,6 +187,7 @@ class EvidenceEngine:
 
         if flip.admissible:
             case.verdict = Verdict.PROVEN
+            case.run_command = spec.command
             case.test_file = TestArtifact(path=cand.test_path, code=cand.test_code)
             case.root_cause_narrative = cand.hypothesis
             case.evidence = Evidence(
@@ -200,3 +219,37 @@ class EvidenceEngine:
             reason=flip.reason,
             rejected_hypotheses=[cand.hypothesis],
         )
+
+
+def _candidate_policy_reason(cand: Candidate) -> str | None:
+    """Reject candidates that could escape the single generated pytest file."""
+    path = PurePosixPath(cand.test_path)
+    if (
+        not cand.test_path
+        or path.is_absolute()
+        or ".." in path.parts
+        or path.suffix != ".py"
+        or not path.name.startswith("test_")
+    ):
+        return "candidate test path is outside the allowed pytest scope"
+
+    if any(marker in cand.run_command for marker in (";", "&", "|", ">", "<", "`", "$")):
+        return "candidate run command contains a shell control character"
+    try:
+        argv = shlex.split(cand.run_command)
+    except ValueError:
+        return "candidate run command is not parseable"
+
+    if len(argv) >= 3 and argv[1:3] == ["-m", "pytest"]:
+        pytest_args = argv[3:]
+    elif argv and PurePosixPath(argv[0]).name in {"pytest", "pytest3"}:
+        pytest_args = argv[1:]
+    else:
+        return "candidate run command must invoke pytest directly"
+
+    allowed_flags = {"-x", "-q", "--tb=short", "--disable-warnings"}
+    positional = [arg for arg in pytest_args if not arg.startswith("-")]
+    flags = [arg for arg in pytest_args if arg.startswith("-")]
+    if positional != [cand.test_path] or any(flag not in allowed_flags for flag in flags):
+        return "candidate run command must target only the generated test file"
+    return None
