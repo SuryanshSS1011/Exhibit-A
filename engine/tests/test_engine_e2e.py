@@ -1,0 +1,98 @@
+"""End-to-end tests for the Evidence Engine against the built-in fixtures.
+
+These run with the LocalExecutor (no Docker) and small hand-written generators, so
+they exercise the executor + flip-check + verdict wiring without a live model.
+They prove the two verdicts the whole product hinges on:
+  - PROVEN: a real fail-to-pass test that fails on buggy, passes on fixed.
+  - INSUFFICIENT_EVIDENCE: silence when no admissible flip is found.
+"""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+from exhibit_a import EngineConfig, EvidenceEngine
+from exhibit_a.executor.base import RepoState
+from exhibit_a.executor.local_exec import LocalExecutor
+from exhibit_a.hypothesis.generator import Candidate, Claim, Feedback, StubGenerator
+from exhibit_a.models.case import Mode, Verdict
+
+FIXTURES = Path(__file__).resolve().parents[2] / "fixtures"
+
+# A test that fails on the buggy slicer (drops last element) and passes on the fix.
+FLIP_TEST = (
+    "from slicer import last_n\n\n"
+    "def test_last_n_keeps_final_element():\n"
+    "    assert last_n([1, 2, 3, 4], 2) == [3, 4]\n"
+)
+
+
+class OneShotGenerator:
+    """Emits a single, real fail-to-pass candidate for the slicer fixture."""
+
+    def propose(self, claim: Claim, max_hypotheses: int = 3) -> list[Candidate]:
+        return [
+            Candidate(
+                hypothesis="last_n drops the final element (off-by-one slice)",
+                test_path="test_repro.py",
+                test_code=FLIP_TEST,
+                run_command=f"{sys.executable} -m pytest -x -q test_repro.py",
+                expected_signature="AssertionError",
+            )
+        ]
+
+    def refine(self, claim, feedback: Feedback):
+        return None
+
+
+def _cfg() -> EngineConfig:
+    # Fewer reruns keeps the test fast; still exercises the determinism gate.
+    return EngineConfig(reruns=3, run_command=f"{sys.executable} -m pytest -x -q test_repro.py")
+
+
+def test_proven_flip():
+    engine = EvidenceEngine(OneShotGenerator(), LocalExecutor(), _cfg())
+    claim = Claim(
+        text="last_n drops the last row",
+        repo_path=str(FIXTURES / "buggy_slice"),
+        expected_signature="AssertionError",
+    )
+    case = engine.investigate(
+        claim,
+        mode=Mode.DETECTIVE,
+        target=RepoState(path=str(FIXTURES / "buggy_slice"), label="target"),
+        base=RepoState(path=str(FIXTURES / "fixed_slice"), label="base"),
+    )
+    assert case.verdict is Verdict.PROVEN, case.silence_reason
+    assert case.test_file is not None
+    assert case.evidence.deterministic
+    assert case.evidence.fail_signature and "AssertionError" in case.evidence.fail_signature
+    assert case.evidence.pass_log  # base ran and passed
+
+
+def test_silence_when_no_base_to_prove_pass_side():
+    # BASE_ONLY: we can confirm a deterministic failure but cannot prove the flip.
+    engine = EvidenceEngine(OneShotGenerator(), LocalExecutor(), _cfg())
+    claim = Claim(
+        text="last_n drops the last row",
+        repo_path=str(FIXTURES / "buggy_slice"),
+        expected_signature="AssertionError",
+    )
+    case = engine.investigate(
+        claim,
+        mode=Mode.DETECTIVE,
+        target=RepoState(path=str(FIXTURES / "buggy_slice"), label="target"),
+        base=None,
+    )
+    assert case.verdict is Verdict.INSUFFICIENT_EVIDENCE
+    assert "pass side" in (case.silence_reason or "")
+
+
+def test_stub_generator_stays_silent():
+    # The stub emits a test that fails everywhere -> no admissible flip -> silence.
+    engine = EvidenceEngine(StubGenerator(), LocalExecutor(), EngineConfig(reruns=2))
+    claim = Claim(text="anything", repo_path=str(FIXTURES / "buggy_slice"))
+    case = engine.investigate(claim, mode=Mode.DETECTIVE)
+    assert case.verdict is Verdict.INSUFFICIENT_EVIDENCE
+    assert case.silence_reason
