@@ -28,6 +28,7 @@ from .models.case import Case, Mode, Verdict
 from .store.json_store import JsonCaseStore
 from .store.research import ResearchStore
 from .store.suite_gap import SuiteGapStore
+from .studies.archaeology import run_archaeology, save_archaeology_report
 from .studies.bug_identity import run_bug_identity, save_bug_identity_report
 from .studies.reproducibility import (
     run_reproducibility_study,
@@ -534,6 +535,31 @@ def cmd_dedup(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_archaeology(args: argparse.Namespace) -> int:
+    from .executor.docker_exec import DockerExecutor
+
+    executor = RecordingExecutor(DockerExecutor(), Path(args.out).parent / "environment-attempts")
+    try:
+        report = run_archaeology(args.case, args.repo_url, args.shas, executor, reruns=args.reruns)
+        path = save_archaeology_report(report, args.out)
+    except (
+        OSError,
+        RuntimeError,
+        ValueError,
+        json.JSONDecodeError,
+        subprocess.SubprocessError,
+    ) as exc:
+        print(f"error: evidence archaeology failed: {exc}", file=sys.stderr)
+        return 2
+    print(f"archaeology file: {path}")
+    print(f"historical attribution: {report.attribution.value}")
+    if report.boundary:
+        print(f"observed boundary: {report.boundary[0]} -> {report.boundary[1]}")
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2))
+    return 0
+
+
 def _format_metric(value: float | None) -> str:
     return f"{value:.0%}" if value is not None else "unavailable"
 
@@ -725,6 +751,27 @@ def main(argv: list[str] | None = None) -> int:
     )
     dedup.add_argument("--json", action="store_true", help="print the full report JSON")
     dedup.set_defaults(func=cmd_dedup)
+
+    history = sub.add_parser(
+        "archaeology", help="run a sealed PROVEN test across pinned release history"
+    )
+    history.add_argument("case", help="sealed PROVEN Case JSON")
+    history.add_argument("repo_url", help="HTTPS repository URL")
+    history.add_argument(
+        "--sha",
+        dest="shas",
+        action="append",
+        required=True,
+        help="revision SHA, oldest to newest; repeat at least twice",
+    )
+    history.add_argument("--reruns", type=int, default=2, help="deterministic runs per revision")
+    history.add_argument(
+        "--out",
+        default=".exhibit-a/research/archaeology",
+        help="private timeline output directory",
+    )
+    history.add_argument("--json", action="store_true", help="print the full report JSON")
+    history.set_defaults(func=cmd_archaeology)
 
     args = parser.parse_args(argv)
     return args.func(args)
