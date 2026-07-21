@@ -52,9 +52,7 @@ class RunResult:
     exit_code: int
     passed: bool  # whether the test PASSED in this run
     log: str  # raw captured stdout/stderr (never paraphrased)
-    signature: Optional[str] = (
-        None  # extracted failure signature (exc type + msg), if any
-    )
+    signature: Optional[str] = None  # extracted failure signature (exc type + msg), if any
     duration_s: Optional[float] = None
 
 
@@ -111,9 +109,7 @@ class Case:
     fail_to_pass: list[str] = field(default_factory=list)  # test node ids
     pass_to_pass: list[str] = field(default_factory=list)
 
-    created_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def is_proven(self) -> bool:
         return self.verdict is Verdict.PROVEN

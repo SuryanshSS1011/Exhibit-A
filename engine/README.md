@@ -5,7 +5,8 @@ fail-to-pass test that fails on the broken code and passes on the fix, or stays 
 
 ```bash
 python3 -m pytest -q
-python3 -m exhibit_a.cli repro ../fixtures/buggy_slice --claim "..." [--docker] [--json]
+python3 -m exhibit_a.cli repro ../fixtures/buggy_slice \
+  --fixed ../fixtures/fixed_slice --claim "..." [--docker] [--json]
 ```
 
 Layers: `models/` (the `Case` contract) · `executor/` (swappable sandbox) ·
