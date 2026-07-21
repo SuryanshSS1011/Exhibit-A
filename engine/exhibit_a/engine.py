@@ -50,6 +50,8 @@ class EngineConfig:
     # weaker Verdict.REPRODUCED instead of silence. Prosecutor keeps this False so
     # only a full flip speaks.
     allow_reproduced: bool = False
+    check_existing_suite: bool = True
+    suite_command: tuple[str, ...] = ("python3", "-m", "pytest", "-q")
 
 
 class EvidenceEngine:
@@ -116,6 +118,43 @@ class EvidenceEngine:
             )
             return case
 
+        if self.config.check_existing_suite:
+            self._emit(
+                "phase",
+                phase="existing_suite",
+                message="Checking whether the repository suite already catches this",
+            )
+            suite = self.executor.run_suite(
+                target,
+                list(self.config.suite_command),
+                image=target_image,
+                timeout_s=self.config.timeout_s,
+            )
+            if suite is not None:
+                case.existing_suite_log = suite.log
+                if suite.exit_code in {0, 5} and not suite.timed_out:
+                    case.existing_suite_passed = True
+                elif suite.exit_code == 1 and not suite.timed_out:
+                    case.existing_suite_passed = False
+                    case.suite_gap = False
+                    case.silence_reason = "existing test suite already fails; CI has this signal"
+                    self._emit(
+                        "verdict",
+                        verdict="INSUFFICIENT_EVIDENCE",
+                        reason=case.silence_reason,
+                    )
+                    return case
+                else:
+                    case.silence_reason = (
+                        f"existing test suite could not be evaluated safely: exit {suite.exit_code}"
+                    )
+                    self._emit(
+                        "verdict",
+                        verdict="INSUFFICIENT_EVIDENCE",
+                        reason=case.silence_reason,
+                    )
+                    return case
+
         changed_lines: ChangedLines | None = None
         if mode is Mode.PROSECUTOR:
             if base is None:
@@ -151,6 +190,8 @@ class EvidenceEngine:
                 control_image,
             )
             if case.is_evidence():
+                if case.existing_suite_passed is True:
+                    case.suite_gap = True
                 self._assess_intent(case, target, intent_context)
                 case.disposition = derive_disposition(case.verdict, case.intent_judgment)
                 return case
@@ -175,6 +216,8 @@ class EvidenceEngine:
                     control_image,
                 )
                 if case.is_evidence():
+                    if case.existing_suite_passed is True:
+                        case.suite_gap = True
                     self._assess_intent(case, target, intent_context)
                     case.disposition = derive_disposition(case.verdict, case.intent_judgment)
                     return case

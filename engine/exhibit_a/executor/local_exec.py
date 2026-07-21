@@ -68,3 +68,42 @@ class LocalExecutor(Executor):
                 )
         finally:
             shutil.rmtree(workdir, ignore_errors=True)
+
+    def run_suite(
+        self,
+        repo: RepoState,
+        argv: list[str],
+        *,
+        image: str | None = None,
+        timeout_s: int = 120,
+    ) -> ExecOutcome:
+        src = Path(repo.path).resolve()
+        workdir = Path(tempfile.mkdtemp(prefix="exhibit-a-suite-"))
+        try:
+            work = workdir / "repo"
+            shutil.copytree(src, work, ignore=shutil.ignore_patterns("__pycache__", ".git"))
+            start = time.monotonic()
+            try:
+                proc = subprocess.run(
+                    argv,
+                    cwd=work,
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout_s,
+                )
+                return ExecOutcome(
+                    exit_code=proc.returncode,
+                    stdout=proc.stdout,
+                    stderr=proc.stderr,
+                    duration_s=time.monotonic() - start,
+                )
+            except subprocess.TimeoutExpired:
+                return ExecOutcome(
+                    exit_code=124,
+                    stdout="",
+                    stderr="TIMEOUT: existing suite exceeded wall-clock budget",
+                    timed_out=True,
+                    duration_s=time.monotonic() - start,
+                )
+        finally:
+            shutil.rmtree(workdir, ignore_errors=True)

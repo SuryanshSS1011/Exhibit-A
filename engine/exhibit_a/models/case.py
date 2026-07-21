@@ -155,9 +155,10 @@ class Case:
     fail_to_pass: list[str] = field(default_factory=list)  # test node ids
     pass_to_pass: list[str] = field(default_factory=list)
 
-    # External CI comparison. The evidence engine never runs an out-of-scope suite.
+    # Existing-suite preflight. This routes duplicate findings; it is not flip evidence.
     existing_suite_passed: Optional[bool] = None
     suite_gap: Optional[bool] = None
+    existing_suite_log: str = ""
 
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 

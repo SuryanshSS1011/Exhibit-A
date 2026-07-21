@@ -71,3 +71,29 @@ def test_prepare_builds_with_argv_and_reuses_cached_image(
     assert calls[0][:3] == ["docker", "image", "inspect"]
     assert calls[1][0:2] == ["docker", "build"]
     assert all(isinstance(call, list) for call in calls)
+
+
+def test_existing_suite_runs_in_read_only_no_network_container(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    (tmp_path / "module.py").write_text("VALUE = 1\n")
+    calls: list[list[str]] = []
+
+    def fake_run(argv: list[str], **kwargs) -> subprocess.CompletedProcess:
+        calls.append(argv)
+        return subprocess.CompletedProcess(argv, 0, "3 passed", "")
+
+    monkeypatch.setattr("exhibit_a.executor.docker_exec.subprocess.run", fake_run)
+    outcome = DockerExecutor().run_suite(
+        RepoState(str(tmp_path), "target"),
+        ["python3", "-m", "pytest", "-q"],
+        image="exhibit-a-env:test",
+    )
+
+    assert outcome.passed
+    argv = calls[0]
+    assert argv[:3] == ["docker", "run", "--rm"]
+    assert argv[argv.index("--network") + 1] == "none"
+    assert "--read-only" in argv
+    assert argv[-4:] == ["python3", "-m", "pytest", "-q"]
+    assert (tmp_path / "module.py").read_text() == "VALUE = 1\n"

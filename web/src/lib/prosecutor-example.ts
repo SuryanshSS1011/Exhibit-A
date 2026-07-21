@@ -60,6 +60,7 @@ export const prosecutorExample: Case = {
   pass_to_pass: [],
   existing_suite_passed: true,
   suite_gap: true,
+  existing_suite_log: "42 passed in 1.8s",
   created_at: "2026-07-21T00:00:00Z",
 };
 

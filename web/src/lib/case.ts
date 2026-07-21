@@ -74,6 +74,7 @@ export interface Case {
   pass_to_pass: string[];
   existing_suite_passed: boolean | null;
   suite_gap: boolean | null;
+  existing_suite_log: string;
   created_at: string;
 }
 

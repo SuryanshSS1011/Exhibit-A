@@ -308,6 +308,7 @@ def test_engine_streams_each_execution_before_the_terminal_verdict():
     assert [event["event"] for event in events] == [
         "phase",
         "phase",
+        "phase",
         "hypothesis",
         "run",
         "run",
@@ -357,6 +358,34 @@ class ExplodingExecutor(Executor):
 
     def run(self, repo: RepoState, spec: ExecSpec):
         raise AssertionError("unsafe candidate reached the executor")
+
+
+class SuiteCatchesExecutor(ExplodingExecutor):
+    def run_suite(self, repo, argv, *, image=None, timeout_s=120):
+        from exhibit_a.executor.base import ExecOutcome
+
+        return ExecOutcome(1, "FAILED tests/test_existing.py", "")
+
+
+class MustNotGenerate:
+    def propose(self, claim, max_hypotheses=3):
+        raise AssertionError("generator ran after the existing suite caught the failure")
+
+    def refine(self, claim, feedback):
+        raise AssertionError("refinement ran after the existing suite caught the failure")
+
+
+def test_existing_suite_failure_stays_silent_before_generation():
+    engine = EvidenceEngine(MustNotGenerate(), SuiteCatchesExecutor())
+    claim = Claim(text="already covered", repo_path=str(FIXTURES / "buggy_slice"))
+
+    case = engine.investigate(claim)
+
+    assert case.verdict is Verdict.INSUFFICIENT_EVIDENCE
+    assert case.existing_suite_passed is False
+    assert case.suite_gap is False
+    assert case.existing_suite_log == "FAILED tests/test_existing.py"
+    assert case.hypotheses == []
 
 
 class UnsafeCommandGenerator:

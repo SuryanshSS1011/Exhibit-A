@@ -24,6 +24,7 @@ from .intake.git_bisect import bisect_reproduction
 from .intake.git_checkout import checkout_context, checkout_pair, checkout_triplet
 from .models.case import Case, Mode, Verdict
 from .store.json_store import JsonCaseStore
+from .store.suite_gap import SuiteGapStore
 
 
 def _build_engine(
@@ -190,6 +191,10 @@ def cmd_repro(args: argparse.Namespace) -> int:
 
     store = JsonCaseStore(args.out)
     path = store.save(case)
+    SuiteGapStore(Path(args.out).parent / "suite-gaps").save(
+        case,
+        model=str(getattr(engine.generator, "model", type(engine.generator).__name__)),
+    )
 
     if args.events:
         _print_event({"event": "case", "case": case.to_dict()})

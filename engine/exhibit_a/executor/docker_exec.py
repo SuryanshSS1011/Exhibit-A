@@ -148,6 +148,71 @@ class DockerExecutor(Executor):
         finally:
             shutil.rmtree(workdir, ignore_errors=True)
 
+    def run_suite(
+        self,
+        repo: RepoState,
+        argv: list[str],
+        *,
+        image: str | None = None,
+        timeout_s: int = 120,
+    ) -> ExecOutcome:
+        src = Path(repo.path).resolve()
+        workdir = Path(tempfile.mkdtemp(prefix="exhibit-a-suite-"))
+        work = workdir / "repo"
+        try:
+            shutil.copytree(src, work, ignore=shutil.ignore_patterns("__pycache__", ".git"))
+            resolved_image = image or self.prepare(repo) or self.base_image
+            docker_argv = [
+                self.docker_bin,
+                "run",
+                "--rm",
+                "--network",
+                "none",
+                "--cap-drop",
+                "ALL",
+                "--security-opt",
+                "no-new-privileges",
+                "--read-only",
+                "--tmpfs",
+                "/tmp:rw,noexec,nosuid,size=128m",
+                "--pids-limit",
+                "512",
+                "--memory",
+                "2g",
+                "--cpus",
+                "2",
+                "-v",
+                f"{work}:/work:ro",
+                "-w",
+                "/work",
+                resolved_image,
+                *argv,
+            ]
+            start = time.monotonic()
+            try:
+                proc = subprocess.run(
+                    docker_argv,
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout_s,
+                )
+                return ExecOutcome(
+                    exit_code=proc.returncode,
+                    stdout=proc.stdout,
+                    stderr=proc.stderr,
+                    duration_s=time.monotonic() - start,
+                )
+            except subprocess.TimeoutExpired:
+                return ExecOutcome(
+                    exit_code=124,
+                    stdout="",
+                    stderr="TIMEOUT: existing suite exceeded wall-clock budget",
+                    timed_out=True,
+                    duration_s=time.monotonic() - start,
+                )
+        finally:
+            shutil.rmtree(workdir, ignore_errors=True)
+
 
 class _EnvironmentSpec:
     def __init__(self, image: str, requirements: tuple[str, ...]):

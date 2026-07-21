@@ -85,5 +85,16 @@ class Executor(abc.ABC):
     def run(self, repo: RepoState, spec: ExecSpec) -> ExecOutcome:
         """Write the test file into the checkout and run `spec.command` in isolation."""
 
+    def run_suite(
+        self,
+        repo: RepoState,
+        argv: list[str],
+        *,
+        image: str | None = None,
+        timeout_s: int = 120,
+    ) -> ExecOutcome | None:
+        """Run an explicitly configured existing suite, or return unsupported."""
+        return None
+
     def close(self) -> None:  # optional cleanup hook
         """Tear down any persistent resources. Default: no-op."""
