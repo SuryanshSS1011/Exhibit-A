@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Any, Callable, Optional
 
-from .executor.base import ExecSpec, Executor, RepoState
+from .executor.base import EnvironmentSetupError, ExecSpec, Executor, RepoState
 from .hypothesis.generator import Candidate, Claim, Feedback, HypothesisGenerator
 from .models.case import (
     Case,
@@ -95,6 +95,18 @@ class EvidenceEngine:
             run_command=self.config.run_command,
         )
 
+        try:
+            target_image = self.executor.prepare(target)
+            base_image = self.executor.prepare(base) if base is not None else None
+        except EnvironmentSetupError as exc:
+            case.silence_reason = f"could not build environment: {exc}"
+            self._emit(
+                "verdict",
+                verdict="INSUFFICIENT_EVIDENCE",
+                reason=case.silence_reason,
+            )
+            return case
+
         self._emit("phase", phase="generating", message="Localizing the claim with Codex")
         candidates = self.generator.propose(claim)
         self._emit("phase", phase="executing", message=f"Testing {len(candidates)} hypotheses")
@@ -105,7 +117,7 @@ class EvidenceEngine:
         attempts = 0
 
         for cand in candidates:
-            result = self._try_candidate(claim, cand, base, target, case)
+            result = self._try_candidate(claim, cand, base, target, case, base_image, target_image)
             if case.is_evidence():
                 return case
 
@@ -116,7 +128,9 @@ class EvidenceEngine:
                 refined = self.generator.refine(claim, feedback)
                 if refined is None:
                     break
-                feedback = self._try_candidate(claim, refined, base, target, case)
+                feedback = self._try_candidate(
+                    claim, refined, base, target, case, base_image, target_image
+                )
                 if case.is_evidence():
                     return case
 
@@ -141,6 +155,8 @@ class EvidenceEngine:
         base: Optional[RepoState],
         target: RepoState,
         case: Case,
+        base_image: str | None,
+        target_image: str | None,
     ) -> Optional[Feedback]:
         """Execute one candidate through the gates. Mutates `case`. Returns Feedback
         if the candidate was NOT admissible (to drive refinement), or None if proven.
@@ -169,12 +185,14 @@ class EvidenceEngine:
             command=cand.run_command or self.config.run_command,
             timeout_s=self.config.timeout_s,
         )
+        target_spec = ExecSpec(**{**spec.__dict__, "image": target_image})
+        base_spec = ExecSpec(**{**spec.__dict__, "image": base_image})
 
         # Run on the target (buggy) state N times for the determinism gate.
         target_outcomes = []
         run_records: list[RunResult] = []
         for attempt in range(1, self.config.reruns + 1):
-            out = self.executor.run(target, spec)
+            out = self.executor.run(target, target_spec)
             target_outcomes.append(out)
             run_records.append(
                 RunResult(
@@ -200,7 +218,7 @@ class EvidenceEngine:
 
         base_outcome = None
         if base is not None:
-            base_outcome = self.executor.run(base, spec)
+            base_outcome = self.executor.run(base, base_spec)
             run_records.append(
                 RunResult(
                     state="base",

@@ -27,6 +27,11 @@ class RepoState:
     path: str  # local path to the checked-out repo
     label: str  # "base" | "target"
     commit: Optional[str] = None  # informational
+    source: Optional[str] = None  # stable repo identity for environment caches
+
+
+class EnvironmentSetupError(RuntimeError):
+    """The sandbox environment could not be built deterministically."""
 
 
 @dataclass(frozen=True)

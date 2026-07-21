@@ -114,10 +114,11 @@ def cmd_repro(args: argparse.Namespace) -> int:
             repo_path=str(Path(args.repo).resolve()),
             expected_signature=args.expect,
         )
-        target = RepoState(path=claim.repo_path, label="target")
+        target = RepoState(path=claim.repo_path, label="target", source=claim.repo_path)
         base = None
         if args.fixed:
-            base = RepoState(path=str(Path(args.fixed).resolve()), label="base")
+            fixed_path = str(Path(args.fixed).resolve())
+            base = RepoState(path=fixed_path, label="base", source=fixed_path)
         case = engine.investigate(claim, mode=Mode.DETECTIVE, target=target, base=base)
 
     store = JsonCaseStore(args.out)

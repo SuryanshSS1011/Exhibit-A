@@ -73,7 +73,7 @@ def checkout(repo_url: str, sha: str) -> RepoState:
     except Exception:
         shutil.rmtree(scratch, ignore_errors=True)
         raise
-    return RepoState(path=str(repo_path), label="checkout", commit=sha)
+    return RepoState(path=str(repo_path), label="checkout", commit=sha, source=repo_url)
 
 
 def cleanup(state: RepoState) -> None:

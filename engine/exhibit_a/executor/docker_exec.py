@@ -1,11 +1,10 @@
-"""Docker-backed executor — the hackathon default (plan §2, Phase 0).
+"""Docker-backed executor with deterministic, per-repository environments.
 
 Runs the test inside a container with the repo bind-mounted, source read-only and
 the test file the only writable path, no network by default, and a hard timeout.
-This is intentionally minimal: environment-setup automation (pip/poetry inference)
-is a v1 concern (§2 "the single hardest problem is environment setup"). For the
-MVP we assume the caller (or a per-repo cached image) already has deps installed,
-or that the repo needs only stdlib + pytest.
+The default path requires a pinned repository lockfile and builds one cached image
+per repository + lock content. It never guesses dependencies. Repositories without
+a supported, pinned lockfile stay silent through ``EnvironmentSetupError``.
 
 SECURITY: PR-supplied text never reaches a shell here. The command is passed as an
 argv list, and the container runs as an unprivileged user with dropped caps.
@@ -13,20 +12,21 @@ argv list, and the container runs as an unprivileged user with dropped caps.
 
 from __future__ import annotations
 
-import shutil
+import hashlib
+import json
+import re
 import shlex
+import shutil
 import subprocess
 import tempfile
 import time
 from pathlib import Path
+import tomllib
 
-from .base import ExecOutcome, ExecSpec, Executor, RepoState
+from .base import EnvironmentSetupError, ExecOutcome, ExecSpec, Executor, RepoState
 
 DEFAULT_IMAGE = "exhibit-a-python-pytest:3.12"
-_RUNNER_DOCKERFILE = """FROM python:3.12-slim
-RUN pip install --no-cache-dir pytest==8.4.1
-USER 65534:65534
-"""
+_PINNED_REQUIREMENT = re.compile(r"^[A-Za-z0-9_.-]+(?:\[[A-Za-z0-9_,.-]+\])?==[^\s;\\]+")
 
 
 class DockerExecutor(Executor):
@@ -39,22 +39,40 @@ class DockerExecutor(Executor):
     def prepare(self, repo: RepoState) -> str | None:
         if self.base_image != DEFAULT_IMAGE:
             return self.base_image
+        environment = _environment_spec(repo)
         inspect = subprocess.run(
-            [self.docker_bin, "image", "inspect", self.base_image],
+            [self.docker_bin, "image", "inspect", environment.image],
             capture_output=True,
             text=True,
         )
         if inspect.returncode != 0:
-            build = subprocess.run(
-                [self.docker_bin, "build", "-t", self.base_image, "-"],
-                input=_RUNNER_DOCKERFILE,
-                capture_output=True,
-                text=True,
-            )
-            if build.returncode != 0:
-                detail = build.stderr.strip() or build.stdout.strip()
-                raise RuntimeError(f"could not build pytest runner image: {detail[-2000:]}")
-        return self.base_image
+            with tempfile.TemporaryDirectory(prefix="exhibit-a-env-") as tmp:
+                context = Path(tmp)
+                requirement_names = []
+                for index, content in enumerate(environment.requirements):
+                    name = f"requirements-{index}.txt"
+                    (context / name).write_text(content)
+                    requirement_names.append(name)
+                (context / "Dockerfile").write_text(_dockerfile(requirement_names))
+                build = subprocess.run(
+                    [
+                        self.docker_bin,
+                        "build",
+                        "--tag",
+                        environment.image,
+                        "--file",
+                        str(context / "Dockerfile"),
+                        str(context),
+                    ],
+                    capture_output=True,
+                    text=True,
+                )
+                if build.returncode != 0:
+                    detail = build.stderr.strip() or build.stdout.strip() or "no diagnostic"
+                    raise EnvironmentSetupError(
+                        f"pinned dependency image failed to build: {detail[-2000:]}"
+                    )
+        return environment.image
 
     def run(self, repo: RepoState, spec: ExecSpec) -> ExecOutcome:
         src = Path(repo.path).resolve()
@@ -129,3 +147,115 @@ class DockerExecutor(Executor):
                 )
         finally:
             shutil.rmtree(workdir, ignore_errors=True)
+
+
+class _EnvironmentSpec:
+    def __init__(self, image: str, requirements: tuple[str, ...]):
+        self.image = image
+        self.requirements = requirements
+
+
+def _environment_spec(repo: RepoState) -> _EnvironmentSpec:
+    root = Path(repo.path).resolve()
+    if not root.is_dir():
+        raise EnvironmentSetupError(f"repo checkout not found: {root}")
+
+    poetry_lock = root / "poetry.lock"
+    pipfile_lock = root / "Pipfile.lock"
+    if poetry_lock.is_file():
+        requirements = (_requirements_from_poetry(poetry_lock),)
+    elif pipfile_lock.is_file():
+        requirements = (_requirements_from_pipfile(pipfile_lock),)
+    else:
+        requirement_files = sorted(root.glob("requirements*.txt"))
+        if not requirement_files:
+            raise EnvironmentSetupError(
+                "no poetry.lock, Pipfile.lock, or requirements*.txt was found; "
+                "dependency discovery is intentionally disabled"
+            )
+        requirements = tuple(path.read_text() for path in requirement_files)
+        for path, content in zip(requirement_files, requirements, strict=True):
+            _validate_pinned_requirements(content, path.name)
+
+    identity = repo.source or str(root)
+    digest = hashlib.sha256(identity.encode())
+    for content in requirements:
+        digest.update(b"\0")
+        digest.update(content.encode())
+    return _EnvironmentSpec(f"exhibit-a-env:{digest.hexdigest()[:20]}", requirements)
+
+
+def _requirements_from_poetry(path: Path) -> str:
+    try:
+        payload = tomllib.loads(path.read_text())
+        packages = payload["package"]
+    except (OSError, KeyError, tomllib.TOMLDecodeError) as exc:
+        raise EnvironmentSetupError(f"invalid poetry.lock: {exc}") from exc
+    lines = []
+    for package in packages:
+        if package.get("optional", False) or package.get("category") == "dev":
+            continue
+        name = package.get("name")
+        version = package.get("version")
+        if not isinstance(name, str) or not isinstance(version, str):
+            raise EnvironmentSetupError("poetry.lock contains an unpinned package")
+        line = f"{name}=={version}"
+        marker = package.get("marker")
+        if isinstance(marker, str):
+            line += f"; {marker}"
+        lines.append(line)
+    if not lines:
+        raise EnvironmentSetupError("poetry.lock contains no installable main dependencies")
+    return "\n".join(sorted(lines)) + "\n"
+
+
+def _requirements_from_pipfile(path: Path) -> str:
+    try:
+        payload = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        raise EnvironmentSetupError(f"invalid Pipfile.lock: {exc}") from exc
+    lines = []
+    for section in ("default", "develop"):
+        packages = payload.get(section, {})
+        if not isinstance(packages, dict):
+            raise EnvironmentSetupError(f"Pipfile.lock section {section!r} is invalid")
+        for name, metadata in packages.items():
+            if not isinstance(metadata, dict):
+                raise EnvironmentSetupError(f"Pipfile.lock package {name!r} is invalid")
+            version = metadata.get("version")
+            if not isinstance(version, str) or not version.startswith("=="):
+                raise EnvironmentSetupError(f"Pipfile.lock package {name!r} is not pinned")
+            line = f"{name}{version}"
+            markers = metadata.get("markers")
+            if isinstance(markers, str):
+                line += f"; {markers}"
+            lines.append(line)
+    if not lines:
+        raise EnvironmentSetupError("Pipfile.lock contains no pinned dependencies")
+    return "\n".join(sorted(lines)) + "\n"
+
+
+def _validate_pinned_requirements(content: str, name: str) -> None:
+    for raw_line in content.splitlines():
+        line = raw_line.strip().removesuffix("\\").strip()
+        if not line or line.startswith("#") or line.startswith("--hash="):
+            continue
+        if line.startswith("-") or not _PINNED_REQUIREMENT.match(line):
+            raise EnvironmentSetupError(
+                f"{name} is not a self-contained pinned requirements file: {raw_line!r}"
+            )
+
+
+def _dockerfile(requirement_names: list[str]) -> str:
+    copies = "\n".join(f"COPY {name} /tmp/locks/{name}" for name in requirement_names)
+    installs = "\n".join(
+        "RUN python -m pip install --disable-pip-version-check --no-cache-dir "
+        f"--requirement /tmp/locks/{name}"
+        for name in requirement_names
+    )
+    return (
+        "FROM python:3.12-slim\n"
+        "RUN python -m pip install --disable-pip-version-check --no-cache-dir pytest==8.4.1\n"
+        f"{copies}\n{installs}\n"
+        "USER 65534:65534\n"
+    )

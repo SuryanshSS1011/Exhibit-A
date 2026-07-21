@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 
 from exhibit_a import EngineConfig, EvidenceEngine
-from exhibit_a.executor.base import ExecSpec, Executor, RepoState
+from exhibit_a.executor.base import EnvironmentSetupError, ExecSpec, Executor, RepoState
 from exhibit_a.executor.local_exec import LocalExecutor
 from exhibit_a.hypothesis.generator import Candidate, Claim, Feedback, StubGenerator
 from exhibit_a.models.case import Mode, Verdict
@@ -281,3 +281,19 @@ def test_engine_rejects_out_of_scope_command_before_execution():
 
     assert case.verdict is Verdict.INSUFFICIENT_EVIDENCE
     assert "shell control" in (case.silence_reason or "")
+
+
+class BrokenEnvironmentExecutor(ExplodingExecutor):
+    def prepare(self, repo: RepoState) -> str | None:
+        raise EnvironmentSetupError("no pinned lockfile")
+
+
+def test_environment_build_failure_becomes_honest_silence():
+    engine = EvidenceEngine(OneShotGenerator(), BrokenEnvironmentExecutor())
+    claim = Claim(text="anything", repo_path=str(FIXTURES / "buggy_slice"))
+
+    case = engine.investigate(claim)
+
+    assert case.verdict is Verdict.INSUFFICIENT_EVIDENCE
+    assert case.hypotheses == []
+    assert case.silence_reason == "could not build environment: no pinned lockfile"
