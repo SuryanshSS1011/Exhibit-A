@@ -28,6 +28,7 @@ from .models.case import Case, Mode, Verdict
 from .store.json_store import JsonCaseStore
 from .store.research import ResearchStore
 from .store.suite_gap import SuiteGapStore
+from .studies.bug_identity import run_bug_identity, save_bug_identity_report
 from .studies.reproducibility import (
     run_reproducibility_study,
     save_reproducibility_report,
@@ -509,6 +510,30 @@ def cmd_environment_summary(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_dedup(args: argparse.Namespace) -> int:
+    if args.docker:
+        from .executor.docker_exec import DockerExecutor
+
+        executor = DockerExecutor()
+    else:
+        executor = LocalExecutor()
+    executor = RecordingExecutor(executor, Path(args.out).parent / "environment-attempts")
+    try:
+        report = run_bug_identity(args.manifest, executor, reruns=args.reruns)
+        path = save_bug_identity_report(report, args.out)
+    except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as exc:
+        print(f"error: bug-identity dedup failed: {exc}", file=sys.stderr)
+        return 2
+    print(f"bug-identity file: {path}")
+    print(
+        f"distinct execution clusters: {len(report.clusters)} "
+        f"across {len(report.valid_cases)} revalidated Cases"
+    )
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2))
+    return 0
+
+
 def _format_metric(value: float | None) -> str:
     return f"{value:.0%}" if value is not None else "unavailable"
 
@@ -686,6 +711,20 @@ def main(argv: list[str] | None = None) -> int:
         help="summary output path",
     )
     environments.set_defaults(func=cmd_environment_summary)
+
+    dedup = sub.add_parser(
+        "dedup", help="cluster PROVEN Cases by mutual execution on their fixed states"
+    )
+    dedup.add_argument("manifest", help="versioned local Case/checkouts manifest")
+    dedup.add_argument("--docker", action="store_true", help="use the Docker executor")
+    dedup.add_argument("--reruns", type=int, default=2, help="deterministic cross-runs")
+    dedup.add_argument(
+        "--out",
+        default=".exhibit-a/research/bug-identity",
+        help="private dedup report directory",
+    )
+    dedup.add_argument("--json", action="store_true", help="print the full report JSON")
+    dedup.set_defaults(func=cmd_dedup)
 
     args = parser.parse_args(argv)
     return args.func(args)
