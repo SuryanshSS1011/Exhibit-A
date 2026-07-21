@@ -27,6 +27,10 @@ from .models.case import Case, Mode, Verdict
 from .store.json_store import JsonCaseStore
 from .store.research import ResearchStore
 from .store.suite_gap import SuiteGapStore
+from .studies.reproducibility import (
+    run_reproducibility_study,
+    save_reproducibility_report,
+)
 from .verdict.flip_check import extract_signature, signatures_match
 
 
@@ -328,6 +332,93 @@ def cmd_observe(args: argparse.Namespace) -> int:
     return 1 if status == "re_regressed" else 0
 
 
+def cmd_study(args: argparse.Namespace) -> int:
+    """Run the private repeated-reproduction convergence study on local states."""
+    claim_text = args.claim or ""
+    try:
+        if args.trace:
+            claim_text = Path(args.trace).read_text()
+    except OSError as exc:
+        print(f"error: cannot read trace: {exc}", file=sys.stderr)
+        return 2
+    if not claim_text.strip():
+        print("error: provide --claim or --trace", file=sys.stderr)
+        return 2
+
+    repo_path = Path(args.repo).resolve()
+    fixed_path = Path(args.fixed).resolve()
+    control_path = Path(args.control).resolve() if args.control else None
+    for label, path in (("repo", repo_path), ("--fixed", fixed_path)):
+        if not path.is_dir():
+            print(f"error: {label} checkout not found: {path}", file=sys.stderr)
+            return 2
+    if control_path is not None and not control_path.is_dir():
+        print(f"error: --control checkout not found: {control_path}", file=sys.stderr)
+        return 2
+
+    claim = Claim(str(claim_text), str(repo_path), args.expect)
+    target = RepoState(str(repo_path), "target", source=str(repo_path))
+    base = RepoState(str(fixed_path), "base", source=str(fixed_path))
+    control = (
+        RepoState(str(control_path), "control", source=str(control_path))
+        if control_path is not None
+        else None
+    )
+    requested_models: list[str | None] = args.models or [None]
+
+    def engine_factory(index: int) -> tuple[EvidenceEngine, str]:
+        if args.docker:
+            from .executor.docker_exec import DockerExecutor
+
+            executor = DockerExecutor()
+        else:
+            executor = LocalExecutor()
+        selected_model = requested_models[index % len(requested_models)]
+        generator = StubGenerator() if args.offline else CodexGenerator(model=selected_model)
+        variant = "offline-stub" if args.offline else generator.model
+        return EvidenceEngine(generator, executor, EngineConfig()), variant
+
+    try:
+        report = run_reproducibility_study(
+            claim=claim,
+            target=target,
+            base=base,
+            control=control,
+            engine_factory=engine_factory,
+            runs=args.runs,
+        )
+        path = save_reproducibility_report(report, args.out)
+    except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as exc:
+        print(f"error: reproducibility study failed: {exc}", file=sys.stderr)
+        return 2
+
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, default=str))
+    else:
+        print(f"study file: {path}")
+        print(
+            "verdict convergence: "
+            f"{_format_metric(report.verdict.convergence)} "
+            f"({report.verdict.coverage:.0%} measured)"
+        )
+        print(
+            "root-cause convergence: "
+            f"{_format_metric(report.root_cause.convergence)} "
+            f"({report.root_cause.coverage:.0%} measured)"
+        )
+        print(
+            "test-semantic convergence: "
+            f"{_format_metric(report.test_semantics.convergence)} "
+            f"({report.test_semantics.coverage:.0%} measured)"
+        )
+        print(f"strict convergence: {'yes' if report.converged else 'no'}")
+    return 0
+
+
+def _format_metric(value: float | None) -> str:
+    return f"{value:.0%}" if value is not None else "unavailable"
+
+
 def _load_replay(path: Path) -> dict[str, Any]:
     payload = json.loads(path.read_text())
     if not isinstance(payload, dict):
@@ -423,6 +514,37 @@ def main(argv: list[str] | None = None) -> int:
     observe.add_argument("--upstream-sha", required=True, help="pinned current upstream SHA")
     observe.add_argument("--out", default=".exhibit-a/research", help="private research root")
     observe.set_defaults(func=cmd_observe)
+
+    study = sub.add_parser(
+        "study",
+        help="repeat one reproduction and measure root-cause/test convergence",
+    )
+    study.add_argument("repo", help="local buggy/target checkout")
+    study.add_argument("--fixed", required=True, help="local fixed/base checkout")
+    study.add_argument("--control", help="optional unrelated control checkout")
+    study.add_argument("--claim", help="bug description / concern")
+    study.add_argument("--trace", help="path to a file containing a stack trace")
+    study.add_argument("--expect", help="expected failure signature")
+    study.add_argument("--runs", type=int, default=5, help="independent samples (2–50)")
+    study.add_argument(
+        "--model",
+        dest="models",
+        action="append",
+        help="Codex model variant; repeat to cycle models across samples",
+    )
+    study.add_argument("--docker", action="store_true", help="use the Docker executor")
+    study.add_argument(
+        "--offline",
+        action="store_true",
+        help="use the deterministic stub for a no-model study smoke test",
+    )
+    study.add_argument(
+        "--out",
+        default=".exhibit-a/research/reproducibility",
+        help="private study output directory",
+    )
+    study.add_argument("--json", action="store_true", help="print the full study JSON")
+    study.set_defaults(func=cmd_study)
 
     args = parser.parse_args(argv)
     return args.func(args)
