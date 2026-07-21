@@ -101,6 +101,46 @@ def test_signature_mismatch_rejected():
     assert signatures_match(None, "anything")  # opt-in: no constraint
 
 
+def test_reproduced_tier_requires_optin_and_signature():
+    log = "E   KeyError: 'sku-404'\n"
+    target = [_out(False, log, exit_code=1) for _ in range(3)]
+
+    # opt-out (default): no base -> not admissible.
+    r_off = flip_check(
+        target_runs=target, base_run=None, test_code="d['x']", expected_signature="KeyError"
+    )
+    assert not r_off.admissible
+
+    # opt-in WITH signature: admissible at the weaker "reproduced" tier.
+    r_on = flip_check(
+        target_runs=target,
+        base_run=None,
+        test_code="d['x']",
+        expected_signature="KeyError",
+        allow_reproduced=True,
+    )
+    assert r_on.admissible and r_on.tier == "reproduced"
+
+    # opt-in WITHOUT signature: refused — a vacuous failure must not "reproduce" a claim.
+    r_nosig = flip_check(
+        target_runs=target,
+        base_run=None,
+        test_code="assert False",
+        expected_signature=None,
+        allow_reproduced=True,
+    )
+    assert not r_nosig.admissible
+
+
+def test_full_flip_is_tier_flip():
+    target = [_out(False, REAL_FAIL, exit_code=1) for _ in range(3)]
+    base = _out(True, "1 passed")
+    r = flip_check(
+        target_runs=target, base_run=base, test_code="assert x", expected_signature="AssertionError"
+    )
+    assert r.admissible and r.tier == "flip"
+
+
 def test_extract_signature_forms():
     assert extract_signature(_out(False, "E   KeyError: 'x'\n")) == "KeyError: 'x'"
     assert extract_signature(_out(False, "E   assert [3] == [3, 4]\n")).startswith("AssertionError")

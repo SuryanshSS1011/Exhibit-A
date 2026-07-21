@@ -28,6 +28,7 @@ from .store.json_store import JsonCaseStore
 def _build_engine(
     use_docker: bool,
     offline: bool,
+    allow_reproduced: bool = False,
     event_sink: Callable[[dict[str, Any]], None] | None = None,
 ) -> EvidenceEngine:
     if use_docker:
@@ -37,7 +38,8 @@ def _build_engine(
     else:
         executor = LocalExecutor()
     generator = StubGenerator() if offline else CodexGenerator()
-    return EvidenceEngine(generator, executor, EngineConfig(), event_sink=event_sink)
+    config = EngineConfig(allow_reproduced=allow_reproduced)
+    return EvidenceEngine(generator, executor, config, event_sink=event_sink)
 
 
 def cmd_repro(args: argparse.Namespace) -> int:
@@ -60,7 +62,7 @@ def cmd_repro(args: argparse.Namespace) -> int:
             print(f"case file: {Path(args.replay).resolve()}")
             if args.json:
                 print(json.dumps(case, indent=2))
-        return 0 if case["verdict"] == "PROVEN" else 1
+        return 0 if case["verdict"] in {"PROVEN", "REPRODUCED"} else 1
 
     if not args.repo:
         print("error: provide a repo, or use --replay <case.json>", file=sys.stderr)
@@ -76,6 +78,7 @@ def cmd_repro(args: argparse.Namespace) -> int:
     engine = _build_engine(
         use_docker=args.docker,
         offline=args.offline,
+        allow_reproduced=args.reproduced,
         event_sink=event_sink,
     )
     if bool(args.base_sha) != bool(args.fix_sha):
@@ -122,7 +125,7 @@ def cmd_repro(args: argparse.Namespace) -> int:
 
     if args.events:
         _print_event({"event": "case", "case": case.to_dict()})
-        return 0 if case.is_proven() else 1
+        return 0 if case.is_evidence() else 1
 
     print(f"\n=== VERDICT: {case.verdict.value} ===")
     if case.silence_reason:
@@ -130,7 +133,7 @@ def cmd_repro(args: argparse.Namespace) -> int:
     print(f"case file: {path}")
     if args.json:
         print(json.dumps(case.to_dict(), indent=2, default=str))
-    return 0 if case.is_proven() else 1
+    return 0 if case.is_evidence() else 1
 
 
 def _print_event(event: dict[str, Any]) -> None:
@@ -143,7 +146,7 @@ def _load_replay(path: Path) -> dict[str, Any]:
         raise ValueError("Case JSON must contain an object")
     if not isinstance(payload.get("id"), str) or not payload["id"]:
         raise ValueError("Case JSON is missing a valid id")
-    if payload.get("verdict") not in {"PROVEN", "INSUFFICIENT_EVIDENCE"}:
+    if payload.get("verdict") not in {"PROVEN", "REPRODUCED", "INSUFFICIENT_EVIDENCE"}:
         raise ValueError("Case JSON has an invalid verdict")
     if not isinstance(payload.get("evidence"), dict):
         raise ValueError("Case JSON is missing evidence")
@@ -171,6 +174,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     p.add_argument("--base-sha", help="buggy/base commit SHA for remote-repo intake")
     p.add_argument("--fix-sha", help="fixing commit or PR-head SHA for remote-repo intake")
+    p.add_argument(
+        "--reproduced",
+        action="store_true",
+        help="allow the weaker REPRODUCED verdict (signature-matched, no pass state) "
+        "when there is no fixed state to flip against; requires --expect",
+    )
     p.add_argument("--docker", action="store_true", help="use the Docker executor")
     p.add_argument(
         "--offline",

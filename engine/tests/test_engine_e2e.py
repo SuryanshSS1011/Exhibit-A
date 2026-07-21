@@ -162,6 +162,32 @@ def test_remote_commit_proven_case_records_benchmark_provenance():
     assert case.pass_to_pass == []
 
 
+def test_base_only_yields_reproduced_when_allowed():
+    # No fixed state, but allow_reproduced=True + a signature -> the weaker REPRODUCED
+    # tier instead of silence or an overclaimed PROVEN.
+    cfg = EngineConfig(
+        reruns=3,
+        run_command=f"{sys.executable} -m pytest -x -q test_repro.py",
+        allow_reproduced=True,
+    )
+    engine = EvidenceEngine(OneShotGenerator(), LocalExecutor(), cfg)
+    claim = Claim(
+        text="last_n drops the last row",
+        repo_path=str(FIXTURES / "buggy_slice"),
+        expected_signature="AssertionError",
+    )
+    case = engine.investigate(
+        claim,
+        mode=Mode.DETECTIVE,
+        target=RepoState(path=str(FIXTURES / "buggy_slice"), label="target"),
+        base=None,
+    )
+    assert case.verdict is Verdict.REPRODUCED
+    assert not case.is_proven()  # explicitly NOT a full flip
+    assert case.is_evidence()
+    assert case.fail_to_pass == []  # no proven pass side -> no benchmark pair
+
+
 def test_engine_streams_each_execution_before_the_terminal_verdict():
     events: list[dict] = []
     engine = EvidenceEngine(

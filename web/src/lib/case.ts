@@ -4,7 +4,7 @@
  */
 
 export type Mode = "prosecutor" | "detective";
-export type Verdict = "PROVEN" | "INSUFFICIENT_EVIDENCE";
+export type Verdict = "PROVEN" | "REPRODUCED" | "INSUFFICIENT_EVIDENCE";
 export type TargetKind = "pr_head" | "synthesized_patch" | "base_only";
 
 export interface TestArtifact {
@@ -60,3 +60,6 @@ export interface Case {
 }
 
 export const isProven = (c: Case): boolean => c.verdict === "PROVEN";
+/** Any admissible tier: a full flip (PROVEN) or a signature-matched REPRODUCED. */
+export const isEvidence = (c: Case): boolean =>
+  c.verdict === "PROVEN" || c.verdict === "REPRODUCED";

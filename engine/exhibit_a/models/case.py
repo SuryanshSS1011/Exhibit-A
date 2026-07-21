@@ -22,7 +22,14 @@ class Mode(str, enum.Enum):
 
 
 class Verdict(str, enum.Enum):
+    # A full flip: the test FAILS on target and PASSES on a base/fixed state, with a
+    # matching, deterministic failure signature. The strongest evidence tier.
     PROVEN = "PROVEN"
+    # A signature-matched reproduction WITHOUT a proven pass state (the common
+    # Detective case: a fresh bug exists on every recent commit, so there is no
+    # fixed state to pass on). Deterministic + signature-matched, but materially
+    # weaker than PROVEN — we do not overclaim a flip we could not run.
+    REPRODUCED = "REPRODUCED"
     INSUFFICIENT_EVIDENCE = "INSUFFICIENT_EVIDENCE"
 
 
@@ -113,7 +120,13 @@ class Case:
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def is_proven(self) -> bool:
+        """True only for a full flip (PROVEN). REPRODUCED is deliberately excluded —
+        it is admissible evidence but not a proven regression."""
         return self.verdict is Verdict.PROVEN
+
+    def is_evidence(self) -> bool:
+        """True for any admissible verdict tier (PROVEN or REPRODUCED)."""
+        return self.verdict in (Verdict.PROVEN, Verdict.REPRODUCED)
 
     def to_dict(self) -> dict[str, Any]:
         """Plain-dict form for JSON / API / dataset export."""

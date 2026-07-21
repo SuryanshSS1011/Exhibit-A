@@ -153,9 +153,15 @@ def detect_infra_failure(outcome: ExecOutcome) -> Optional[str]:
 @dataclass
 class FlipResult:
     admissible: bool
-    reason: Optional[str]  # silence_reason when not admissible; None when proven
+    reason: Optional[str]  # silence_reason when not admissible; None when admissible
     fail_signature: Optional[str] = None
     deterministic: bool = False
+    # Evidence tier for an admissible result:
+    #   "flip"       -> full fail-on-target + pass-on-base (maps to Verdict.PROVEN)
+    #   "reproduced" -> deterministic, signature-matched failure with NO pass state
+    #                   (maps to Verdict.REPRODUCED — weaker, honest about the gap)
+    # None when not admissible.
+    tier: Optional[str] = None
 
 
 def flip_check(
@@ -164,13 +170,21 @@ def flip_check(
     base_run: Optional[ExecOutcome],
     test_code: str,
     expected_signature: Optional[str] = None,
+    allow_reproduced: bool = False,
 ) -> FlipResult:
     """Apply all admissibility gates. `target_runs` are N reruns on the buggy state.
 
-    base_run may be None in Detective BASE_ONLY mode, where we cannot yet prove
-    the pass side (that requires a synthesized fix). In that case the check can
-    still confirm a deterministic, signature-matching failure but must NOT return
-    PROVEN — it returns admissible=False with a reason noting the missing pass side.
+    base_run may be None in Detective BASE_ONLY mode, where we cannot prove the pass
+    side (a fresh production bug exists on every recent commit — there is no fixed
+    state to pass on). Handling of that case:
+
+    - `allow_reproduced=False` (default, the honest strict path): without a base run
+      we return admissible=False. A flip we could not run is not a proven regression.
+    - `allow_reproduced=True` AND an `expected_signature` was supplied AND the target
+      fails deterministically with that signature: we return admissible with
+      tier="reproduced" -> Verdict.REPRODUCED. This is signature-matched reproduction,
+      explicitly weaker than a full flip, and requires a signature so a vacuous
+      `assert False` cannot "reproduce" an arbitrary claim.
     """
     if not target_runs:
         return FlipResult(False, "no target execution recorded")
@@ -219,6 +233,17 @@ def flip_check(
 
     # (b) pass-on-base.
     if base_run is None:
+        # No fixed state to flip against. Only offer the weaker REPRODUCED tier, and
+        # only when the caller opted in AND the failure is signature-matched (so a
+        # vacuous failure cannot masquerade as a reproduction of a specific claim).
+        if allow_reproduced and expected_signature is not None:
+            return FlipResult(
+                admissible=True,
+                reason=None,
+                fail_signature=actual_sig,
+                deterministic=deterministic,
+                tier="reproduced",
+            )
         return FlipResult(
             False,
             "confirmed deterministic failure on target, but no base/fixed state to prove the pass side",
@@ -233,10 +258,11 @@ def flip_check(
             deterministic=deterministic,
         )
 
-    # All gates cleared.
+    # All gates cleared — full flip.
     return FlipResult(
         admissible=True,
         reason=None,
         fail_signature=actual_sig,
         deterministic=deterministic,
+        tier="flip",
     )

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Case } from "@/lib/case";
+import { isEvidence } from "@/lib/case";
 import { VerdictStamp } from "@/components/VerdictStamp";
 import { EvidencePanel } from "@/components/EvidencePanel";
 import { ProsecutorExample } from "@/components/ProsecutorExample";
@@ -394,8 +395,15 @@ function CaseFile({ c }: { c: Case }) {
         </ul>
       </div>
 
-      {c.verdict === "PROVEN" ? (
+      {isEvidence(c) ? (
         <>
+          {c.verdict === "REPRODUCED" && (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-500">
+              Reproduced, not fully proven: a deterministic, signature-matched failure with
+              no fixed state to flip against. Evidence of a bug&apos;s presence — not a proven
+              regression against a known-good baseline.
+            </div>
+          )}
           <EvidencePanel c={c} />
           {c.test_file && (
             <div>

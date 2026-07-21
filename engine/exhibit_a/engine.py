@@ -41,6 +41,11 @@ class EngineConfig:
     max_refine: int = 3  # bounded refinement retries per the plan
     timeout_s: int = 120
     run_command: str = "pytest -x -q"
+    # Detective on a live bug often has no fixed state to flip against. When True,
+    # a deterministic, signature-matched failure without a pass side yields the
+    # weaker Verdict.REPRODUCED instead of silence. Prosecutor keeps this False so
+    # only a full flip speaks.
+    allow_reproduced: bool = False
 
 
 class EvidenceEngine:
@@ -101,7 +106,7 @@ class EvidenceEngine:
 
         for cand in candidates:
             result = self._try_candidate(claim, cand, base, target, case)
-            if case.is_proven():
+            if case.is_evidence():
                 return case
 
             # Bounded refinement on the most recent failed candidate.
@@ -112,11 +117,11 @@ class EvidenceEngine:
                 if refined is None:
                     break
                 feedback = self._try_candidate(claim, refined, base, target, case)
-                if case.is_proven():
+                if case.is_evidence():
                     return case
 
         # Nothing cleared the gate -> honest silence.
-        if not case.is_proven():
+        if not case.is_evidence():
             case.verdict = Verdict.INSUFFICIENT_EVIDENCE
             if not case.silence_reason:
                 case.silence_reason = (
@@ -223,14 +228,19 @@ class EvidenceEngine:
             base_run=base_outcome,
             test_code=cand.test_code,
             expected_signature=expected,
+            allow_reproduced=self.config.allow_reproduced,
         )
 
         if flip.admissible:
-            case.verdict = Verdict.PROVEN
+            verdict = Verdict.PROVEN if flip.tier == "flip" else Verdict.REPRODUCED
+            case.verdict = verdict
             case.run_command = spec.command
             case.test_file = TestArtifact(path=cand.test_path, code=cand.test_code)
             case.root_cause_narrative = cand.hypothesis
-            case.fail_to_pass = [cand.test_path]
+            # Only a full flip yields a benchmark FAIL_TO_PASS pair; a bare
+            # reproduction has no proven pass side to record.
+            if verdict is Verdict.PROVEN:
+                case.fail_to_pass = [cand.test_path]
             case.evidence = Evidence(
                 fail_log=target_outcomes[0].log,
                 fail_signature=flip.fail_signature,
@@ -239,7 +249,7 @@ class EvidenceEngine:
                 deterministic=flip.deterministic,
                 runs=run_records,
             )
-            self._emit("verdict", verdict="PROVEN", hypothesis=cand.hypothesis)
+            self._emit("verdict", verdict=verdict.value, hypothesis=cand.hypothesis)
             return None
 
         # Not admissible: record why, mark hypothesis rejected, return feedback.
