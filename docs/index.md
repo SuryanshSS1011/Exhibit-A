@@ -13,8 +13,8 @@ prove developer intent, complete program correctness, universal causality, or th
 candidate repair should be merged. Research scores and study reports are descriptive.
 They never override the deterministic flip check.
 
-Read the [repository README](https://github.com/SuryanshSS1011/Exhibit-A) for the full
-product pitch, architecture, setup instructions, and Codex usage.
+Read the [project overview](./overview.html) for the full product pitch, architecture,
+setup instructions, and Codex usage.
 
 ## Evidence engine
 
