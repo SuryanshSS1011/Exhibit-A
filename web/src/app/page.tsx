@@ -5,6 +5,11 @@ import type { Case } from "@/lib/case";
 import { VerdictStamp } from "@/components/VerdictStamp";
 import { EvidencePanel } from "@/components/EvidencePanel";
 
+interface InvestigationEvent {
+  event: string;
+  [key: string]: unknown;
+}
+
 /**
  * Detective mode intake + case-file view (plan §4, screen 2).
  * Vertical case timeline: Claim → Hypotheses (rejected greyed) → Evidence → Verdict.
@@ -20,11 +25,13 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Case | null>(null);
+  const [events, setEvents] = useState<InvestigationEvent[]>([]);
 
   async function investigate() {
     setBusy(true);
     setError(null);
     setResult(null);
+    setEvents([]);
     try {
       const res = await fetch("/api/investigate", {
         method: "POST",
@@ -35,9 +42,34 @@ export default function Home() {
             : { repoUrl, baseSha, fixSha, claim },
         ),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "engine error");
-      setResult(data as Case);
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error ?? "engine error");
+      }
+      if (!res.body) throw new Error("engine returned no event stream");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        buffer += decoder.decode(value, { stream: !done });
+        const blocks = buffer.split("\n\n");
+        buffer = blocks.pop() ?? "";
+        for (const block of blocks) {
+          const event = parseEventBlock(block);
+          if (!event) continue;
+          if (event.event === "error") {
+            throw new Error(asString(event.error) ?? "engine stream failed");
+          }
+          if (event.event === "case" && isCase(event.case)) {
+            setResult(event.case);
+          } else {
+            setEvents((current) => [...current, event]);
+          }
+        }
+        if (done) break;
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -166,8 +198,89 @@ export default function Home() {
         </div>
       )}
 
+      {(busy || events.length > 0) && <LiveDocket events={events} busy={busy} />}
+
       {result && <CaseFile c={result} />}
     </main>
+  );
+}
+
+function LiveDocket({ events, busy }: { events: InvestigationEvent[]; busy: boolean }) {
+  const runs = events.filter((event) => event.event === "run");
+  const latestRun = runs.at(-1);
+  return (
+    <section
+      aria-label="Live investigation log"
+      className="mb-8 overflow-hidden rounded-md border border-ink-700 bg-ink-950"
+    >
+      <header className="flex items-center justify-between border-b border-ink-700 px-4 py-2">
+        <h2 className="font-serif text-xs uppercase tracking-wide text-ink-300">
+          Chain of Custody
+        </h2>
+        <span className="flex items-center gap-2 font-mono text-[10px] uppercase text-ink-400">
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${
+              busy ? "bg-fail motion-safe:animate-pulse" : "bg-pass"
+            }`}
+          />
+          {busy ? "Recording" : "Sealed"}
+        </span>
+      </header>
+      <ol className="max-h-48 space-y-1 overflow-y-auto px-4 py-3 font-mono text-xs">
+        {events.length === 0 && <li className="text-ink-400">Opening case…</li>}
+        {events.map((event, index) => (
+          <li key={index} className="flex gap-3 text-ink-300">
+            <span className="w-6 shrink-0 text-ink-600">
+              {String(index + 1).padStart(2, "0")}
+            </span>
+            <span>{eventLabel(event)}</span>
+          </li>
+        ))}
+      </ol>
+      {latestRun && asString(latestRun.log) && (
+        <pre className="log-scroll max-h-48 overflow-auto border-t border-ink-800 bg-black/30 p-4 font-mono text-[11px] leading-relaxed text-ink-400">
+          {asString(latestRun.log)}
+        </pre>
+      )}
+    </section>
+  );
+}
+
+function parseEventBlock(block: string): InvestigationEvent | null {
+  const data = block
+    .split("\n")
+    .find((line) => line.startsWith("data: "))
+    ?.slice(6);
+  if (!data) return null;
+  const parsed: unknown = JSON.parse(data);
+  if (!parsed || typeof parsed !== "object" || !("event" in parsed)) return null;
+  return parsed as InvestigationEvent;
+}
+
+function eventLabel(event: InvestigationEvent): string {
+  if (event.event === "phase") return asString(event.message) ?? "Advancing investigation";
+  if (event.event === "hypothesis") return `Hypothesis admitted: ${asString(event.text)}`;
+  if (event.event === "run") {
+    const state = event.state === "target" ? "buggy" : "fixed";
+    const outcome = event.passed ? "PASS" : "FAIL";
+    return `${state} run ${event.attempt}/${event.total} · ${outcome}`;
+  }
+  if (event.event === "rejected") return `Rejected · ${asString(event.reason)}`;
+  if (event.event === "verdict") return `Verdict · ${asString(event.verdict)}`;
+  return event.event;
+}
+
+function asString(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+function isCase(value: unknown): value is Case {
+  return Boolean(
+    value &&
+      typeof value === "object" &&
+      "verdict" in value &&
+      "evidence" in value &&
+      "hypotheses" in value,
   );
 }
 

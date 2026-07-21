@@ -18,7 +18,7 @@ import shlex
 import uuid
 from dataclasses import dataclass
 from pathlib import PurePosixPath
-from typing import Optional
+from typing import Any, Callable, Optional
 
 from .executor.base import ExecSpec, Executor, RepoState
 from .hypothesis.generator import Candidate, Claim, Feedback, HypothesisGenerator
@@ -49,10 +49,12 @@ class EvidenceEngine:
         generator: HypothesisGenerator,
         executor: Executor,
         config: Optional[EngineConfig] = None,
+        event_sink: Optional[Callable[[dict[str, Any]], None]] = None,
     ):
         self.generator = generator
         self.executor = executor
         self.config = config or EngineConfig()
+        self.event_sink = event_sink
 
     def investigate(
         self,
@@ -88,7 +90,9 @@ class EvidenceEngine:
             run_command=self.config.run_command,
         )
 
+        self._emit("phase", phase="generating", message="Localizing the claim with Codex")
         candidates = self.generator.propose(claim)
+        self._emit("phase", phase="executing", message=f"Testing {len(candidates)} hypotheses")
         if not candidates:
             generator_error = getattr(self.generator, "last_error", None)
             if generator_error:
@@ -118,6 +122,11 @@ class EvidenceEngine:
                 case.silence_reason = (
                     "no candidate produced a deterministic, signature-matching flip"
                 )
+            self._emit(
+                "verdict",
+                verdict="INSUFFICIENT_EVIDENCE",
+                reason=case.silence_reason,
+            )
         return case
 
     def _try_candidate(
@@ -133,6 +142,7 @@ class EvidenceEngine:
         """
         hyp = Hypothesis(text=cand.hypothesis)
         case.hypotheses.append(hyp)
+        self._emit("hypothesis", text=cand.hypothesis, test_path=cand.test_path)
 
         policy_reason = _candidate_policy_reason(cand)
         if policy_reason:
@@ -158,7 +168,7 @@ class EvidenceEngine:
         # Run on the target (buggy) state N times for the determinism gate.
         target_outcomes = []
         run_records: list[RunResult] = []
-        for _ in range(self.config.reruns):
+        for attempt in range(1, self.config.reruns + 1):
             out = self.executor.run(target, spec)
             target_outcomes.append(out)
             run_records.append(
@@ -170,6 +180,17 @@ class EvidenceEngine:
                     signature=extract_signature(out),
                     duration_s=out.duration_s,
                 )
+            )
+            self._emit(
+                "run",
+                state="target",
+                attempt=attempt,
+                total=self.config.reruns,
+                passed=out.passed,
+                exit_code=out.exit_code,
+                log=out.log,
+                signature=extract_signature(out),
+                duration_s=out.duration_s,
             )
 
         base_outcome = None
@@ -183,6 +204,17 @@ class EvidenceEngine:
                     log=base_outcome.log,
                     duration_s=base_outcome.duration_s,
                 )
+            )
+            self._emit(
+                "run",
+                state="base",
+                attempt=1,
+                total=1,
+                passed=base_outcome.passed,
+                exit_code=base_outcome.exit_code,
+                log=base_outcome.log,
+                signature=extract_signature(base_outcome),
+                duration_s=base_outcome.duration_s,
             )
 
         expected = cand.expected_signature or claim.expected_signature
@@ -207,6 +239,7 @@ class EvidenceEngine:
                 deterministic=flip.deterministic,
                 runs=run_records,
             )
+            self._emit("verdict", verdict="PROVEN", hypothesis=cand.hypothesis)
             return None
 
         # Not admissible: record why, mark hypothesis rejected, return feedback.
@@ -220,6 +253,11 @@ class EvidenceEngine:
             deterministic=flip.deterministic,
             runs=run_records,
         )
+        self._emit(
+            "rejected",
+            hypothesis=cand.hypothesis,
+            reason=flip.reason,
+        )
         return Feedback(
             candidate=cand,
             fail_log=target_outcomes[0].log if target_outcomes else "",
@@ -228,6 +266,10 @@ class EvidenceEngine:
             reason=flip.reason,
             rejected_hypotheses=[cand.hypothesis],
         )
+
+    def _emit(self, event: str, **payload: Any) -> None:
+        if self.event_sink is not None:
+            self.event_sink({"event": event, **payload})
 
 
 def _candidate_policy_reason(cand: Candidate) -> str | None:

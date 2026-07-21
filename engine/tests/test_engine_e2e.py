@@ -121,6 +121,41 @@ def test_remote_commit_proven_case_records_benchmark_provenance():
     assert case.pass_to_pass == []
 
 
+def test_engine_streams_each_execution_before_the_terminal_verdict():
+    events: list[dict] = []
+    engine = EvidenceEngine(
+        OneShotGenerator(),
+        LocalExecutor(),
+        _cfg(),
+        event_sink=events.append,
+    )
+    claim = Claim(text="last_n drops the last row", repo_path=str(FIXTURES / "buggy_slice"))
+
+    engine.investigate(
+        claim,
+        target=RepoState(path=str(FIXTURES / "buggy_slice"), label="target"),
+        base=RepoState(path=str(FIXTURES / "fixed_slice"), label="base"),
+    )
+
+    assert [event["event"] for event in events] == [
+        "phase",
+        "phase",
+        "hypothesis",
+        "run",
+        "run",
+        "run",
+        "run",
+        "verdict",
+    ]
+    assert [event["state"] for event in events if event["event"] == "run"] == [
+        "target",
+        "target",
+        "target",
+        "base",
+    ]
+    assert events[-1]["verdict"] == "PROVEN"
+
+
 def test_silence_when_no_base_to_prove_pass_side():
     # BASE_ONLY: we can confirm a deterministic failure but cannot prove the flip.
     engine = EvidenceEngine(OneShotGenerator(), LocalExecutor(), _cfg())

@@ -14,6 +14,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any, Callable
 
 from .engine import EngineConfig, EvidenceEngine
 from .executor.base import RepoState
@@ -24,7 +25,11 @@ from .models.case import Mode
 from .store.json_store import JsonCaseStore
 
 
-def _build_engine(use_docker: bool, offline: bool) -> EvidenceEngine:
+def _build_engine(
+    use_docker: bool,
+    offline: bool,
+    event_sink: Callable[[dict[str, Any]], None] | None = None,
+) -> EvidenceEngine:
     if use_docker:
         from .executor.docker_exec import DockerExecutor
 
@@ -32,7 +37,7 @@ def _build_engine(use_docker: bool, offline: bool) -> EvidenceEngine:
     else:
         executor = LocalExecutor()
     generator = StubGenerator() if offline else CodexGenerator()
-    return EvidenceEngine(generator, executor, EngineConfig())
+    return EvidenceEngine(generator, executor, EngineConfig(), event_sink=event_sink)
 
 
 def cmd_repro(args: argparse.Namespace) -> int:
@@ -43,7 +48,12 @@ def cmd_repro(args: argparse.Namespace) -> int:
         print("error: provide --claim or --trace", file=sys.stderr)
         return 2
 
-    engine = _build_engine(use_docker=args.docker, offline=args.offline)
+    event_sink = _print_event if args.events else None
+    engine = _build_engine(
+        use_docker=args.docker,
+        offline=args.offline,
+        event_sink=event_sink,
+    )
     if bool(args.base_sha) != bool(args.fix_sha):
         print("error: --base-sha and --fix-sha must be provided together", file=sys.stderr)
         return 2
@@ -53,6 +63,8 @@ def cmd_repro(args: argparse.Namespace) -> int:
 
     if args.base_sha:
         try:
+            if event_sink:
+                event_sink({"event": "phase", "phase": "checkout", "message": "Cloning commits"})
             with checkout_pair(args.repo, args.base_sha, args.fix_sha) as (target, base):
                 claim = Claim(
                     text=claim_text,
@@ -84,6 +96,10 @@ def cmd_repro(args: argparse.Namespace) -> int:
     store = JsonCaseStore(args.out)
     path = store.save(case)
 
+    if args.events:
+        _print_event({"event": "case", "case": case.to_dict()})
+        return 0 if case.is_proven() else 1
+
     print(f"\n=== VERDICT: {case.verdict.value} ===")
     if case.silence_reason:
         print(f"silence_reason: {case.silence_reason}")
@@ -91,6 +107,10 @@ def cmd_repro(args: argparse.Namespace) -> int:
     if args.json:
         print(json.dumps(case.to_dict(), indent=2, default=str))
     return 0 if case.is_proven() else 1
+
+
+def _print_event(event: dict[str, Any]) -> None:
+    print(json.dumps(event, default=str), flush=True)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -116,6 +136,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     p.add_argument("--out", default=".exhibit-a/cases", help="case output dir")
     p.add_argument("--json", action="store_true", help="print the full Case JSON")
+    p.add_argument("--events", action="store_true", help="print progress and final Case as JSONL")
     p.set_defaults(func=cmd_repro)
 
     args = parser.parse_args(argv)

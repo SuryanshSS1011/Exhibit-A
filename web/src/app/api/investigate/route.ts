@@ -3,13 +3,12 @@ import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
- * POST /api/investigate — run the Evidence Engine on a claim and return the Case.
+ * POST /api/investigate — stream Evidence Engine progress and the final Case.
  *
- * The web layer does NOT reimplement the engine; it drives the Python one. For the
- * MVP we invoke the CLI as a module and read the emitted Case JSON back. A real
- * v1 would stream the sandbox log live (SSE) so the UI can show the agent try,
- * fail, and retry — the most compelling demo moment (plan §4). This route is the
- * seam where that streaming plugs in.
+ * The web layer does not reimplement the engine; it drives the Python one. The CLI
+ * emits one JSON object per line. This route wraps those events as SSE so
+ * the case-file UI can show the agent try, fail, retry, and finally render the
+ * deterministic Case returned by the engine.
  */
 
 const ENGINE_DIR = path.resolve(process.cwd(), "..", "engine");
@@ -52,57 +51,78 @@ export async function POST(req: NextRequest) {
     body.claim,
     "--out",
     outDir,
-    "--json",
+    "--events",
   ];
   if (body.expect) args.push("--expect", body.expect);
   if (body.fixed) args.push("--fixed", body.fixed);
   if (hasRemote) args.push("--base-sha", body.baseSha!, "--fix-sha", body.fixSha!);
   if (body.docker) args.push("--docker");
 
-  const result = await runEngine(args);
-  if (result.error) {
-    return NextResponse.json(
-      { error: result.error, stderr: result.stderr },
-      { status: 500 },
-    );
-  }
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      let buffer = "";
+      let stderr = "";
+      let closed = false;
+      let sawCase = false;
+      const send = (payload: unknown, event = "message") => {
+        if (!closed) {
+          controller.enqueue(
+            encoder.encode(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`),
+          );
+        }
+      };
+      const close = () => {
+        if (!closed) {
+          closed = true;
+          controller.close();
+        }
+      };
+      const consumeLine = (line: string) => {
+        if (!line.trim()) return;
+        try {
+          const payload = JSON.parse(line);
+          if (payload.event === "case") sawCase = true;
+          send(payload, payload.event ?? "message");
+        } catch {
+          send({ event: "error", error: "engine emitted invalid progress data" }, "error");
+        }
+      };
 
-  // The CLI prints a header then the full Case JSON (with --json). Extract the JSON.
-  const jsonStart = result.stdout.indexOf("{");
-  if (jsonStart === -1) {
-    return NextResponse.json(
-      { error: "engine produced no Case JSON", stdout: result.stdout },
-      { status: 500 },
-    );
-  }
-  try {
-    const caseObj = JSON.parse(result.stdout.slice(jsonStart));
-    return NextResponse.json(caseObj);
-  } catch {
-    return NextResponse.json(
-      { error: "could not parse Case JSON", stdout: result.stdout },
-      { status: 500 },
-    );
-  }
-}
+      const child = spawn(PYTHON, args, { cwd: ENGINE_DIR });
+      child.stdout.on("data", (chunk) => {
+        buffer += chunk.toString();
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        lines.forEach(consumeLine);
+      });
+      child.stderr.on("data", (d) => (stderr += d.toString()));
+      child.on("error", (error) => {
+        send({ event: "error", error: error.message }, "error");
+        close();
+      });
+      child.on("close", (code) => {
+        if (buffer) consumeLine(buffer);
+        if (code !== 0 && code !== 1) {
+          send(
+            { event: "error", error: `engine exited ${code}`, stderr: stderr.trim() },
+            "error",
+          );
+        } else if (!sawCase) {
+          send({ event: "error", error: "engine produced no final Case" }, "error");
+        }
+        close();
+      });
 
-function runEngine(
-  args: string[],
-): Promise<{ stdout: string; stderr: string; error?: string }> {
-  return new Promise((resolve) => {
-    const child = spawn(PYTHON, args, { cwd: ENGINE_DIR });
-    let stdout = "";
-    let stderr = "";
-    child.stdout.on("data", (d) => (stdout += d.toString()));
-    child.stderr.on("data", (d) => (stderr += d.toString()));
-    child.on("error", (e) => resolve({ stdout, stderr, error: e.message }));
-    child.on("close", (code) => {
-      // The CLI exits 1 on INSUFFICIENT_EVIDENCE — that's a valid verdict, not an error.
-      if (code !== 0 && code !== 1) {
-        resolve({ stdout, stderr, error: `engine exited ${code}` });
-      } else {
-        resolve({ stdout, stderr });
-      }
-    });
+      req.signal.addEventListener("abort", () => child.kill("SIGTERM"), { once: true });
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+    },
   });
 }
