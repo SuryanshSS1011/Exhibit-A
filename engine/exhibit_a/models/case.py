@@ -62,7 +62,7 @@ class TestArtifact:
 class RunResult:
     """One execution of the test file in a sandbox against one code state."""
 
-    state: str  # "base" | "target"
+    state: str  # "base" | "target" | "control"
     exit_code: int
     passed: bool  # whether the test PASSED in this run
     log: str  # raw captured stdout/stderr (never paraphrased)
@@ -77,6 +77,7 @@ class Evidence:
     fail_log: str = ""
     fail_signature: Optional[str] = None
     pass_log: str = ""
+    control_log: str = ""
     reruns: int = 0
     deterministic: bool = False
     # Full per-run records, useful for the UI's two-tab evidence panel.

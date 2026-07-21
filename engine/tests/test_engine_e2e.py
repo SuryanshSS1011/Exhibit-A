@@ -199,6 +199,22 @@ def test_engine_stops_at_first_admissible_candidate():
     assert case.run_command.endswith("test_repro.py")
 
 
+def test_control_state_is_recorded_and_must_pass():
+    engine = EvidenceEngine(OneShotGenerator(), LocalExecutor(), _cfg())
+    claim = Claim(text="last_n drops the last row", repo_path=str(FIXTURES / "buggy_slice"))
+
+    case = engine.investigate(
+        claim,
+        target=RepoState(path=str(FIXTURES / "buggy_slice"), label="target"),
+        base=RepoState(path=str(FIXTURES / "fixed_slice"), label="base"),
+        control=RepoState(path=str(FIXTURES / "fixed_slice"), label="control"),
+    )
+
+    assert case.verdict is Verdict.PROVEN
+    assert case.evidence.control_log
+    assert [run.state for run in case.evidence.runs][-1] == "control"
+
+
 def test_remote_commit_proven_case_records_benchmark_provenance():
     engine = EvidenceEngine(TwoShotGenerator(), LocalExecutor(), _cfg())
     claim = Claim(text="last_n drops the last row", repo_path=str(FIXTURES / "buggy_slice"))

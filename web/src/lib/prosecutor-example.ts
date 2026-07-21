@@ -42,6 +42,7 @@ export const prosecutorExample: Case = {
     fail_log: failLog,
     fail_signature: "AssertionError: assert [3] == [3, 4]",
     pass_log: "1 passed in 0.02s",
+    control_log: "1 passed in 0.02s",
     reruns: 5,
     deterministic: true,
     runs: [],

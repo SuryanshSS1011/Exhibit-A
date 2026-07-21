@@ -73,6 +73,7 @@ class EvidenceEngine:
         mode: Mode = Mode.DETECTIVE,
         base: Optional[RepoState] = None,
         target: Optional[RepoState] = None,
+        control: Optional[RepoState] = None,
         repo_source: Optional[str] = None,
         intent_context: str | None = None,
     ) -> Case:
@@ -104,6 +105,7 @@ class EvidenceEngine:
         try:
             target_image = self.executor.prepare(target)
             base_image = self.executor.prepare(base) if base is not None else None
+            control_image = self.executor.prepare(control) if control is not None else None
         except EnvironmentSetupError as exc:
             case.silence_reason = f"could not build environment: {exc}"
             self._emit(
@@ -144,6 +146,8 @@ class EvidenceEngine:
                 base_image,
                 target_image,
                 changed_lines,
+                control,
+                control_image,
             )
             if case.is_evidence():
                 self._assess_intent(case, target, intent_context)
@@ -165,6 +169,8 @@ class EvidenceEngine:
                     base_image,
                     target_image,
                     changed_lines,
+                    control,
+                    control_image,
                 )
                 if case.is_evidence():
                     self._assess_intent(case, target, intent_context)
@@ -219,6 +225,8 @@ class EvidenceEngine:
         base_image: str | None,
         target_image: str | None,
         changed_lines: ChangedLines | None,
+        control: RepoState | None,
+        control_image: str | None,
     ) -> Optional[Feedback]:
         """Execute one candidate through the gates. Mutates `case`. Returns Feedback
         if the candidate was NOT admissible (to drive refinement), or None if proven.
@@ -249,6 +257,7 @@ class EvidenceEngine:
         )
         target_spec = ExecSpec(**{**spec.__dict__, "image": target_image})
         base_spec = ExecSpec(**{**spec.__dict__, "image": base_image})
+        control_spec = ExecSpec(**{**spec.__dict__, "image": control_image})
 
         # Run on the target (buggy) state N times for the determinism gate.
         target_outcomes = []
@@ -302,6 +311,31 @@ class EvidenceEngine:
                 duration_s=base_outcome.duration_s,
             )
 
+        control_outcome = None
+        if control is not None:
+            control_outcome = self.executor.run(control, control_spec)
+            run_records.append(
+                RunResult(
+                    state="control",
+                    exit_code=control_outcome.exit_code,
+                    passed=control_outcome.passed,
+                    log=control_outcome.log,
+                    signature=extract_signature(control_outcome),
+                    duration_s=control_outcome.duration_s,
+                )
+            )
+            self._emit(
+                "run",
+                state="control",
+                attempt=1,
+                total=1,
+                passed=control_outcome.passed,
+                exit_code=control_outcome.exit_code,
+                log=control_outcome.log,
+                signature=extract_signature(control_outcome),
+                duration_s=control_outcome.duration_s,
+            )
+
         expected = cand.expected_signature or claim.expected_signature
         flip = flip_check(
             target_runs=target_outcomes,
@@ -310,6 +344,7 @@ class EvidenceEngine:
             expected_signature=expected,
             allow_reproduced=self.config.allow_reproduced,
             changed_lines=changed_lines,
+            control_run=control_outcome,
         )
 
         if flip.admissible:
@@ -326,6 +361,7 @@ class EvidenceEngine:
                 fail_log=target_outcomes[0].log,
                 fail_signature=flip.fail_signature,
                 pass_log=base_outcome.log if base_outcome else "",
+                control_log=control_outcome.log if control_outcome else "",
                 reruns=self.config.reruns,
                 deterministic=flip.deterministic,
                 runs=run_records,
@@ -340,6 +376,8 @@ class EvidenceEngine:
         case.evidence = Evidence(
             fail_log=target_outcomes[0].log if target_outcomes else "",
             fail_signature=flip.fail_signature,
+            pass_log=base_outcome.log if base_outcome else "",
+            control_log=control_outcome.log if control_outcome else "",
             reruns=self.config.reruns,
             deterministic=flip.deterministic,
             runs=run_records,

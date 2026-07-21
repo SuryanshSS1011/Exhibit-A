@@ -17,9 +17,11 @@ const PYTHON = process.env.EXHIBIT_A_PYTHON ?? "python3";
 interface Body {
   repo?: string;
   fixed?: string;
+  control?: string;
   repoUrl?: string;
   baseSha?: string;
   fixSha?: string;
+  controlSha?: string;
   claim?: string;
   expect?: string;
   docker?: boolean;
@@ -68,7 +70,9 @@ export async function POST(req: NextRequest) {
   if (!replay) {
     if (body.expect) args.push("--expect", body.expect);
     if (body.fixed) args.push("--fixed", body.fixed);
+    if (body.control) args.push("--control", body.control);
     if (hasRemote) args.push("--base-sha", body.baseSha!, "--fix-sha", body.fixSha!);
+    if (body.controlSha) args.push("--control-sha", body.controlSha);
     if (body.docker) args.push("--docker");
   }
 

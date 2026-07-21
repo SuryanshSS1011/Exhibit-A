@@ -20,7 +20,7 @@ from .engine import EngineConfig, EvidenceEngine
 from .executor.base import RepoState
 from .executor.local_exec import LocalExecutor
 from .hypothesis.generator import Claim, CodexGenerator, StubGenerator
-from .intake.git_checkout import checkout_pair
+from .intake.git_checkout import checkout_pair, checkout_triplet
 from .models.case import Mode
 from .store.json_store import JsonCaseStore
 
@@ -87,12 +87,25 @@ def cmd_repro(args: argparse.Namespace) -> int:
     if args.fixed and args.base_sha:
         print("error: --fixed cannot be combined with --base-sha/--fix-sha", file=sys.stderr)
         return 2
+    if args.control and args.base_sha:
+        print("error: --control cannot be combined with remote SHA intake", file=sys.stderr)
+        return 2
+    if args.control_sha and not args.base_sha:
+        print("error: --control-sha requires --base-sha and --fix-sha", file=sys.stderr)
+        return 2
 
     if args.base_sha:
         try:
             if event_sink:
                 event_sink({"event": "phase", "phase": "checkout", "message": "Cloning commits"})
-            with checkout_pair(args.repo, args.base_sha, args.fix_sha) as (target, base):
+            checkouts = (
+                checkout_triplet(args.repo, args.base_sha, args.fix_sha, args.control_sha)
+                if args.control_sha
+                else checkout_pair(args.repo, args.base_sha, args.fix_sha)
+            )
+            with checkouts as states:
+                target, base = states[:2]
+                control = states[2] if len(states) == 3 else None
                 claim = Claim(
                     text=claim_text,
                     repo_path=target.path,
@@ -103,6 +116,7 @@ def cmd_repro(args: argparse.Namespace) -> int:
                     mode=Mode.DETECTIVE,
                     target=target,
                     base=base,
+                    control=control,
                     repo_source=args.repo,
                 )
         except (ValueError, OSError, subprocess.SubprocessError) as exc:
@@ -116,10 +130,20 @@ def cmd_repro(args: argparse.Namespace) -> int:
         )
         target = RepoState(path=claim.repo_path, label="target", source=claim.repo_path)
         base = None
+        control = None
         if args.fixed:
             fixed_path = str(Path(args.fixed).resolve())
             base = RepoState(path=fixed_path, label="base", source=fixed_path)
-        case = engine.investigate(claim, mode=Mode.DETECTIVE, target=target, base=base)
+        if args.control:
+            control_path = str(Path(args.control).resolve())
+            control = RepoState(path=control_path, label="control", source=control_path)
+        case = engine.investigate(
+            claim,
+            mode=Mode.DETECTIVE,
+            target=target,
+            base=base,
+            control=control,
+        )
 
     store = JsonCaseStore(args.out)
     path = store.save(case)
@@ -175,6 +199,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     p.add_argument("--base-sha", help="buggy/base commit SHA for remote-repo intake")
     p.add_argument("--fix-sha", help="fixing commit or PR-head SHA for remote-repo intake")
+    p.add_argument(
+        "--control",
+        help="older/unrelated local checkout; the candidate must pass there",
+    )
+    p.add_argument(
+        "--control-sha",
+        help="older/unrelated remote commit SHA; the candidate must pass there",
+    )
     p.add_argument(
         "--reproduced",
         action="store_true",

@@ -16,7 +16,7 @@ export interface TestArtifact {
 }
 
 export interface RunResult {
-  state: "base" | "target";
+  state: "base" | "target" | "control";
   exit_code: number;
   passed: boolean;
   log: string;
@@ -28,6 +28,7 @@ export interface Evidence {
   fail_log: string;
   fail_signature: string | null;
   pass_log: string;
+  control_log: string;
   reruns: number;
   deterministic: boolean;
   runs: RunResult[];

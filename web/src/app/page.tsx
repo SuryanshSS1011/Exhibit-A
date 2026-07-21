@@ -24,9 +24,11 @@ export default function Home() {
   const [sourceMode, setSourceMode] = useState<"local" | "git">("local");
   const [repo, setRepo] = useState("../fixtures/buggy_inventory");
   const [fixed, setFixed] = useState("../fixtures/fixed_inventory");
+  const [control, setControl] = useState("");
   const [repoUrl, setRepoUrl] = useState("");
   const [baseSha, setBaseSha] = useState("");
   const [fixSha, setFixSha] = useState("");
+  const [controlSha, setControlSha] = useState("");
   const [claim, setClaim] = useState(
     "stock_for should return zero for an unknown SKU instead of raising KeyError",
   );
@@ -48,8 +50,8 @@ export default function Home() {
           replay
             ? { replay }
             : sourceMode === "local"
-              ? { repo, fixed, claim }
-              : { repoUrl, baseSha, fixSha, claim },
+              ? { repo, fixed, control, claim }
+              : { repoUrl, baseSha, fixSha, controlSha, claim },
         ),
       });
       if (!res.ok) {
@@ -206,6 +208,17 @@ export default function Home() {
             </label>
             <label className="block">
               <span className="mb-1 block font-serif text-xs uppercase tracking-wide text-ink-400">
+                Unrelated Control State · Optional
+              </span>
+              <input
+                value={control}
+                onChange={(e) => setControl(e.target.value)}
+                className="w-full rounded-md border border-amber-500/30 bg-ink-900 p-2 font-mono text-sm text-ink-200 outline-none focus:border-amber-500"
+                placeholder="Older checkout where the candidate must pass"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block font-serif text-xs uppercase tracking-wide text-ink-400">
                 Known Fixed State
               </span>
               <input
@@ -253,6 +266,17 @@ export default function Home() {
                 />
               </label>
             </div>
+            <label className="block">
+              <span className="mb-1 block font-serif text-xs uppercase tracking-wide text-ink-400">
+                Control SHA · Older / Unrelated · Optional
+              </span>
+              <input
+                value={controlSha}
+                onChange={(e) => setControlSha(e.target.value)}
+                className="w-full rounded-md border border-amber-500/30 bg-ink-900 p-2 font-mono text-sm text-ink-200 outline-none focus:border-amber-500"
+                placeholder="7–40 hex characters"
+              />
+            </label>
           </div>
         )}
         <p className="text-xs text-ink-400">
@@ -342,7 +366,8 @@ function eventLabel(event: InvestigationEvent): string {
   if (event.event === "phase") return asString(event.message) ?? "Advancing investigation";
   if (event.event === "hypothesis") return `Hypothesis admitted: ${asString(event.text)}`;
   if (event.event === "run") {
-    const state = event.state === "target" ? "buggy" : "fixed";
+    const state =
+      event.state === "target" ? "buggy" : event.state === "control" ? "control" : "fixed";
     const outcome = event.passed ? "PASS" : "FAIL";
     return `${state} run ${event.attempt}/${event.total} · ${outcome}`;
   }

@@ -77,3 +77,17 @@ def test_checkout_context_cleans_up_after_failure(monkeypatch: pytest.MonkeyPatc
             raise RuntimeError("investigation failed")
 
     assert not scratch.exists()
+
+
+def test_checkout_triplet_labels_and_cleans_all_states(monkeypatch: pytest.MonkeyPatch):
+    def fake_git(argv: list[str]) -> None:
+        if "clone" in argv:
+            Path(argv[-1]).mkdir()
+
+    monkeypatch.setattr(git_checkout, "_run_git", fake_git)
+
+    with git_checkout.checkout_triplet(REPO_URL, SHA, "def5678", "fedcba9") as states:
+        paths = [Path(state.path).parent for state in states]
+        assert [state.label for state in states] == ["target", "base", "control"]
+
+    assert all(not path.exists() for path in paths)

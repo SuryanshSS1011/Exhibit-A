@@ -211,6 +211,7 @@ def flip_check(
     expected_signature: Optional[str] = None,
     allow_reproduced: bool = False,
     changed_lines: ChangedLines | None = None,
+    control_run: Optional[ExecOutcome] = None,
 ) -> FlipResult:
     """Apply all admissibility gates. `target_runs` are N reruns on the buggy state.
 
@@ -310,6 +311,21 @@ def flip_check(
         return FlipResult(
             False,
             "test does not pass on the base/fixed state (fail-to-fail, not fail-to-pass)",
+            fail_signature=actual_sig,
+            deterministic=deterministic,
+        )
+
+    # Cheap anti-coupling check: evidence for this delta should survive on a caller-
+    # selected older/unrelated state. A failure there means the candidate is coupled
+    # to pre-existing or incidental behavior rather than isolating this change.
+    if control_run is not None and not control_run.passed:
+        control_infra = detect_infra_failure(control_run)
+        reason = control_infra or (
+            "test also fails on the unrelated control state; candidate is not specific to the claimed change"
+        )
+        return FlipResult(
+            False,
+            reason,
             fail_signature=actual_sig,
             deterministic=deterministic,
         )

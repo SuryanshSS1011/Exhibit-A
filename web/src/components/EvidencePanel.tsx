@@ -8,7 +8,10 @@ import type { Case } from "@/lib/case";
 export function EvidencePanel({ c }: { c: Case }) {
   const cmd = c.run_command;
   return (
-    <section aria-label="Evidence" className="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <section
+      aria-label="Evidence"
+      className={`grid grid-cols-1 gap-4 ${c.evidence.control_log ? "lg:grid-cols-3" : "md:grid-cols-2"}`}
+    >
       <EvidenceColumn
         title="Fails on the buggy code"
         accent="fail"
@@ -24,6 +27,15 @@ export function EvidencePanel({ c }: { c: Case }) {
         signature={null}
         empty={c.evidence.pass_log ? undefined : "No base/fixed state was proven."}
       />
+      {c.evidence.control_log && (
+        <EvidenceColumn
+          title="Survives unrelated control"
+          accent="control"
+          command={cmd}
+          log={c.evidence.control_log}
+          signature={null}
+        />
+      )}
     </section>
   );
 }
@@ -37,14 +49,19 @@ function EvidenceColumn({
   empty,
 }: {
   title: string;
-  accent: "fail" | "pass";
+  accent: "fail" | "pass" | "control";
   command: string;
   log: string;
   signature: string | null;
   empty?: string;
 }) {
-  const border = accent === "fail" ? "border-fail/50" : "border-pass/50";
-  const dot = accent === "fail" ? "bg-fail" : "bg-pass";
+  const border =
+    accent === "fail"
+      ? "border-fail/50"
+      : accent === "pass"
+        ? "border-pass/50"
+        : "border-amber-500/50";
+  const dot = accent === "fail" ? "bg-fail" : accent === "pass" ? "bg-pass" : "bg-amber-500";
   return (
     <div className={`rounded-md border ${border} bg-ink-900/60`}>
       <header className="flex items-center gap-2 border-b border-ink-700 px-4 py-2">

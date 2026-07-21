@@ -28,6 +28,7 @@
     "fail_log": "FAILED test_inventory_repro.py::test_unknown_sku_has_zero_stock - KeyError: 'missing'",
     "fail_signature": "KeyError: 'missing'",
     "pass_log": "1 passed",
+    "control_log": "",
     "reruns": 5,
     "deterministic": true,
     "runs": [

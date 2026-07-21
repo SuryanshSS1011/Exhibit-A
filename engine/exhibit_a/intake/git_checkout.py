@@ -104,6 +104,16 @@ def checkout_pair(
             yield buggy, fixed
 
 
+@contextmanager
+def checkout_triplet(
+    repo_url: str, base_sha: str, fix_sha: str, control_sha: str
+) -> Iterator[tuple[RepoState, RepoState, RepoState]]:
+    """Yield buggy, fixed, and older/unrelated control states with cleanup."""
+    with checkout_pair(repo_url, base_sha, fix_sha) as (buggy, fixed):
+        with checkout_context(repo_url, control_sha, label="control") as control:
+            yield buggy, fixed, control
+
+
 def _validate_sha(sha: str) -> None:
     if not _SHA_RE.fullmatch(sha):
         raise ValueError("commit SHA must contain 7 to 40 hexadecimal characters")

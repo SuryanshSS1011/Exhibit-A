@@ -226,3 +226,32 @@ def test_prosecutor_location_gate_accepts_failure_downstream_of_changed_frame():
     )
 
     assert result.admissible, result.reason
+
+
+def test_unrelated_control_failure_rejects_otherwise_valid_flip():
+    target = [_out(False, REAL_FAIL) for _ in range(3)]
+
+    result = flip_check(
+        target_runs=target,
+        base_run=_out(True, "1 passed"),
+        control_run=_out(False, REAL_FAIL),
+        test_code=REAL_TEST_CODE,
+        expected_signature="AssertionError",
+    )
+
+    assert not result.admissible
+    assert "unrelated control state" in (result.reason or "")
+
+
+def test_unrelated_control_pass_keeps_valid_flip_admissible():
+    target = [_out(False, REAL_FAIL) for _ in range(3)]
+
+    result = flip_check(
+        target_runs=target,
+        base_run=_out(True, "1 passed"),
+        control_run=_out(True, "1 passed"),
+        test_code=REAL_TEST_CODE,
+        expected_signature="AssertionError",
+    )
+
+    assert result.admissible, result.reason
