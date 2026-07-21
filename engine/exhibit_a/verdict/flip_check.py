@@ -1,0 +1,181 @@
+"""The Flip Check + validity gates — the hard "evidence-or-silence" boundary.
+
+This module is pure, deterministic policy with NO model in the loop. It decides
+whether a candidate test is admissible evidence. Per the plan (§3):
+
+A test is admissible evidence IFF:
+  (a) it FAILS on the target (buggy) state, with the EXPECTED failure signature;
+  (b) it PASSES on the base/fixed state;
+  (c) it is DETERMINISTIC across N reruns;
+  (d) it did not tamper with the harness.
+
+The checker trusts its own execution logs over anything the generator claims
+(AnyPoC rule). If any gate fails, the verdict is INSUFFICIENT_EVIDENCE and a
+silence_reason is recorded — never a guess.
+
+`expected_signature` guards the "right failure for the wrong reason" trap
+(AssertFlip / SWE-Doctor): a test that fails for an unrelated reason is NOT
+evidence for the claim.
+"""
+
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+from typing import Optional
+
+from ..executor.base import ExecOutcome
+
+# --- failure signature extraction -------------------------------------------
+
+# pytest prints failures two ways on `E   ` lines:
+#   - a raised exception:      `E   KeyError: 'missing'`   -> Uppercase-initial, dotted type
+#   - a bare `assert` failure: `E   assert [3] == [3, 4]`  -> lowercase keyword, IS an AssertionError
+# We match the exception form (requiring an uppercase-initial identifier so the
+# lowercase `assert` keyword doesn't get mistaken for an exception type), and treat
+# a bare-assert line as AssertionError. The short-test-summary line is a fallback.
+_EXC_LINE = re.compile(r"^E\s+([A-Z][\w.]*(?:Error|Exception|Warning|Exit)?)\s*:\s*(.*)$", re.M)
+_ASSERT_LINE = re.compile(r"^E\s+assert\b\s*(.*)$", re.M)
+_SUMMARY = re.compile(r"^(FAILED|ERROR)\s+(\S+)(?:\s+-\s+(.*))?$", re.M)
+
+
+def extract_signature(outcome: ExecOutcome) -> Optional[str]:
+    """Pull a stable failure signature (exception type + short message) from logs.
+
+    Returns None when nothing failure-like is found (e.g. a passing run).
+    """
+    log = outcome.log
+    m = _EXC_LINE.search(log)
+    if m:
+        exc_type = m.group(1).strip()
+        msg = m.group(2).strip()
+        return f"{exc_type}: {msg}" if msg else exc_type
+    m = _ASSERT_LINE.search(log)
+    if m:
+        detail = m.group(1).strip()
+        return f"AssertionError: {detail}" if detail else "AssertionError"
+    m = _SUMMARY.search(log)
+    if m and m.group(3):
+        return m.group(3).strip()
+    return None
+
+
+def signatures_match(expected: Optional[str], actual: Optional[str]) -> bool:
+    """Loose match: the claimed failure reason must appear in the actual one.
+
+    We require the expected exception TYPE (first token before ':') to be present.
+    A full-string match is too brittle across message wording; a substring of the
+    type name is the right granularity for "failed for the reason claimed."
+    """
+    if expected is None:
+        return True  # caller didn't constrain the signature
+    if actual is None:
+        return False
+    exp_type = expected.split(":", 1)[0].strip()
+    return exp_type.lower() in actual.lower()
+
+
+# --- harness-tamper detection ------------------------------------------------
+
+# Echo documented agents trying to recreate/modify files or run unrelated tests
+# to fake a pass. These markers in a test are red flags. This is a coarse static
+# guard for the MVP; the Docker executor's read-only-source mount is the real
+# enforcement in v1.
+_TAMPER_PATTERNS = [
+    r"\bos\.remove\b",
+    r"\bshutil\.rmtree\b",
+    r"\bopen\([^)]*['\"][wa]['\"]",  # opening non-test files for write
+    r"\bsubprocess\b",
+    r"\bmonkeypatch\.setattr\([^)]*__",  # patching dunders to force a pass
+    r"\bsys\.exit\b",
+]
+
+
+def detect_tamper(test_code: str) -> Optional[str]:
+    """Return a reason string if the test looks like it tampers with the harness."""
+    for pat in _TAMPER_PATTERNS:
+        if re.search(pat, test_code):
+            return f"test contains a harness-tamper pattern: /{pat}/"
+    return None
+
+
+# --- the flip check ----------------------------------------------------------
+
+
+@dataclass
+class FlipResult:
+    admissible: bool
+    reason: Optional[str]  # silence_reason when not admissible; None when proven
+    fail_signature: Optional[str] = None
+    deterministic: bool = False
+
+
+def flip_check(
+    *,
+    target_runs: list[ExecOutcome],
+    base_run: Optional[ExecOutcome],
+    test_code: str,
+    expected_signature: Optional[str] = None,
+) -> FlipResult:
+    """Apply all admissibility gates. `target_runs` are N reruns on the buggy state.
+
+    base_run may be None in Detective BASE_ONLY mode, where we cannot yet prove
+    the pass side (that requires a synthesized fix). In that case the check can
+    still confirm a deterministic, signature-matching failure but must NOT return
+    PROVEN — it returns admissible=False with a reason noting the missing pass side.
+    """
+    if not target_runs:
+        return FlipResult(False, "no target execution recorded")
+
+    # (d) tamper gate — cheapest, run first.
+    tamper = detect_tamper(test_code)
+    if tamper:
+        return FlipResult(False, tamper)
+
+    # (a) fail-on-target: every rerun must fail.
+    target_failed = [not r.passed for r in target_runs]
+    if not all(target_failed):
+        # Non-deterministic or didn't fail at all.
+        if any(target_failed):
+            return FlipResult(
+                False,
+                f"flaky on target: failed {sum(target_failed)}/{len(target_runs)} reruns",
+                deterministic=False,
+            )
+        return FlipResult(False, "test does not fail on the target (buggy) state")
+
+    # (a') signature match — failed for the reason claimed.
+    actual_sig = extract_signature(target_runs[0])
+    if not signatures_match(expected_signature, actual_sig):
+        return FlipResult(
+            False,
+            f"failed for the wrong reason: expected ~{expected_signature!r}, got {actual_sig!r}",
+            fail_signature=actual_sig,
+        )
+
+    # (c) determinism confirmed for the fail side.
+    deterministic = len(target_runs) >= 1 and all(target_failed)
+
+    # (b) pass-on-base.
+    if base_run is None:
+        return FlipResult(
+            False,
+            "confirmed deterministic failure on target, but no base/fixed state to prove the pass side",
+            fail_signature=actual_sig,
+            deterministic=deterministic,
+        )
+    if not base_run.passed:
+        return FlipResult(
+            False,
+            "test does not pass on the base/fixed state (fail-to-fail, not fail-to-pass)",
+            fail_signature=actual_sig,
+            deterministic=deterministic,
+        )
+
+    # All gates cleared.
+    return FlipResult(
+        admissible=True,
+        reason=None,
+        fail_signature=actual_sig,
+        deterministic=deterministic,
+    )
