@@ -427,3 +427,37 @@ def test_environment_build_failure_becomes_honest_silence():
     assert case.verdict is Verdict.INSUFFICIENT_EVIDENCE
     assert case.hypotheses == []
     assert case.silence_reason == "could not build environment: no pinned lockfile"
+
+
+class FlakyExecutor(Executor):
+    def __init__(self):
+        self.calls = 0
+
+    def prepare(self, repo: RepoState) -> str:
+        return "exhibit-a-env:flaky-fixture"
+
+    def run(self, repo: RepoState, spec: ExecSpec):
+        from exhibit_a.executor.base import ExecOutcome
+
+        self.calls += 1
+        if self.calls == 2:
+            return ExecOutcome(0, "1 passed", "")
+        return ExecOutcome(1, "", "E   AssertionError: wrong value")
+
+
+def test_flaky_rejection_retains_candidate_and_environment_for_private_quarantine():
+    config = _cfg()
+    config.check_existing_suite = False
+    engine = EvidenceEngine(OneShotGenerator(), FlakyExecutor(), config)
+    claim = Claim(
+        text="last_n is intermittent",
+        repo_path=str(FIXTURES / "buggy_slice"),
+        expected_signature="AssertionError",
+    )
+
+    case = engine.investigate(claim)
+
+    assert case.verdict is Verdict.INSUFFICIENT_EVIDENCE
+    assert case.silence_reason and case.silence_reason.startswith("flaky on target")
+    assert case.test_file and case.test_file.path == "test_repro.py"
+    assert case.environment_ref == "exhibit-a-env:flaky-fixture"

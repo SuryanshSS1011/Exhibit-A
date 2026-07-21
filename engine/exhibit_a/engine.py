@@ -117,6 +117,7 @@ class EvidenceEngine:
                 reason=case.silence_reason,
             )
             return case
+        case.environment_ref = target_image or "local-unisolated"
 
         if self.config.check_existing_suite:
             self._emit(
@@ -285,7 +286,7 @@ class EvidenceEngine:
         case.hypotheses.append(hyp)
         self._emit("hypothesis", text=cand.hypothesis, test_path=cand.test_path)
 
-        policy_reason = _candidate_policy_reason(cand)
+        policy_reason = candidate_policy_reason(cand)
         if policy_reason:
             hyp.rejected = True
             hyp.reason = policy_reason
@@ -419,6 +420,10 @@ class EvidenceEngine:
             self._emit("verdict", verdict=verdict.value, hypothesis=cand.hypothesis)
             return None
 
+        if flip.reason and flip.reason.startswith("flaky on target"):
+            case.test_file = TestArtifact(path=cand.test_path, code=cand.test_code)
+            case.run_command = spec.command
+
         # Not admissible: record why, mark hypothesis rejected, return feedback.
         hyp.rejected = True
         hyp.reason = flip.reason
@@ -451,7 +456,7 @@ class EvidenceEngine:
             self.event_sink({"event": event, **payload})
 
 
-def _candidate_policy_reason(cand: Candidate) -> str | None:
+def candidate_policy_reason(cand: Candidate) -> str | None:
     """Reject candidates that could escape the single generated pytest file."""
     path = PurePosixPath(cand.test_path)
     if (

@@ -16,16 +16,18 @@ import sys
 from pathlib import Path
 from typing import Any, Callable
 
-from .engine import EngineConfig, EvidenceEngine
+from .engine import EngineConfig, EvidenceEngine, candidate_policy_reason
 from .eef import create_bundle, verify_bundle
-from .executor.base import RepoState
+from .executor.base import ExecSpec, RepoState
 from .executor.local_exec import LocalExecutor
 from .hypothesis.generator import Candidate, Claim, CodexGenerator, Feedback, StubGenerator
 from .intake.git_bisect import bisect_reproduction
 from .intake.git_checkout import checkout_context, checkout_pair, checkout_triplet
 from .models.case import Case, Mode, Verdict
 from .store.json_store import JsonCaseStore
+from .store.research import ResearchStore
 from .store.suite_gap import SuiteGapStore
+from .verdict.flip_check import extract_signature, signatures_match
 
 
 def _build_engine(
@@ -196,6 +198,10 @@ def cmd_repro(args: argparse.Namespace) -> int:
         case,
         model=str(getattr(engine.generator, "model", type(engine.generator).__name__)),
     )
+    research = ResearchStore(Path(args.out).parent / "research")
+    model = str(getattr(engine.generator, "model", type(engine.generator).__name__))
+    research.record_flaky(case, model=model)
+    research.register_observatory(case, model=model)
 
     if args.events:
         _print_event({"event": "case", "case": case.to_dict()})
@@ -244,6 +250,70 @@ def cmd_verify(args: argparse.Namespace) -> int:
         return 1
     print(json.dumps(result.__dict__, indent=2))
     return 0 if result.execution_verified is not False else 1
+
+
+def cmd_observe(args: argparse.Namespace) -> int:
+    try:
+        case = json.loads(Path(args.case).read_text())
+        test = case.get("test_file")
+        if not isinstance(test, dict):
+            raise ValueError("observatory Case has no generated test")
+        reruns = max(1, int(case.get("evidence", {}).get("reruns", 1)))
+        candidate = Candidate(
+            hypothesis="observatory replay",
+            test_path=str(test.get("path", "")),
+            test_code=str(test.get("code", "")),
+            run_command=str(case.get("run_command", "")),
+            expected_signature=case.get("evidence", {}).get("fail_signature"),
+        )
+        reason = candidate_policy_reason(candidate)
+        if reason:
+            raise ValueError(reason)
+        from .executor.docker_exec import DockerExecutor
+
+        with checkout_context(args.repo_url, args.upstream_sha, label="upstream") as upstream:
+            executor = DockerExecutor()
+            image = executor.prepare(upstream)
+            spec = ExecSpec(
+                test_path=candidate.test_path,
+                test_code=candidate.test_code,
+                command=candidate.run_command,
+                image=image,
+            )
+            outcomes = [executor.run(upstream, spec) for _ in range(reruns)]
+        matches = [
+            signatures_match(candidate.expected_signature, extract_signature(outcome))
+            for outcome in outcomes
+        ]
+        if all(outcome.passed for outcome in outcomes):
+            status = "healthy"
+        elif all(not outcome.passed for outcome in outcomes) and all(matches):
+            status = "re_regressed"
+        elif any(outcome.passed for outcome in outcomes):
+            status = "flaky"
+        else:
+            status = "inconclusive"
+        runs = [
+            {
+                "exit_code": outcome.exit_code,
+                "passed": outcome.passed,
+                "log": outcome.log,
+                "signature": extract_signature(outcome),
+                "duration_s": outcome.duration_s,
+            }
+            for outcome in outcomes
+        ]
+        path = ResearchStore(args.out).record_observation(
+            str(case["id"]),
+            upstream_sha=args.upstream_sha,
+            status=status,
+            runs=runs,
+        )
+    except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as exc:
+        print(f"error: observatory run failed: {exc}", file=sys.stderr)
+        return 2
+    print(f"{status}: {path}")
+    return 1 if status == "re_regressed" else 0
 
 
 def _load_replay(path: Path) -> dict[str, Any]:
@@ -334,6 +404,13 @@ def main(argv: list[str] | None = None) -> int:
         help="rebuild with network disabled and re-run the deterministic flip check",
     )
     verify.set_defaults(func=cmd_verify)
+
+    observe = sub.add_parser("observe", help="re-run a minted test on a pinned upstream SHA")
+    observe.add_argument("case", help="minted Case JSON")
+    observe.add_argument("repo_url", help="HTTPS upstream repository URL")
+    observe.add_argument("--upstream-sha", required=True, help="pinned current upstream SHA")
+    observe.add_argument("--out", default=".exhibit-a/research", help="private research root")
+    observe.set_defaults(func=cmd_observe)
 
     args = parser.parse_args(argv)
     return args.func(args)

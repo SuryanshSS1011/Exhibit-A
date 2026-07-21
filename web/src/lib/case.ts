@@ -54,6 +54,7 @@ export interface Case {
   target_commit: string | null;
   culprit_commit: string | null;
   culprit_parent_commit: string | null;
+  environment_ref: string | null;
   target_state: TargetKind;
   claim_text: string;
   hypotheses: Hypothesis[];

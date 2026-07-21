@@ -6,6 +6,7 @@
   "target_commit": null,
   "culprit_commit": null,
   "culprit_parent_commit": null,
+  "environment_ref": "local-unisolated",
   "target_state": "synthesized_patch",
   "claim_text": "stock_for should return zero for an unknown SKU instead of raising KeyError",
   "hypotheses": [

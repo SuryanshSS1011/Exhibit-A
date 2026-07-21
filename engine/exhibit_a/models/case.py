@@ -127,6 +127,7 @@ class Case:
     target_commit: Optional[str] = None
     culprit_commit: Optional[str] = None
     culprit_parent_commit: Optional[str] = None
+    environment_ref: Optional[str] = None
     target_state: TargetKind = TargetKind.BASE_ONLY
 
     # --- the claim & reasoning ---

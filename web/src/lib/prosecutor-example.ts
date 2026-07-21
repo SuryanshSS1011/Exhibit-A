@@ -19,6 +19,7 @@ export const prosecutorExample: Case = {
   target_commit: "badc0de",
   culprit_commit: null,
   culprit_parent_commit: null,
+  environment_ref: "exhibit-a-env:fixture",
   target_state: "pr_head",
   claim_text: "PR #17 drops the final element from every last_n result.",
   hypotheses: [

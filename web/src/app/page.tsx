@@ -7,6 +7,7 @@ import { VerdictStamp } from "@/components/VerdictStamp";
 import { EvidencePanel } from "@/components/EvidencePanel";
 import { ProsecutorExample } from "@/components/ProsecutorExample";
 import { SilenceLog } from "@/components/SilenceLog";
+import { IntentConfirmation } from "@/components/IntentConfirmation";
 
 interface InvestigationEvent {
   event: string;
@@ -431,6 +432,7 @@ function CaseFile({ c }: { c: Case }) {
                   Declared delta: {c.declared_behavior_delta}
                 </span>
               )}
+              <IntentConfirmation c={c} />
             </div>
           )}
           {c.verdict === "REPRODUCED" && (
