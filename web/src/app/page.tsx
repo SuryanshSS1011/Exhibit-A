@@ -32,7 +32,7 @@ export default function Home() {
   const [result, setResult] = useState<Case | null>(null);
   const [events, setEvents] = useState<InvestigationEvent[]>([]);
 
-  async function investigate() {
+  async function investigate(replay?: "proven" | "silence") {
     setBusy(true);
     setError(null);
     setResult(null);
@@ -42,9 +42,11 @@ export default function Home() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(
-          sourceMode === "local"
-            ? { repo, fixed, claim }
-            : { repoUrl, baseSha, fixSha, claim },
+          replay
+            ? { replay }
+            : sourceMode === "local"
+              ? { repo, fixed, claim }
+              : { repoUrl, baseSha, fixSha, claim },
         ),
       });
       if (!res.ok) {
@@ -116,6 +118,47 @@ export default function Home() {
 
       {workspace === "detective" ? (
         <>
+      <section
+        aria-label="Sealed demo exhibits"
+        className="mb-8 grid overflow-hidden rounded-md border border-ink-700 bg-ink-950 md:grid-cols-[1fr_auto]"
+      >
+        <div className="border-b border-ink-700 px-4 py-3 md:border-b-0 md:border-r">
+          <h2 className="font-serif text-xs uppercase tracking-[0.16em] text-ink-300">
+            Sealed demo exhibits
+          </h2>
+          <p className="mt-1 text-xs text-ink-400">
+            Open a recorded Case when stage conditions make a live model run impractical.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 divide-x divide-ink-700">
+          <button
+            type="button"
+            onClick={() => investigate("proven")}
+            disabled={busy}
+            className="group min-w-32 px-4 py-3 text-left transition hover:bg-pass/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-pass disabled:opacity-50"
+          >
+            <span className="block font-mono text-[10px] uppercase tracking-wide text-pass">
+              Exhibit P
+            </span>
+            <span className="mt-1 block font-serif text-xs uppercase text-ink-200">
+              Replay proof
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => investigate("silence")}
+            disabled={busy}
+            className="group min-w-32 px-4 py-3 text-left transition hover:bg-silence/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-silence disabled:opacity-50"
+          >
+            <span className="block font-mono text-[10px] uppercase tracking-wide text-silence">
+              Exhibit S
+            </span>
+            <span className="mt-1 block font-serif text-xs uppercase text-ink-200">
+              Replay silence
+            </span>
+          </button>
+        </div>
+      </section>
       <section aria-label="Intake" className="mb-8 space-y-3">
         <div className="flex border-b border-ink-700" role="group" aria-label="Source type">
           {(["local", "git"] as const).map((mode) => (
@@ -213,7 +256,7 @@ export default function Home() {
           A PROVEN verdict requires both sides: fail on the reported state, pass on the fix.
         </p>
         <button
-          onClick={investigate}
+          onClick={() => investigate()}
           disabled={busy}
           className="rounded-md border border-ink-400 px-5 py-2 font-serif text-sm uppercase tracking-wide text-ink-200 transition hover:bg-ink-800 disabled:opacity-50"
         >

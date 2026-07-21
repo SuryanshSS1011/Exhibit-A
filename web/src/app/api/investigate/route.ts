@@ -20,10 +20,16 @@ interface Body {
   repoUrl?: string;
   baseSha?: string;
   fixSha?: string;
-  claim: string;
+  claim?: string;
   expect?: string;
   docker?: boolean;
+  replay?: "proven" | "silence";
 }
+
+const REPLAY_CASES = {
+  proven: path.resolve(ENGINE_DIR, "..", "fixtures", "cases", "inventory_proven.json"),
+  silence: path.resolve(ENGINE_DIR, "..", "fixtures", "cases", "inventory_silence.json"),
+} as const;
 
 export async function POST(req: NextRequest) {
   let body: Body;
@@ -32,9 +38,13 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "invalid JSON body" }, { status: 400 });
   }
+  const replay = body.replay ? REPLAY_CASES[body.replay] : undefined;
+  if (body.replay && !replay) {
+    return NextResponse.json({ error: "unknown sealed Case" }, { status: 400 });
+  }
   const hasLocal = Boolean(body.repo);
   const hasRemote = Boolean(body.repoUrl && body.baseSha && body.fixSha);
-  if (!body.claim || hasLocal === hasRemote) {
+  if (!replay && (!body.claim || hasLocal === hasRemote)) {
     return NextResponse.json(
       { error: "provide claim and exactly one local or remote repository source" },
       { status: 400 },
@@ -42,21 +52,25 @@ export async function POST(req: NextRequest) {
   }
 
   const outDir = path.join(ENGINE_DIR, ".exhibit-a", "cases");
-  const args = [
-    "-m",
-    "exhibit_a.cli",
-    "repro",
-    hasRemote ? body.repoUrl! : body.repo!,
-    "--claim",
-    body.claim,
-    "--out",
-    outDir,
-    "--events",
-  ];
-  if (body.expect) args.push("--expect", body.expect);
-  if (body.fixed) args.push("--fixed", body.fixed);
-  if (hasRemote) args.push("--base-sha", body.baseSha!, "--fix-sha", body.fixSha!);
-  if (body.docker) args.push("--docker");
+  const args = replay
+    ? ["-m", "exhibit_a.cli", "repro", "--replay", replay, "--events"]
+    : [
+        "-m",
+        "exhibit_a.cli",
+        "repro",
+        hasRemote ? body.repoUrl! : body.repo!,
+        "--claim",
+        body.claim!,
+        "--out",
+        outDir,
+        "--events",
+      ];
+  if (!replay) {
+    if (body.expect) args.push("--expect", body.expect);
+    if (body.fixed) args.push("--fixed", body.fixed);
+    if (hasRemote) args.push("--base-sha", body.baseSha!, "--fix-sha", body.fixSha!);
+    if (body.docker) args.push("--docker");
+  }
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
