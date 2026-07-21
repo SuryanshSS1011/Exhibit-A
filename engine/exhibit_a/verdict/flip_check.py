@@ -99,6 +99,44 @@ def detect_tamper(test_code: str) -> Optional[str]:
     return None
 
 
+# --- vacuous-test detection (cheap anti-gaming) ------------------------------
+
+# A test can "flip" trivially without exercising the code under test — e.g. by
+# asserting on a renamed literal or a hardcoded constant. Full meaningfulness
+# checking is mutation testing (v1+), but a cheap floor is: the test must actually
+# reference the repository under test (an import or attribute access), and must
+# contain at least one assertion. This blocks the most obvious way to game the gate.
+_IMPORT_RE = re.compile(r"^\s*(?:from\s+\S+\s+import\b|import\s+\S+)", re.M)
+_ASSERTISH_RE = re.compile(r"\b(assert|pytest\.raises|self\.assert\w+)\b")
+# Imports that don't count as "exercising the repo" — stdlib/test-framework only.
+_INERT_IMPORTS = {"pytest", "unittest", "sys", "os", "re", "math", "json", "typing"}
+
+
+def detect_vacuous(test_code: str) -> Optional[str]:
+    """Return a reason if the test looks vacuous (cannot be real evidence).
+
+    Cheap, deterministic floor beneath the flip check — NOT a substitute for mutation
+    testing. Catches: no assertion at all, or no import that reaches the code under
+    test (only stdlib/pytest imports), which is how a "renamed-string" gaming test
+    would look.
+    """
+    if not _ASSERTISH_RE.search(test_code):
+        return "test contains no assertion — cannot be evidence"
+
+    imports = _IMPORT_RE.findall(test_code)
+    # Extract the top-level module of each import line.
+    roots: set[str] = set()
+    for line in imports:
+        m = re.search(r"(?:from|import)\s+([A-Za-z_][\w.]*)", line)
+        if m:
+            roots.add(m.group(1).split(".")[0])
+    if not roots:
+        return "test imports nothing — it cannot exercise the code under test"
+    if roots.issubset(_INERT_IMPORTS):
+        return "test imports only stdlib/pytest — it does not exercise the repository under test"
+    return None
+
+
 # --- infrastructure-failure detection ----------------------------------------
 
 # The "fail for the wrong reason" trap (SWE-Doctor 2026): a candidate can "fail on
@@ -193,6 +231,12 @@ def flip_check(
     tamper = detect_tamper(test_code)
     if tamper:
         return FlipResult(False, tamper)
+
+    # (d') vacuous-test gate — cheap anti-gaming floor. A test that asserts on a
+    # renamed literal (no import of the code under test) can flip trivially; reject it.
+    vacuous = detect_vacuous(test_code)
+    if vacuous:
+        return FlipResult(False, vacuous)
 
     # (a) fail-on-target: every rerun must fail.
     target_failed = [not r.passed for r in target_runs]

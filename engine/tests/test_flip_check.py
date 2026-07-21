@@ -9,6 +9,7 @@ from __future__ import annotations
 from exhibit_a.executor.base import ExecOutcome
 from exhibit_a.verdict.flip_check import (
     detect_infra_failure,
+    detect_vacuous,
     extract_signature,
     flip_check,
     signatures_match,
@@ -19,6 +20,12 @@ def _out(passed: bool, log: str, exit_code: int | None = None) -> ExecOutcome:
     if exit_code is None:
         exit_code = 0 if passed else 1
     return ExecOutcome(exit_code=exit_code, stdout=log, stderr="", timed_out=False)
+
+
+# A realistic (non-vacuous) test body: imports the code under test and asserts on it.
+# Used wherever a test's *content* is not what's under test, so the vacuous-test gate
+# (which requires a real import of the repo) doesn't reject the fixture.
+REAL_TEST_CODE = "from slicer import last_n\n\ndef test_x():\n    assert last_n([1, 2], 1) == [2]\n"
 
 
 # --- the env-failure -> false-PROVEN hole (regression) -----------------------
@@ -35,7 +42,7 @@ def test_env_failure_is_not_evidence_even_without_expected_signature():
     target = [_out(False, MODULE_ERR, exit_code=2) for _ in range(3)]
     base = _out(True, "1 passed")
     result = flip_check(
-        target_runs=target, base_run=base, test_code="import numpy", expected_signature=None
+        target_runs=target, base_run=base, test_code=REAL_TEST_CODE, expected_signature=None
     )
     assert not result.admissible
     assert "environmental" in (result.reason or "") or "collection" in (result.reason or "")
@@ -46,7 +53,7 @@ def test_collection_error_exit_code_2_rejected():
     target = [_out(False, log, exit_code=2) for _ in range(2)]
     base = _out(True, "1 passed")
     result = flip_check(
-        target_runs=target, base_run=base, test_code="def test_x(db): pass", expected_signature=None
+        target_runs=target, base_run=base, test_code=REAL_TEST_CODE, expected_signature=None
     )
     assert not result.admissible
     assert result.reason
@@ -57,7 +64,7 @@ def test_syntax_error_in_generated_test_rejected():
     target = [_out(False, log, exit_code=2) for _ in range(2)]
     base = _out(True, "1 passed")
     result = flip_check(
-        target_runs=target, base_run=base, test_code="def test(: pass", expected_signature=None
+        target_runs=target, base_run=base, test_code=REAL_TEST_CODE, expected_signature=None
     )
     assert not result.admissible
 
@@ -75,7 +82,10 @@ def test_genuine_assertion_failure_is_admissible():
     target = [_out(False, REAL_FAIL, exit_code=1) for _ in range(3)]
     base = _out(True, "1 passed")
     result = flip_check(
-        target_runs=target, base_run=base, test_code="assert x", expected_signature="AssertionError"
+        target_runs=target,
+        base_run=base,
+        test_code=REAL_TEST_CODE,
+        expected_signature="AssertionError",
     )
     assert result.admissible, result.reason
     assert result.deterministic
@@ -87,7 +97,7 @@ def test_genuine_keyerror_admissible_and_not_flagged_infra():
     target = [_out(False, log, exit_code=1) for _ in range(3)]
     base = _out(True, "1 passed")
     result = flip_check(
-        target_runs=target, base_run=base, test_code="d['sku-404']", expected_signature="KeyError"
+        target_runs=target, base_run=base, test_code=REAL_TEST_CODE, expected_signature="KeyError"
     )
     assert result.admissible, result.reason
 
@@ -107,7 +117,7 @@ def test_reproduced_tier_requires_optin_and_signature():
 
     # opt-out (default): no base -> not admissible.
     r_off = flip_check(
-        target_runs=target, base_run=None, test_code="d['x']", expected_signature="KeyError"
+        target_runs=target, base_run=None, test_code=REAL_TEST_CODE, expected_signature="KeyError"
     )
     assert not r_off.admissible
 
@@ -115,7 +125,7 @@ def test_reproduced_tier_requires_optin_and_signature():
     r_on = flip_check(
         target_runs=target,
         base_run=None,
-        test_code="d['x']",
+        test_code=REAL_TEST_CODE,
         expected_signature="KeyError",
         allow_reproduced=True,
     )
@@ -125,7 +135,7 @@ def test_reproduced_tier_requires_optin_and_signature():
     r_nosig = flip_check(
         target_runs=target,
         base_run=None,
-        test_code="assert False",
+        test_code=REAL_TEST_CODE,
         expected_signature=None,
         allow_reproduced=True,
     )
@@ -136,9 +146,30 @@ def test_full_flip_is_tier_flip():
     target = [_out(False, REAL_FAIL, exit_code=1) for _ in range(3)]
     base = _out(True, "1 passed")
     r = flip_check(
-        target_runs=target, base_run=base, test_code="assert x", expected_signature="AssertionError"
+        target_runs=target,
+        base_run=base,
+        test_code=REAL_TEST_CODE,
+        expected_signature="AssertionError",
     )
     assert r.admissible and r.tier == "flip"
+
+
+def test_vacuous_test_rejected_by_flip_check():
+    # A test that flips but only asserts on a literal (no import of the repo) is the
+    # classic way to game the gate — it must be rejected before it can be evidence.
+    gaming = "def test_flip():\n    assert 'renamed' == 'renamed'\n"
+    assert detect_vacuous(gaming) is not None
+    target = [_out(False, REAL_FAIL, exit_code=1) for _ in range(3)]
+    base = _out(True, "1 passed")
+    r = flip_check(
+        target_runs=target, base_run=base, test_code=gaming, expected_signature="AssertionError"
+    )
+    assert not r.admissible
+    # No-assertion and stdlib-only-import cases are also caught.
+    assert detect_vacuous("import os\n\ndef test_x():\n    x = 1\n") is not None
+    assert detect_vacuous("import pytest\n\ndef test_x():\n    assert True\n") is not None
+    # A real import + assertion is fine.
+    assert detect_vacuous(REAL_TEST_CODE) is None
 
 
 def test_extract_signature_forms():
