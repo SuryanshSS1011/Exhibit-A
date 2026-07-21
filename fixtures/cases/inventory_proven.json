@@ -17,11 +17,11 @@
     }
   ],
   "root_cause_narrative": "stock_for builds a quantity map and indexes it directly, so an unknown SKU raises KeyError; the fixed state uses the documented zero default.",
-  "intent_judgment": "not_assessed",
-  "intent_rationale": null,
-  "intent_model": null,
-  "declared_behavior_delta": null,
-  "declared_delta_sources": [],
+  "intent_judgment": "unintended",
+  "intent_rationale": "The issue and the function docstring both declare that an unknown SKU returns zero stock; raising KeyError falls outside that declared behavior, so the flip is a regression, not an intended change.",
+  "intent_model": "gpt-5.6-sol",
+  "declared_behavior_delta": "stock_for(items, sku) returns 0 for an unknown SKU (documented zero default).",
+  "declared_delta_sources": ["issue: stock_for should return zero for an unknown SKU", "docstring: inventory.stock_for"],
   "test_file": {
     "path": "test_inventory_repro.py",
     "code": "from inventory import stock_for\n\ndef test_unknown_sku_has_zero_stock():\n    assert stock_for([{'sku': 'known', 'quantity': 4}], 'missing') == 0\n",
@@ -47,7 +47,7 @@
     ]
   },
   "verdict": "PROVEN",
-  "disposition": "BEHAVIOR_CHANGE",
+  "disposition": "PROVEN_REGRESSION",
   "silence_reason": null,
   "license_name": "MIT",
   "fail_to_pass": ["test_inventory_repro.py"],
