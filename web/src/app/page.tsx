@@ -21,12 +21,14 @@ export default function Home() {
     "detective",
   );
   const [sourceMode, setSourceMode] = useState<"local" | "git">("local");
-  const [repo, setRepo] = useState("../fixtures/buggy_slice");
-  const [fixed, setFixed] = useState("../fixtures/fixed_slice");
+  const [repo, setRepo] = useState("../fixtures/buggy_inventory");
+  const [fixed, setFixed] = useState("../fixtures/fixed_inventory");
   const [repoUrl, setRepoUrl] = useState("");
   const [baseSha, setBaseSha] = useState("");
   const [fixSha, setFixSha] = useState("");
-  const [claim, setClaim] = useState("last_n drops the last row");
+  const [claim, setClaim] = useState(
+    "stock_for should return zero for an unknown SKU instead of raising KeyError",
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Case | null>(null);
