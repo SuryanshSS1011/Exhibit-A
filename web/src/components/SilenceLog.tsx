@@ -7,6 +7,7 @@ export function SilenceLog() {
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [privateGate, setPrivateGate] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -14,6 +15,11 @@ export function SilenceLog() {
       try {
         const response = await fetch("/api/silence", { cache: "no-store" });
         const payload = await response.json();
+        if (response.status === 403) {
+          // Private by default — not an error, a deliberate privacy posture.
+          if (active) setPrivateGate(payload.hint ?? "Silence Log is private by default.");
+          return;
+        }
         if (!response.ok) throw new Error(payload.error ?? "could not load silence log");
         if (active) setCases(Array.isArray(payload.cases) ? payload.cases : []);
       } catch (reason) {
@@ -46,7 +52,18 @@ export function SilenceLog() {
         <span className="font-serif text-3xl text-silence">{cases.length}</span>
       </header>
 
-      {loading && <p className="py-8 font-mono text-xs text-ink-500">Opening ledger…</p>}
+      {loading && !privateGate && (
+        <p className="py-8 font-mono text-xs text-ink-500">Opening ledger…</p>
+      )}
+      {privateGate && (
+        <div className="my-6 border-l-2 border-silence/50 py-3 pl-4">
+          <p className="font-serif text-sm text-ink-300">Private by default.</p>
+          <p className="mt-1 text-xs text-ink-500">
+            The Silence Log lists suspected-but-unproven issues and can leak unconfirmed
+            findings, so it is never posted publicly. {privateGate}
+          </p>
+        </div>
+      )}
       {error && <p className="py-8 text-sm text-fail">{error}</p>}
       {!loading && !error && cases.length === 0 && (
         <div className="my-6 border-l-2 border-silence/50 py-3 pl-4">

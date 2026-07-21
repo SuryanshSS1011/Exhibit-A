@@ -6,7 +6,23 @@ const CASE_DIR = path.resolve(process.cwd(), "..", "engine", ".exhibit-a", "case
 
 export const dynamic = "force-dynamic";
 
+// The Silence Log lists hypotheses we could NOT prove. That is a low-confidence
+// signal and, on real repos, can leak suspected-but-unconfirmed vulnerabilities.
+// It is therefore PRIVATE BY DEFAULT: this endpoint only serves data when
+// EXHIBIT_A_SILENCE_LOG=1 is explicitly set (a trusted dashboard context). It must
+// never be posted to a public PR.
+const SILENCE_LOG_ENABLED = process.env.EXHIBIT_A_SILENCE_LOG === "1";
+
 export async function GET() {
+  if (!SILENCE_LOG_ENABLED) {
+    return NextResponse.json(
+      {
+        error: "Silence Log is private by default",
+        hint: "set EXHIBIT_A_SILENCE_LOG=1 to enable it in a trusted dashboard context",
+      },
+      { status: 403 },
+    );
+  }
   let names: string[];
   try {
     names = await readdir(CASE_DIR);
