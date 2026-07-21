@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Case } from "@/lib/case";
 import { VerdictStamp } from "@/components/VerdictStamp";
 import { EvidencePanel } from "@/components/EvidencePanel";
+import { ProsecutorExample } from "@/components/ProsecutorExample";
 
 interface InvestigationEvent {
   event: string;
@@ -15,6 +16,7 @@ interface InvestigationEvent {
  * Vertical case timeline: Claim → Hypotheses (rejected greyed) → Evidence → Verdict.
  */
 export default function Home() {
+  const [workspace, setWorkspace] = useState<"detective" | "prosecutor">("detective");
   const [sourceMode, setSourceMode] = useState<"local" | "git">("local");
   const [repo, setRepo] = useState("../fixtures/buggy_slice");
   const [fixed, setFixed] = useState("../fixtures/fixed_slice");
@@ -87,6 +89,26 @@ export default function Home() {
         </p>
       </header>
 
+      <nav aria-label="Investigation mode" className="mb-8 flex gap-6 border-b border-ink-700">
+        {(["detective", "prosecutor"] as const).map((mode) => (
+          <button
+            key={mode}
+            type="button"
+            onClick={() => setWorkspace(mode)}
+            aria-current={workspace === mode ? "page" : undefined}
+            className={`border-b-2 px-1 pb-3 font-serif text-xs uppercase tracking-[0.16em] transition ${
+              workspace === mode
+                ? "border-ink-200 text-ink-200"
+                : "border-transparent text-ink-500 hover:text-ink-300"
+            }`}
+          >
+            {mode === "detective" ? "Detective" : "Prosecutor fixture"}
+          </button>
+        ))}
+      </nav>
+
+      {workspace === "detective" ? (
+        <>
       <section aria-label="Intake" className="mb-8 space-y-3">
         <div className="flex border-b border-ink-700" role="group" aria-label="Source type">
           {(["local", "git"] as const).map((mode) => (
@@ -201,6 +223,10 @@ export default function Home() {
       {(busy || events.length > 0) && <LiveDocket events={events} busy={busy} />}
 
       {result && <CaseFile c={result} />}
+        </>
+      ) : (
+        <ProsecutorExample />
+      )}
     </main>
   );
 }
