@@ -50,6 +50,23 @@ export interface EvidenceMinimization {
   reason: string | null;
 }
 
+export interface StrengthComponent {
+  score: number | null;
+  weight: number;
+  basis: string;
+}
+
+export interface EvidenceStrength {
+  schema_version: string;
+  composite: number;
+  coverage: number;
+  mutation: StrengthComponent;
+  signature: StrengthComponent;
+  determinism: StrengthComponent;
+  minimality: StrengthComponent;
+  surface_distance: StrengthComponent;
+}
+
 export interface Hypothesis {
   text: string;
   rejected: boolean;
@@ -77,6 +94,7 @@ export interface Case {
   test_file: TestArtifact | null;
   original_test_file: TestArtifact | null;
   minimization: EvidenceMinimization | null;
+  evidence_strength: EvidenceStrength | null;
   run_command: string;
   evidence: Evidence;
   verdict: Verdict;

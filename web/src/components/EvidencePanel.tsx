@@ -9,6 +9,7 @@ export function EvidencePanel({ c }: { c: Case }) {
   const cmd = c.run_command;
   return (
     <section aria-label="Evidence" className="space-y-4">
+      {c.evidence_strength && <StrengthRuler strength={c.evidence_strength} />}
       <div
         className={`grid grid-cols-1 gap-4 ${c.evidence.control_log ? "lg:grid-cols-3" : "md:grid-cols-2"}`}
       >
@@ -56,6 +57,70 @@ export function EvidencePanel({ c }: { c: Case }) {
         </div>
       )}
     </section>
+  );
+}
+
+function StrengthRuler({ strength }: { strength: NonNullable<Case["evidence_strength"]> }) {
+  const components = [
+    ["Mutation", strength.mutation],
+    ["Signature", strength.signature],
+    ["Repeatability", strength.determinism],
+    ["Minimality", strength.minimality],
+    ["Call distance", strength.surface_distance],
+  ] as const;
+  const percent = Math.round(strength.composite * 100);
+  const coverage = Math.round(strength.coverage * 100);
+
+  return (
+    <aside
+      aria-label={`Descriptive evidence strength ${percent} out of 100, ${coverage}% measured`}
+      className="overflow-hidden border-y border-ink-700 bg-ink-950/50"
+    >
+      <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-4 py-3">
+        <div className="flex items-baseline gap-3">
+          <h3 className="font-serif text-xs uppercase tracking-[0.16em] text-ink-300">
+            Evidence strength
+          </h3>
+          <span className="font-mono text-2xl tabular-nums text-sky-300">{percent}</span>
+          <span className="font-mono text-[10px] uppercase tracking-wide text-ink-500">
+            / 100 descriptive
+          </span>
+        </div>
+        <p className="font-mono text-[10px] uppercase tracking-wide text-ink-400">
+          {coverage}% measured · never changes verdict
+        </p>
+      </header>
+      <div className="relative h-px bg-ink-700" aria-hidden>
+        <div className="absolute inset-y-0 left-0 bg-sky-400" style={{ width: `${percent}%` }} />
+      </div>
+      <div className="grid grid-cols-2 divide-x divide-y divide-ink-800 sm:grid-cols-5 sm:divide-y-0">
+        {components.map(([label, component]) => (
+          <div key={label} className="px-3 py-2.5">
+            <div className="font-mono text-[9px] uppercase tracking-wide text-ink-500">
+              {label}
+            </div>
+            <div className="mt-1 font-mono text-sm tabular-nums text-ink-200">
+              {component.score === null ? "—" : Math.round(component.score * 100)}
+            </div>
+          </div>
+        ))}
+      </div>
+      <details className="border-t border-ink-800 px-4 py-2 text-xs text-ink-400">
+        <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-wide hover:text-ink-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-400">
+          Show measurement basis
+        </summary>
+        <dl className="mt-3 grid gap-2 pb-2 sm:grid-cols-2">
+          {components.map(([label, component]) => (
+            <div key={label}>
+              <dt className="font-serif text-[10px] uppercase tracking-wide text-ink-300">
+                {label} · weight {Math.round(component.weight * 100)}%
+              </dt>
+              <dd className="mt-0.5 leading-relaxed">{component.basis}</dd>
+            </div>
+          ))}
+        </dl>
+      </details>
+    </aside>
   );
 }
 

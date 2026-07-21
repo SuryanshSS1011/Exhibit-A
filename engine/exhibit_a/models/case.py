@@ -119,6 +119,29 @@ class EvidenceMinimization:
 
 
 @dataclass
+class StrengthComponent:
+    """One transparent, normalized input to the descriptive strength scalar."""
+
+    score: Optional[float]
+    weight: float
+    basis: str
+
+
+@dataclass
+class EvidenceStrength:
+    """Versioned component scores and their available-weight composite."""
+
+    schema_version: str
+    composite: float
+    coverage: float
+    mutation: StrengthComponent
+    signature: StrengthComponent
+    determinism: StrengthComponent
+    minimality: StrengthComponent
+    surface_distance: StrengthComponent
+
+
+@dataclass
 class Hypothesis:
     """A single falsifiable guess produced by the hypothesis generator."""
 
@@ -158,6 +181,7 @@ class Case:
     test_file: Optional[TestArtifact] = None
     original_test_file: Optional[TestArtifact] = None
     minimization: Optional[EvidenceMinimization] = None
+    evidence_strength: Optional[EvidenceStrength] = None
     run_command: str = "pytest -x -q"
     evidence: Evidence = field(default_factory=Evidence)
 

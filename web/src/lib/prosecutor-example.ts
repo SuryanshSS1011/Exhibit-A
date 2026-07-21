@@ -57,6 +57,36 @@ export const prosecutorExample: Case = {
     reduction_ratio: 0,
     reason: null,
   },
+  evidence_strength: {
+    schema_version: "evidence-strength/v1",
+    composite: 0.564706,
+    coverage: 0.85,
+    mutation: {
+      score: 0,
+      weight: 0.3,
+      basis: "0/1 eligible mutants killed; 0 invalid excluded",
+    },
+    signature: {
+      score: 0.65,
+      weight: 0.2,
+      basis: "assertion with expression detail: AssertionError: assert [3] == [3, 4]",
+    },
+    determinism: {
+      score: 1,
+      weight: 0.2,
+      basis: "stable across 5 target rerun(s); full credit at 5",
+    },
+    minimality: {
+      score: 1,
+      weight: 0.15,
+      basis: "4 minimized lines from 4; full credit at 6 or fewer",
+    },
+    surface_distance: {
+      score: null,
+      weight: 0.15,
+      basis: "no repository source frame in failure trace",
+    },
+  },
   run_command: "python3 -m pytest -x -q test_repro.py",
   evidence: {
     fail_log: failLog,

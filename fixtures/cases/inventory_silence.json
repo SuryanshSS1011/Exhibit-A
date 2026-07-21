@@ -25,6 +25,7 @@
   "test_file": null,
   "original_test_file": null,
   "minimization": null,
+  "evidence_strength": null,
   "run_command": "pytest -x -q",
   "evidence": {
     "fail_log": "FAILED test_inventory_repro.py::test_unknown_sku_has_zero_stock - KeyError: 'missing'",

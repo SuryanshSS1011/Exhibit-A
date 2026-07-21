@@ -104,6 +104,7 @@ def _cfg() -> EngineConfig:
         reruns=3,
         run_command=f"{sys.executable} -m pytest -x -q test_repro.py",
         minimize_proven=False,
+        score_evidence_strength=False,
     )
 
 
@@ -193,6 +194,67 @@ def test_proven_case_keeps_original_and_emits_verified_minimized_evidence():
     assert case.minimization.accepted > 0
     assert case.test_file.code != case.original_test_file.code
     assert case.minimization.minimized_lines < case.minimization.original_lines
+    assert case.evidence_strength is not None
+    assert case.evidence_strength.signature.score == 1.0
+    assert case.evidence_strength.minimality.score == 1.0
+    assert case.evidence_strength.coverage < 1.0
+
+
+def test_evidence_strength_integrates_mutation_measurement_without_changing_verdict():
+    config = EngineConfig(
+        reruns=1,
+        check_existing_suite=False,
+        minimize_proven=False,
+        score_evidence_strength=True,
+        mutation_reruns=2,
+    )
+    engine = EvidenceEngine(OneShotGenerator(), LocalExecutor(), config)
+    claim = Claim(
+        text="last_n drops the last row",
+        repo_path=str(FIXTURES / "buggy_slice"),
+        expected_signature="AssertionError",
+    )
+
+    case = engine.investigate(
+        claim,
+        target=RepoState(path=str(FIXTURES / "buggy_slice"), label="target"),
+        base=RepoState(path=str(FIXTURES / "fixed_slice"), label="base"),
+    )
+
+    assert case.verdict is Verdict.PROVEN
+    assert case.evidence_strength is not None
+    assert case.evidence_strength.mutation.score == 0.0
+    assert "0/1 eligible mutants killed" in case.evidence_strength.mutation.basis
+    assert case.evidence_strength.coverage == 0.7
+
+
+def test_strength_measurement_failure_cannot_change_the_proven_verdict():
+    class BrokenMutationExecutor(LocalExecutor):
+        def run_mutant(self, repo, spec, mutation):
+            raise AssertionError("descriptive scorer failed")
+
+    config = EngineConfig(
+        reruns=1,
+        check_existing_suite=False,
+        minimize_proven=False,
+        score_evidence_strength=True,
+        mutation_reruns=1,
+    )
+    engine = EvidenceEngine(OneShotGenerator(), BrokenMutationExecutor(), config)
+    claim = Claim(
+        text="last_n drops the last row",
+        repo_path=str(FIXTURES / "buggy_slice"),
+        expected_signature="AssertionError",
+    )
+
+    case = engine.investigate(
+        claim,
+        target=RepoState(path=str(FIXTURES / "buggy_slice"), label="target"),
+        base=RepoState(path=str(FIXTURES / "fixed_slice"), label="base"),
+    )
+
+    assert case.verdict is Verdict.PROVEN
+    assert case.evidence_strength is None
 
 
 def test_minimization_failure_cannot_change_the_proven_verdict():

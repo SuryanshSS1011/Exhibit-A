@@ -2,7 +2,15 @@ from dataclasses import fields
 from pathlib import Path
 import re
 
-from exhibit_a.models.case import Case, Evidence, EvidenceMinimization, Hypothesis, RunResult
+from exhibit_a.models.case import (
+    Case,
+    Evidence,
+    EvidenceMinimization,
+    EvidenceStrength,
+    Hypothesis,
+    RunResult,
+    StrengthComponent,
+)
 from exhibit_a.models.case import TestArtifact as CaseTestArtifact
 
 
@@ -15,6 +23,8 @@ def test_typescript_case_schema_matches_python_dataclasses():
         "RunResult": RunResult,
         "Evidence": Evidence,
         "EvidenceMinimization": EvidenceMinimization,
+        "StrengthComponent": StrengthComponent,
+        "EvidenceStrength": EvidenceStrength,
         "Hypothesis": Hypothesis,
         "Case": Case,
     }.items():

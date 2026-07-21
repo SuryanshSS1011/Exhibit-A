@@ -43,6 +43,16 @@
     "reduction_ratio": 0.42857142857142855,
     "reason": null
   },
+  "evidence_strength": {
+    "schema_version": "evidence-strength/v1",
+    "composite": 1.0,
+    "coverage": 0.55,
+    "mutation": {"score": null, "weight": 0.3, "basis": "no allowlisted mutants on the evidenced source surface"},
+    "signature": {"score": 1.0, "weight": 0.2, "basis": "typed exception with value detail: KeyError: 'missing'"},
+    "determinism": {"score": 1.0, "weight": 0.2, "basis": "stable across 5 target rerun(s); full credit at 5"},
+    "minimality": {"score": 1.0, "weight": 0.15, "basis": "4 minimized lines from 7; full credit at 6 or fewer"},
+    "surface_distance": {"score": null, "weight": 0.15, "basis": "no repository source frame in failure trace"}
+  },
   "run_command": "python3 -m pytest -x -q test_inventory_repro.py",
   "evidence": {
     "fail_log": "FAILED test_inventory_repro.py::test_unknown_sku_has_zero_stock - KeyError: 'missing'",

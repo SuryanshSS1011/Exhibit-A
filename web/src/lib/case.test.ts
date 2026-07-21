@@ -30,6 +30,8 @@ describe("prosecutor example integrity", () => {
     // Additive-only: the existing suite passed, so this is a genuine gap.
     expect(prosecutorExample.existing_suite_passed).toBe(true);
     expect(prosecutorExample.suite_gap).toBe(true);
+    expect(prosecutorExample.evidence_strength?.coverage).toBeLessThan(1);
+    expect(prosecutorExample.evidence_strength?.mutation.score).toBe(0);
   });
 
   it("keeps the unprovable concern out of the review comment", () => {

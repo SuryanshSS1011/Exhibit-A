@@ -38,7 +38,13 @@ from .models.case import (
 )
 from .verdict.flip_check import extract_signature, flip_check
 from .verdict.diff_location import ChangedLines, changed_line_map
+from .verdict.evidence_strength import (
+    compute_evidence_strength,
+    imported_source_paths,
+    traceback_source_paths,
+)
 from .verdict.minimization import minimize_proven_test
+from .verdict.mutation_testing import discover_mutations, score_mutations
 
 
 @dataclass
@@ -56,6 +62,9 @@ class EngineConfig:
     suite_command: tuple[str, ...] = ("python3", "-m", "pytest", "-q")
     minimize_proven: bool = True
     minimization_max_attempts: int = 24
+    score_evidence_strength: bool = True
+    mutation_max_mutants: int = 16
+    mutation_reruns: int = 2
 
 
 class EvidenceEngine:
@@ -434,6 +443,18 @@ class EvidenceEngine:
                     control_image=control_image,
                     changed_lines=changed_lines,
                 )
+            if self.config.score_evidence_strength:
+                try:
+                    self._score_evidence_strength(
+                        case=case,
+                        spec=spec,
+                        base=base,
+                        target=target,
+                        base_image=base_image,
+                        changed_lines=changed_lines,
+                    )
+                except Exception as exc:
+                    self._emit("evidence_strength", available=False, reason=str(exc))
             self._emit("verdict", verdict=verdict.value, hypothesis=cand.hypothesis)
             return None
 
@@ -533,6 +554,77 @@ class EvidenceEngine:
             original_lines=result.original_lines,
             minimized_lines=result.minimized_lines,
             reduction_ratio=result.reduction_ratio,
+        )
+
+    def _score_evidence_strength(
+        self,
+        *,
+        case: Case,
+        spec: ExecSpec,
+        base: RepoState | None,
+        target: RepoState,
+        base_image: str | None,
+        changed_lines: ChangedLines | None,
+    ) -> None:
+        """Rank admitted evidence without changing its verdict or disposition."""
+        if case.test_file is None:
+            return
+        source_frames = traceback_source_paths(
+            case.evidence.fail_log,
+            target.path,
+            case.test_file.path,
+        )
+        root_cause_paths = tuple(changed_lines or ())
+        imported_paths = imported_source_paths(
+            case.test_file.code, base.path if base else target.path
+        )
+        mutation_score = None
+        mutation_reason: str | None = None
+        if case.is_proven() and base is not None:
+            source_paths = root_cause_paths or source_frames or imported_paths
+            try:
+                mutations = discover_mutations(
+                    base.path,
+                    source_paths,
+                    limit=self.config.mutation_max_mutants,
+                )
+                if mutations:
+                    mutation_spec = ExecSpec(
+                        test_path=case.test_file.path,
+                        test_code=case.test_file.code,
+                        command=spec.command,
+                        timeout_s=spec.timeout_s,
+                        network=spec.network,
+                        image=base_image,
+                    )
+                    mutation_score = score_mutations(
+                        self.executor,
+                        base,
+                        mutation_spec,
+                        mutations,
+                        reruns=self.config.mutation_reruns,
+                    )
+                else:
+                    mutation_reason = "no allowlisted mutants on the evidenced source surface"
+            except (OSError, RuntimeError, ValueError) as exc:
+                mutation_reason = f"mutation measurement unavailable: {exc}"
+
+        case.evidence_strength = compute_evidence_strength(
+            fail_signature=case.evidence.fail_signature,
+            deterministic=case.evidence.deterministic,
+            reruns=case.evidence.reruns,
+            minimization=case.minimization,
+            mutation_score=mutation_score,
+            source_frames=source_frames,
+            root_cause_paths=root_cause_paths,
+        )
+        if mutation_reason is not None:
+            case.evidence_strength.mutation.basis = mutation_reason
+        self._emit(
+            "evidence_strength",
+            composite=case.evidence_strength.composite,
+            coverage=case.evidence_strength.coverage,
+            schema_version=case.evidence_strength.schema_version,
         )
 
     def _emit(self, event: str, **payload: Any) -> None:
