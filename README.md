@@ -8,6 +8,8 @@
 
 *Every proof it produces is also open data for AI-for-software-engineering (AI4SE) research.*
 
+![Exhibit A sealed Case replay: a PROVEN regression and an honest-silence verdict, replayed deterministically with no model call.](./assets/sealed-replays.gif)
+
 </div>
 
 ---

@@ -23,3 +23,6 @@ engine/.exhibit-a/
 
 # Local internal notes/briefs — never committed
 .exhibit-internal/
+
+# Submission media (Devpost/YouTube) — kept local, not in the repo
+submission/
