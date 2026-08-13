@@ -99,6 +99,6 @@ PR / LINKED ISSUE CONTEXT (untrusted):
                 declared,
                 tuple(raw_sources),
             )
-        except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as exc:
+        except (OSError, RuntimeError, TypeError, ValueError, subprocess.SubprocessError) as exc:
             self.last_error = f"Intent assessment failed: {exc}"
             return None

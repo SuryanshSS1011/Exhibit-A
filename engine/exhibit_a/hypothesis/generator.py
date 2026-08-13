@@ -1,9 +1,8 @@
 """The hypothesis generator boundary — where Codex/GPT plugs in.
 
-The plan drives the model loop with Codex CLI (GPT-5.6). This module does NOT call
-any provider directly; it defines the protocol the engine expects and ships a
-deterministic stub so the whole pipeline runs offline. You (pair-programming with
-Codex) implement a real `HypothesisGenerator` that shells out to / drives Codex.
+The plan drives the model loop through a provider boundary. This module defines the
+protocol the engine expects, delegates untrusted model proposals to that boundary,
+and ships a deterministic stub so the whole pipeline runs offline.
 
 The loop the engine wants from a generator (plan §2 "Hypothesis generator"):
   Localize -> Plan (1-3 falsifiable hypotheses) -> Draft passing test
@@ -17,14 +16,13 @@ deterministic verdict layer stay honest regardless of how smart the model is.
 
 from __future__ import annotations
 
-import json
 import os
-import shutil
 import subprocess
-import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
-from typing import Optional, Protocol
+from typing import Protocol
+
+from ..providers import CodexCliProvider, Provider, ProviderRequest, ProviderResponse
 
 
 @dataclass
@@ -33,7 +31,7 @@ class Claim:
 
     text: str  # the raw claim / stack trace / issue body
     repo_path: str  # local checkout to reason over
-    expected_signature: Optional[str] = None  # if the claim names an exception type
+    expected_signature: str | None = None  # if the claim names an exception type
 
 
 @dataclass
@@ -44,7 +42,7 @@ class Candidate:
     test_path: str  # repo-relative path to write the test
     test_code: str  # the (inverted, fail-on-bug) test source
     run_command: str = "pytest -x -q"
-    expected_signature: Optional[str] = None
+    expected_signature: str | None = None
     notes: str = ""  # localization / reasoning breadcrumbs for the UI
 
 
@@ -56,7 +54,7 @@ class Feedback:
     fail_log: str
     passed_on_target: bool
     admissible: bool
-    reason: Optional[str] = None
+    reason: str | None = None
     rejected_hypotheses: list[str] = field(default_factory=list)
 
 
@@ -67,7 +65,7 @@ class HypothesisGenerator(Protocol):
         """Localize + plan + draft-and-invert into ranked candidate tests."""
         ...
 
-    def refine(self, claim: Claim, feedback: Feedback) -> Optional[Candidate]:
+    def refine(self, claim: Claim, feedback: Feedback) -> Candidate | None:
         """Given execution feedback on a failed attempt, produce a better candidate,
         or None to give up (which the engine records as a silence_reason)."""
         ...
@@ -99,7 +97,7 @@ class StubGenerator:
             )
         ]
 
-    def refine(self, claim: Claim, feedback: Feedback) -> Optional[Candidate]:
+    def refine(self, claim: Claim, feedback: Feedback) -> Candidate | None:
         return None
 
 
@@ -144,39 +142,6 @@ _REFINE_SCHEMA = {
     },
 }
 
-_CODEX_BIN_ENV = "EXHIBIT_A_CODEX_BIN"
-
-
-def _default_codex_paths() -> tuple[Path, ...]:
-    return (
-        Path("/Applications/ChatGPT.app/Contents/Resources/codex"),
-        Path.home() / ".local" / "bin" / "codex",
-    )
-
-
-def _resolve_codex_binary(configured: str | None = None) -> str:
-    requested = configured or os.environ.get(_CODEX_BIN_ENV)
-    if requested:
-        resolved = shutil.which(requested)
-        if resolved:
-            return resolved
-        raise RuntimeError(
-            f"Codex CLI not found at {requested!r}. Set {_CODEX_BIN_ENV} to the "
-            "executable path, or install the Codex CLI and add it to PATH."
-        )
-
-    resolved = shutil.which("codex")
-    if resolved:
-        return resolved
-    for candidate in _default_codex_paths():
-        if candidate.is_file() and os.access(candidate, os.X_OK):
-            return str(candidate)
-    raise RuntimeError(
-        f"Codex CLI not found on PATH or in a known app location. Set {_CODEX_BIN_ENV} "
-        "to the executable path (for example, "
-        "/Applications/ChatGPT.app/Contents/Resources/codex)."
-    )
-
 
 class CodexGenerator:
     """Generate pytest reproductions with Codex while keeping verdicts deterministic.
@@ -194,12 +159,17 @@ class CodexGenerator:
         model: str | None = None,
         timeout_s: int = 240,
         test_runner: str = "python3 -m pytest",
+        provider: Provider | None = None,
     ):
-        self.codex_bin = codex_bin
         self.model = model or os.environ.get("EXHIBIT_A_MODEL", "gpt-5.6-sol")
-        self.timeout_s = timeout_s
+        self.provider = provider or CodexCliProvider(
+            codex_bin=codex_bin,
+            model=self.model,
+            timeout_s=timeout_s,
+        )
         self.test_runner = test_runner
         self.last_error: str | None = None
+        self.last_response: ProviderResponse | None = None
 
     def propose(self, claim: Claim, max_hypotheses: int = 3) -> list[Candidate]:
         self.last_error = None
@@ -229,11 +199,11 @@ BUG REPORT:
             payload = self._invoke(Path(claim.repo_path), prompt, _PROPOSE_SCHEMA)
             raw_candidates = payload.get("candidates", [])[:max_hypotheses]
             return [self._candidate(item) for item in raw_candidates]
-        except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as exc:
+        except (OSError, RuntimeError, TypeError, ValueError, subprocess.SubprocessError) as exc:
             self.last_error = f"Codex generation failed: {exc}"
             return []
 
-    def refine(self, claim: Claim, feedback: Feedback) -> Optional[Candidate]:
+    def refine(self, claim: Claim, feedback: Feedback) -> Candidate | None:
         self.last_error = None
         prompt = f"""You are refining a rejected pytest reproduction for Exhibit A.
 
@@ -259,58 +229,19 @@ TARGET EXECUTION LOG:
             payload = self._invoke(Path(claim.repo_path), prompt, _REFINE_SCHEMA)
             item = payload.get("candidate")
             return self._candidate(item) if item is not None else None
-        except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as exc:
+        except (OSError, RuntimeError, TypeError, ValueError, subprocess.SubprocessError) as exc:
             self.last_error = f"Codex refinement failed: {exc}"
             return None
 
     def _invoke(self, repo: Path, prompt: str, schema: dict) -> dict:
-        repo = repo.resolve()
-        if not repo.is_dir():
-            raise ValueError(f"repo checkout not found: {repo}")
-
-        with tempfile.TemporaryDirectory(prefix="exhibit-a-codex-") as tmp:
-            tmp_path = Path(tmp)
-            schema_path = tmp_path / "schema.json"
-            output_path = tmp_path / "response.json"
-            schema_path.write_text(json.dumps(schema))
-
-            argv = [
-                _resolve_codex_binary(self.codex_bin),
-                "exec",
-                "--ephemeral",
-                "--sandbox",
-                "read-only",
-                "--skip-git-repo-check",
-                "--model",
-                self.model,
-                "--output-schema",
-                str(schema_path),
-                "--output-last-message",
-                str(output_path),
-                "--cd",
-                str(repo),
-                "-",
-            ]
-            proc = subprocess.run(
-                argv,
-                input=prompt,
-                capture_output=True,
-                text=True,
-                timeout=self.timeout_s,
-            )
-            if proc.returncode != 0:
-                detail = proc.stderr.strip() or proc.stdout.strip() or "no diagnostic"
-                raise RuntimeError(f"Codex exited {proc.returncode}: {detail[-2000:]}")
-            if not output_path.exists():
-                raise ValueError("Codex produced no structured response")
-            payload = json.loads(output_path.read_text())
-            if not isinstance(payload, dict):
-                raise ValueError("Codex response was not a JSON object")
-            return payload
+        self.last_response = self.provider.generate(
+            ProviderRequest(prompt=prompt, response_schema=schema, repo_path=repo)
+        )
+        return self.last_response.output
 
     def _candidate(self, item: object) -> Candidate:
         if not isinstance(item, dict):
-            raise ValueError("candidate was not an object")
+            raise TypeError("candidate was not an object")
 
         test_path = str(item.get("test_path", ""))
         path = PurePosixPath(test_path)

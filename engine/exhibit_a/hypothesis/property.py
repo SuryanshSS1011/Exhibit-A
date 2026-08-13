@@ -78,6 +78,6 @@ CONCRETE TEST:
             if raw is None:
                 return None
             return PropertyCandidate(self.codex._candidate(raw), str(payload.get("domain", "")))
-        except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as exc:
+        except (OSError, RuntimeError, TypeError, ValueError, subprocess.SubprocessError) as exc:
             self.last_error = f"property generation failed: {exc}"
             return None

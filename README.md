@@ -202,6 +202,11 @@ component of the product.
   alone admits a Case as `PROVEN`, from execution logs, so the product's honesty guarantee
   holds regardless of how the model behaves. This model-versus-judge split is the core
   design.
+- **As a provider boundary.** Proposal transports normalize structured output and record
+  requested and confirmed runtime model identity separately. Missing backend telemetry is
+  an explicit `unknown_*` value, never an omitted field or an inferred identity. CLI and
+  direct-HTTP adapters have distinct containment requirements; see
+  [Model provider boundary](./docs/PROVIDERS.md).
 - **As the implementation partner.** Codex was the pair-programmer for the engine, the
   security boundaries, the test suite, and the streaming UI, with every change gated behind
   the same tests and lint the CI runs.

@@ -75,6 +75,6 @@ FROZEN TEST:
             if raw is None:
                 return None
             return CounterpatchCandidate(str(raw["patch"]), str(raw["rationale"]))
-        except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as exc:
+        except (OSError, RuntimeError, TypeError, ValueError, subprocess.SubprocessError) as exc:
             self.last_error = f"counterpatch generation failed: {exc}"
             return None
