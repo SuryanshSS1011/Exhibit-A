@@ -16,6 +16,7 @@
       "reason": "confirmed deterministic failure on target, but no base/fixed state to prove the pass side"
     }
   ],
+  "proposal_runs": [],
   "root_cause_narrative": "",
   "intent_judgment": "not_assessed",
   "intent_rationale": null,

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
@@ -66,6 +68,16 @@ class ProviderResponse:
     usage: TokenUsage = field(default_factory=TokenUsage)
     cost_usd: float | None = None
     latency_ms: float | None = None
+
+    @property
+    def output_sha256(self) -> str:
+        canonical = json.dumps(
+            self.output,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode()
+        return hashlib.sha256(canonical).hexdigest()
 
 
 class Provider(Protocol):

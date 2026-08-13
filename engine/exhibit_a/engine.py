@@ -31,6 +31,7 @@ from .models.case import (
     Hypothesis,
     IntentJudgment,
     Mode,
+    ProposalRun,
     RunResult,
     TargetKind,
     TestArtifact,
@@ -181,8 +182,10 @@ class EvidenceEngine:
                 return case
             changed_lines = changed_line_map(base.path, target.path)
 
-        self._emit("phase", phase="generating", message="Localizing the claim with Codex")
+        self._emit("phase", phase="generating", message="Localizing the claim with proposer")
+        self._drain_provider_responses()
         candidates = self.generator.propose(claim)
+        self._record_proposal_run(case, "propose")
         self._emit("phase", phase="executing", message=f"Testing {len(candidates)} hypotheses")
         if not candidates:
             generator_error = getattr(self.generator, "last_error", None)
@@ -214,7 +217,9 @@ class EvidenceEngine:
             feedback = result
             while feedback is not None and attempts < self.config.max_refine:
                 attempts += 1
+                self._drain_provider_responses()
                 refined = self.generator.refine(claim, feedback)
+                self._record_proposal_run(case, "refine")
                 if refined is None:
                     break
                 feedback = self._try_candidate(
@@ -249,6 +254,30 @@ class EvidenceEngine:
                 reason=case.silence_reason,
             )
         return case
+
+    def _record_proposal_run(self, case: Case, operation: str) -> None:
+        for response in self._drain_provider_responses():
+            identity = response.runtime_model
+            case.proposal_runs.append(
+                ProposalRun(
+                    operation=operation,
+                    provider=identity.provider,
+                    requested_model=identity.requested_model,
+                    confirmed_model=str(identity.confirmed_model),
+                    confirmed_version=str(identity.confirmed_version),
+                    output_sha256=response.output_sha256,
+                    input_tokens=response.usage.input_tokens,
+                    output_tokens=response.usage.output_tokens,
+                    total_tokens=response.usage.total_tokens,
+                    cost_usd=response.cost_usd,
+                    latency_ms=response.latency_ms,
+                    tool_call_count=len(response.tool_calls),
+                )
+            )
+
+    def _drain_provider_responses(self):
+        drain = getattr(self.generator, "drain_provider_responses", None)
+        return drain() if callable(drain) else []
 
     def _assess_intent(self, case: Case, target: RepoState, intent_context: str | None) -> None:
         if (

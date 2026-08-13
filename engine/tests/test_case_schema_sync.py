@@ -8,6 +8,7 @@ from exhibit_a.models.case import (
     EvidenceMinimization,
     EvidenceStrength,
     Hypothesis,
+    ProposalRun,
     RunResult,
     StrengthComponent,
 )
@@ -26,10 +27,11 @@ def test_typescript_case_schema_matches_python_dataclasses():
         "StrengthComponent": StrengthComponent,
         "EvidenceStrength": EvidenceStrength,
         "Hypothesis": Hypothesis,
+        "ProposalRun": ProposalRun,
         "Case": Case,
     }.items():
         match = re.search(rf"export interface {name} \{{(?P<body>.*?)\n\}}", source, re.S)
         assert match, f"missing TypeScript interface {name}"
-        typescript_fields = re.findall(r"^  ([a-z_]+):", match.group("body"), re.M)
+        typescript_fields = re.findall(r"^  ([a-z_0-9]+)\??:", match.group("body"), re.M)
         python_fields = [field.name for field in fields(model)]
         assert typescript_fields == python_fields

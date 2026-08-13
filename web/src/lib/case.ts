@@ -73,6 +73,21 @@ export interface Hypothesis {
   reason: string | null;
 }
 
+export interface ProposalRun {
+  operation: "propose" | "refine";
+  provider: string;
+  requested_model: string;
+  confirmed_model: string;
+  confirmed_version: string;
+  output_sha256: string;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  total_tokens: number | null;
+  cost_usd: number | null;
+  latency_ms: number | null;
+  tool_call_count: number;
+}
+
 export interface Case {
   id: string;
   mode: Mode;
@@ -85,6 +100,7 @@ export interface Case {
   target_state: TargetKind;
   claim_text: string;
   hypotheses: Hypothesis[];
+  proposal_runs?: ProposalRun[];
   root_cause_narrative: string;
   intent_judgment: IntentJudgment;
   intent_rationale: string | null;

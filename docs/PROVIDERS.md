@@ -12,9 +12,11 @@ telemetry is unavailable, adapters must record an explicit reason such as
 copy the requested name into it. This rule applies equally to hosted APIs, local servers,
 routers, and CLI-backed providers.
 
-The provider response currently preserves this identity for its caller. Persisting it in
-the Case schema and evidence passport is a separate roadmap step; until that lands, Exhibit
-A must not claim that passports contain runtime-model telemetry.
+Each provider response is appended to the Case's `proposal_runs` evidence trail. It records
+the operation, provider, requested model, explicitly confirmed-or-unknown runtime identity,
+token usage, cost and latency when available, the count of untrusted returned tool calls,
+and a SHA-256 digest of the structured response that produced the proposal. Responses are
+consumed exactly once so refinement records cannot inherit stale proposal telemetry.
 
 ## Transport-specific containment
 

@@ -11,7 +11,9 @@ publisher can consume the same object without a translation shim.
 from __future__ import annotations
 
 import enum
-from dataclasses import dataclass, field, asdict
+import math
+import string
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -151,6 +153,58 @@ class Hypothesis:
 
 
 @dataclass
+class ProposalRun:
+    """Observed provider identity and telemetry for one untrusted model response."""
+
+    operation: str  # "propose" | "refine"
+    provider: str
+    requested_model: str
+    confirmed_model: str
+    confirmed_version: str
+    output_sha256: str
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    total_tokens: int | None = None
+    cost_usd: float | None = None
+    latency_ms: float | None = None
+    tool_call_count: int = 0
+
+    def __post_init__(self) -> None:
+        if self.operation not in {"propose", "refine"}:
+            raise ValueError("proposal operation must be propose or refine")
+        for label, value in (
+            ("provider", self.provider),
+            ("requested model", self.requested_model),
+            ("confirmed model", self.confirmed_model),
+            ("confirmed version", self.confirmed_version),
+        ):
+            if not value.strip():
+                raise ValueError(f"proposal {label} must not be empty")
+        allowed_unknown = {"unknown_no_telemetry", "unknown_unverified_backend"}
+        for value in (self.confirmed_model, self.confirmed_version):
+            if "unknown" in value.lower() and value not in allowed_unknown:
+                raise ValueError(f"unsupported unknown model identity {value!r}")
+        if len(self.output_sha256) != 64 or any(
+            character not in string.hexdigits for character in self.output_sha256
+        ):
+            raise ValueError("proposal output_sha256 must be a SHA-256 hex digest")
+        for value in (self.input_tokens, self.output_tokens, self.total_tokens):
+            if value is not None and (
+                not isinstance(value, int) or isinstance(value, bool) or value < 0
+            ):
+                raise ValueError("proposal token counts must be non-negative integers")
+        for value in (self.cost_usd, self.latency_ms):
+            if value is not None and (not math.isfinite(value) or value < 0):
+                raise ValueError("proposal cost and latency must be finite and non-negative")
+        if (
+            not isinstance(self.tool_call_count, int)
+            or isinstance(self.tool_call_count, bool)
+            or self.tool_call_count < 0
+        ):
+            raise ValueError("proposal tool-call count must be a non-negative integer")
+
+
+@dataclass
 class Case:
     """The Case File — the whole product's output artifact."""
 
@@ -169,6 +223,7 @@ class Case:
     # --- the claim & reasoning ---
     claim_text: str = ""
     hypotheses: list[Hypothesis] = field(default_factory=list)
+    proposal_runs: list[ProposalRun] = field(default_factory=list)
     root_cause_narrative: str = ""
     # Separate, fallible interpretation of PR/issue intent. Never part of PROVEN.
     intent_judgment: IntentJudgment = IntentJudgment.NOT_ASSESSED

@@ -16,6 +16,7 @@
       "reason": null
     }
   ],
+  "proposal_runs": [],
   "root_cause_narrative": "stock_for builds a quantity map and indexes it directly, so an unknown SKU raises KeyError; the fixed state uses the documented zero default.",
   "intent_judgment": "unintended",
   "intent_rationale": "The issue and the function docstring both declare that an unknown SKU returns zero stock; raising KeyError falls outside that declared behavior, so the flip is a regression, not an intended change.",

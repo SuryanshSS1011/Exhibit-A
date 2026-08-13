@@ -29,6 +29,22 @@ export const prosecutorExample: Case = {
       reason: null,
     },
   ],
+  proposal_runs: [
+    {
+      operation: "propose",
+      provider: "openai-codex-cli",
+      requested_model: "gpt-5.6-sol",
+      confirmed_model: "unknown_no_telemetry",
+      confirmed_version: "unknown_no_telemetry",
+      output_sha256: "0000000000000000000000000000000000000000000000000000000000000000",
+      input_tokens: null,
+      output_tokens: null,
+      total_tokens: null,
+      cost_usd: null,
+      latency_ms: null,
+      tool_call_count: 0,
+    },
+  ],
   root_cause_narrative: "The new exclusive stop index omits the final element.",
   intent_judgment: "unintended",
   intent_rationale:

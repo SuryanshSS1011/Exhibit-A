@@ -1,12 +1,20 @@
 from __future__ import annotations
 
 import subprocess
+import zipfile
 from pathlib import Path
 
 import pytest
 
 from exhibit_a.eef import create_bundle, verify_bundle
-from exhibit_a.models.case import Case, Evidence, Mode, TestArtifact as CaseTestArtifact, Verdict
+from exhibit_a.models.case import (
+    Case,
+    Evidence,
+    Mode,
+    ProposalRun,
+    Verdict,
+)
+from exhibit_a.models.case import TestArtifact as CaseTestArtifact
 
 KEY = b"evidence-publisher-test-key-32-bytes!!"
 TEST_CODE = (
@@ -22,6 +30,16 @@ def _case() -> dict:
     case.verdict = Verdict.PROVEN
     case.test_file = CaseTestArtifact("test_repro.py", TEST_CODE)
     case.run_command = "python3 -m pytest -x -q test_repro.py"
+    case.proposal_runs = [
+        ProposalRun(
+            operation="propose",
+            provider="test-provider",
+            requested_model="requested",
+            confirmed_model="unknown_no_telemetry",
+            confirmed_version="unknown_no_telemetry",
+            output_sha256="0" * 64,
+        )
+    ]
     case.evidence = Evidence(
         fail_log="E   AssertionError: wrong value",
         fail_signature="AssertionError: wrong value",
@@ -63,6 +81,31 @@ def test_eef_is_byte_deterministic_and_verifies_offline(tmp_path: Path):
     assert result.execution_verified is None
     with pytest.raises(ValueError, match="signature verification failed"):
         verify_bundle(first, signing_key=b"different-publisher-key-32-bytes!!!")
+
+
+def test_eef_detects_runtime_model_evidence_tampering(tmp_path: Path):
+    target = tmp_path / "target"
+    target.mkdir()
+    (target / "inventory.py").write_text("def stock_for(rows, sku): return 1\n")
+    bundle = create_bundle(
+        _case(),
+        tmp_path / "case.eef",
+        target_source=target,
+        base_source=None,
+        signing_key=KEY,
+    )
+    tampered = tmp_path / "tampered.eef"
+    with zipfile.ZipFile(bundle) as source, zipfile.ZipFile(tampered, "w") as destination:
+        for info in source.infolist():
+            content = source.read(info.filename)
+            if info.filename == "case.json":
+                content = content.replace(
+                    b'"requested_model":"requested"', b'"requested_model":"swapped"'
+                )
+            destination.writestr(info, content)
+
+    with pytest.raises(ValueError, match="entry (size|hash) mismatch"):
+        verify_bundle(tampered, signing_key=KEY)
 
 
 def test_eef_reexecution_uses_docker_argv_and_unchanged_flip_judge(
