@@ -41,3 +41,16 @@ same security boundary.
 Provider output remains untrusted after either transport. Candidate path validation,
 scoped test commands, sandboxed execution, and the deterministic verdict gate remain
 downstream requirements.
+
+## Implemented adapters
+
+- `CodexCliProvider`: authenticated Codex CLI with an ephemeral, read-only sandbox.
+- `OllamaProvider`: structured chat completions through Ollama's OpenAI-compatible API.
+  It defaults to `http://127.0.0.1:11434/v1`, accepts only numeric loopback addresses,
+  ignores ambient proxy configuration, disables redirects, bounds response size, applies
+  a socket-operation timeout, and never sends or executes tools. It supplies a
+  deterministic, size-bounded snapshot of supported Python-repository files without
+  following symlinks or reading ignored build, VCS, cache, and environment directories.
+  Ollama's response `model` confirms the served tag; the underlying version remains
+  `unknown_unverified_backend` because a mutable tag cannot attest to exact weights or
+  quantization.

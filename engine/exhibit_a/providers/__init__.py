@@ -9,9 +9,11 @@ from .base import (
     UnknownModelIdentity,
 )
 from .codex_cli import CodexCliProvider
+from .ollama import OllamaProvider
 
 __all__ = [
     "CodexCliProvider",
+    "OllamaProvider",
     "Provider",
     "ProviderRequest",
     "ProviderResponse",
