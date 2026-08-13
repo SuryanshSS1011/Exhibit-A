@@ -27,6 +27,7 @@ from .hypothesis.property import CodexPropertyGenerator
 from .intake.git_bisect import bisect_reproduction
 from .intake.git_checkout import checkout_context, checkout_pair, checkout_triplet
 from .models.case import Case, Mode, Verdict
+from .providers import ProviderRole, load_provider_config
 from .store.json_store import JsonCaseStore
 from .store.research import ResearchStore
 from .store.suite_gap import SuiteGapStore
@@ -49,6 +50,7 @@ def _build_engine(
     allow_reproduced: bool = False,
     event_sink: Callable[[dict[str, Any]], None] | None = None,
     environment_root: str | Path | None = None,
+    provider_config: str | Path | None = None,
 ) -> EvidenceEngine:
     if use_docker:
         from .executor.docker_exec import DockerExecutor
@@ -58,13 +60,24 @@ def _build_engine(
         executor = LocalExecutor()
     if environment_root is not None:
         executor = RecordingExecutor(executor, environment_root)
-    generator = StubGenerator() if offline else CodexGenerator()
+    if offline and provider_config is not None:
+        raise ValueError("--offline cannot be combined with --provider-config")
+    if offline:
+        generator = StubGenerator()
+    elif provider_config is not None:
+        provider = load_provider_config(provider_config).provider_for(ProviderRole.PROPOSER)
+        generator = CodexGenerator(provider=provider, model=getattr(provider, "model", None))
+    else:
+        generator = CodexGenerator()
     config = EngineConfig(allow_reproduced=allow_reproduced)
     return EvidenceEngine(generator, executor, config, event_sink=event_sink)
 
 
 def cmd_repro(args: argparse.Namespace) -> int:
     if args.replay:
+        if getattr(args, "provider_config", None) is not None:
+            print("error: --provider-config cannot be combined with --replay", file=sys.stderr)
+            return 2
         if args.repo:
             print("error: a repo cannot be combined with --replay", file=sys.stderr)
             return 2
@@ -96,13 +109,18 @@ def cmd_repro(args: argparse.Namespace) -> int:
         return 2
 
     event_sink = _print_event if args.events else None
-    engine = _build_engine(
-        use_docker=args.docker,
-        offline=args.offline,
-        allow_reproduced=args.reproduced,
-        event_sink=event_sink,
-        environment_root=Path(args.out).parent / "environment-attempts",
-    )
+    try:
+        engine = _build_engine(
+            use_docker=args.docker,
+            offline=args.offline,
+            allow_reproduced=args.reproduced,
+            event_sink=event_sink,
+            environment_root=Path(args.out).parent / "environment-attempts",
+            provider_config=getattr(args, "provider_config", None),
+        )
+    except (OSError, TypeError, ValueError) as exc:
+        print(f"error: cannot initialize repro engine: {exc}", file=sys.stderr)
+        return 2
     if bool(args.base_sha) != bool(args.fix_sha):
         print("error: --base-sha and --fix-sha must be provided together", file=sys.stderr)
         return 2
@@ -692,6 +710,11 @@ def main(argv: list[str] | None = None) -> int:
         "--offline",
         action="store_true",
         help="use the deterministic stub instead of Codex (pipeline diagnostics only)",
+    )
+    p.add_argument(
+        "--provider-config",
+        metavar="CONFIG_JSON",
+        help="select the proposer from a strict provider-role configuration",
     )
     p.add_argument("--out", default=".exhibit-a/cases", help="case output dir")
     p.add_argument("--json", action="store_true", help="print the full Case JSON")

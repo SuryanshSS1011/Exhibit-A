@@ -54,3 +54,25 @@ downstream requirements.
   Ollama's response `model` confirms the served tag; the underlying version remains
   `unknown_unverified_backend` because a mutable tag cannot attest to exact weights or
   quantization.
+
+## Configuration
+
+`exhibit-a repro --provider-config providers.json ...` selects the proposer through a
+strict role assignment. Model-backed roles are allowlisted; `verifier` is deliberately
+invalid because the deterministic judge is not a provider role. This first config surface
+wires only `proposer`; other fallible model-assisted roles will be added when their CLI
+workflows consume the same configuration rather than accepting inert settings.
+
+```json
+{
+  "providers": {
+    "local": {
+      "type": "ollama",
+      "model": "qwen3:8b",
+      "base_url": "http://127.0.0.1:11434/v1",
+      "roles": ["proposer"]
+    }
+  },
+  "roles": {"proposer": "local"}
+}
+```
