@@ -11,6 +11,7 @@ from exhibit_a.models.case import (
     ProposalRun,
     RunResult,
     StrengthComponent,
+    TruthAssessment,
 )
 from exhibit_a.models.case import TestArtifact as CaseTestArtifact
 
@@ -23,6 +24,7 @@ def test_typescript_case_schema_matches_python_dataclasses():
         "TestArtifact": CaseTestArtifact,
         "RunResult": RunResult,
         "Evidence": Evidence,
+        "TruthAssessment": TruthAssessment,
         "EvidenceMinimization": EvidenceMinimization,
         "StrengthComponent": StrengthComponent,
         "EvidenceStrength": EvidenceStrength,

@@ -17,7 +17,15 @@ from exhibit_a.executor.base import EnvironmentSetupError, ExecSpec, Executor, R
 from exhibit_a.executor.local_exec import LocalExecutor
 from exhibit_a.hypothesis.generator import Candidate, Claim, Feedback, StubGenerator
 from exhibit_a.hypothesis.intent import IntentAssessment
-from exhibit_a.models.case import Disposition, IntentJudgment, Mode, Verdict
+from exhibit_a.models.case import (
+    Disposition,
+    ExecutionTruth,
+    GoalTruth,
+    IntentJudgment,
+    Mode,
+    ReleaseTruth,
+    Verdict,
+)
 
 FIXTURES = Path(__file__).resolve().parents[2] / "fixtures"
 
@@ -126,6 +134,9 @@ def test_proven_flip():
     assert case.evidence.deterministic
     assert case.evidence.fail_signature and "AssertionError" in case.evidence.fail_signature
     assert case.evidence.pass_log  # base ran and passed
+    assert case.truth.execution is ExecutionTruth.COMPLETED
+    assert case.truth.goal is GoalTruth.VERIFIED
+    assert case.truth.release is ReleaseTruth.NOT_ASSESSED
 
 
 def test_realistic_inventory_fixture_proves_missing_sku_key_error():
@@ -438,6 +449,8 @@ def test_base_only_yields_reproduced_when_allowed():
         base=None,
     )
     assert case.verdict is Verdict.REPRODUCED
+    assert case.truth.goal is GoalTruth.PARTIAL
+    assert case.truth.release is ReleaseTruth.NOT_ASSESSED
     assert not case.is_proven()  # explicitly NOT a full flip
     assert case.is_evidence()
     assert case.fail_to_pass == []  # no proven pass side -> no benchmark pair
@@ -504,6 +517,9 @@ def test_stub_generator_stays_silent():
     case = engine.investigate(claim, mode=Mode.DETECTIVE)
     assert case.verdict is Verdict.INSUFFICIENT_EVIDENCE
     assert case.silence_reason
+    assert case.truth.execution is ExecutionTruth.COMPLETED
+    assert case.truth.goal is GoalTruth.UNCERTAIN
+    assert case.truth.release is ReleaseTruth.NOT_ASSESSED
 
 
 class ExplodingExecutor(Executor):
@@ -581,6 +597,8 @@ def test_environment_build_failure_becomes_honest_silence():
     assert case.verdict is Verdict.INSUFFICIENT_EVIDENCE
     assert case.hypotheses == []
     assert case.silence_reason == "could not build environment: no pinned lockfile"
+    assert case.truth.execution is ExecutionTruth.FAILED
+    assert "environment setup failed" in case.truth.execution_reason
 
 
 class FlakyExecutor(Executor):

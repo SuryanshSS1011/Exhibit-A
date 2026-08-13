@@ -28,16 +28,19 @@ from .models.case import (
     derive_disposition,
     Evidence,
     EvidenceMinimization,
+    ExecutionTruth,
+    GoalTruth,
     Hypothesis,
     IntentJudgment,
     Mode,
     ProposalRun,
+    ReleaseTruth,
     RunResult,
     TargetKind,
     TestArtifact,
     Verdict,
 )
-from .verdict.flip_check import extract_signature, flip_check
+from .verdict.flip_check import detect_infra_failure, extract_signature, flip_check
 from .verdict.diff_location import ChangedLines, changed_line_map
 from .verdict.evidence_strength import (
     compute_evidence_strength,
@@ -124,6 +127,8 @@ class EvidenceEngine:
             base_image = self.executor.prepare(base) if base is not None else None
             control_image = self.executor.prepare(control) if control is not None else None
         except EnvironmentSetupError as exc:
+            case.truth.execution = ExecutionTruth.FAILED
+            case.truth.execution_reason = f"environment setup failed: {exc}"
             case.silence_reason = f"could not build environment: {exc}"
             self._emit(
                 "verdict",
@@ -150,6 +155,8 @@ class EvidenceEngine:
                 if suite.exit_code in {0, 5} and not suite.timed_out:
                     case.existing_suite_passed = True
                 elif suite.exit_code == 1 and not suite.timed_out:
+                    case.truth.execution = ExecutionTruth.COMPLETED
+                    case.truth.execution_reason = "existing test-suite preflight completed"
                     case.existing_suite_passed = False
                     case.suite_gap = False
                     case.silence_reason = "existing test suite already fails; CI has this signal"
@@ -160,6 +167,10 @@ class EvidenceEngine:
                     )
                     return case
                 else:
+                    case.truth.execution = ExecutionTruth.FAILED
+                    case.truth.execution_reason = (
+                        f"existing test-suite preflight failed: exit {suite.exit_code}"
+                    )
                     case.silence_reason = (
                         f"existing test suite could not be evaluated safely: exit {suite.exit_code}"
                     )
@@ -439,6 +450,32 @@ class EvidenceEngine:
             changed_lines=changed_lines,
             control_run=control_outcome,
         )
+        state_outcomes = [("target", outcome) for outcome in target_outcomes]
+        if base_outcome is not None:
+            state_outcomes.append(("base", base_outcome))
+        if control_outcome is not None:
+            state_outcomes.append(("control", control_outcome))
+        infra_failures = [
+            (state, reason)
+            for state, outcome in state_outcomes
+            if (reason := detect_infra_failure(outcome)) is not None
+        ]
+        if infra_failures:
+            case.truth.execution = ExecutionTruth.FAILED
+            state, reason = infra_failures[0]
+            case.truth.execution_reason = f"{state} execution failed: {reason}"
+        elif case.truth.execution is not ExecutionTruth.FAILED:
+            case.truth.execution = ExecutionTruth.COMPLETED
+            case.truth.execution_reason = f"completed {len(state_outcomes)} execution(s)"
+        if flip.admissible and flip.tier == "flip":
+            case.truth.goal = GoalTruth.VERIFIED
+            case.truth.goal_reason = "deterministic fail-on-target and pass-on-base flip"
+        elif flip.admissible:
+            case.truth.goal = GoalTruth.PARTIAL
+            case.truth.goal_reason = "failure reproduced without a verified pass state"
+        else:
+            case.truth.goal = GoalTruth.UNCERTAIN
+            case.truth.goal_reason = flip.reason or "insufficient evidence"
 
         if flip.admissible:
             verdict = Verdict.PROVEN if flip.tier == "flip" else Verdict.REPRODUCED

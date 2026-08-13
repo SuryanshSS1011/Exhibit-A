@@ -72,6 +72,14 @@
       {"state": "base", "exit_code": 0, "passed": true, "log": "1 passed", "signature": null, "duration_s": 0.27}
     ]
   },
+  "truth": {
+    "execution": "COMPLETED",
+    "goal": "VERIFIED",
+    "release": "NOT_ASSESSED",
+    "execution_reason": "completed 5 target execution(s)",
+    "goal_reason": "deterministic fail-on-target and pass-on-base flip",
+    "release_reason": "release safety was not assessed"
+  },
   "verdict": "PROVEN",
   "disposition": "PROVEN_REGRESSION",
   "silence_reason": null,

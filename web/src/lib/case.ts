@@ -5,6 +5,9 @@
 
 export type Mode = "prosecutor" | "detective";
 export type Verdict = "PROVEN" | "REPRODUCED" | "INSUFFICIENT_EVIDENCE";
+export type ExecutionTruth = "NOT_RUN" | "COMPLETED" | "FAILED";
+export type GoalTruth = "VERIFIED" | "PARTIAL" | "FAILED" | "UNCERTAIN";
+export type ReleaseTruth = "NOT_ASSESSED" | "SAFE" | "UNSAFE" | "UNCERTAIN";
 export type TargetKind = "pr_head" | "synthesized_patch" | "base_only";
 export type IntentJudgment = "not_assessed" | "intended" | "unintended" | "unclear";
 export type Disposition =
@@ -38,6 +41,15 @@ export interface Evidence {
   reruns: number;
   deterministic: boolean;
   runs: RunResult[];
+}
+
+export interface TruthAssessment {
+  execution: ExecutionTruth;
+  goal: GoalTruth;
+  release: ReleaseTruth;
+  execution_reason: string;
+  goal_reason: string;
+  release_reason: string;
 }
 
 export interface EvidenceMinimization {
@@ -113,6 +125,7 @@ export interface Case {
   evidence_strength: EvidenceStrength | null;
   run_command: string;
   evidence: Evidence;
+  truth?: TruthAssessment;
   verdict: Verdict;
   disposition: Disposition;
   silence_reason: string | null;

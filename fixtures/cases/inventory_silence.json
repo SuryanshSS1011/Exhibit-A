@@ -44,6 +44,14 @@
       {"state": "target", "exit_code": 1, "passed": false, "log": "FAILED test_inventory_repro.py::test_unknown_sku_has_zero_stock - KeyError: 'missing'", "signature": "KeyError: 'missing'", "duration_s": 0.3}
     ]
   },
+  "truth": {
+    "execution": "COMPLETED",
+    "goal": "UNCERTAIN",
+    "release": "NOT_ASSESSED",
+    "execution_reason": "completed 5 target execution(s)",
+    "goal_reason": "no deterministic signature-matching flip",
+    "release_reason": "release safety was not assessed"
+  },
   "verdict": "INSUFFICIENT_EVIDENCE",
   "disposition": "INSUFFICIENT_EVIDENCE",
   "silence_reason": "confirmed deterministic failure on target, but no base/fixed state to prove the pass side",

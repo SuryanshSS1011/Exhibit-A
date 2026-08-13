@@ -35,6 +35,38 @@ class Verdict(str, enum.Enum):
     INSUFFICIENT_EVIDENCE = "INSUFFICIENT_EVIDENCE"
 
 
+class ExecutionTruth(str, enum.Enum):
+    NOT_RUN = "NOT_RUN"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+
+
+class GoalTruth(str, enum.Enum):
+    VERIFIED = "VERIFIED"
+    PARTIAL = "PARTIAL"
+    FAILED = "FAILED"
+    UNCERTAIN = "UNCERTAIN"
+
+
+class ReleaseTruth(str, enum.Enum):
+    NOT_ASSESSED = "NOT_ASSESSED"
+    SAFE = "SAFE"
+    UNSAFE = "UNSAFE"
+    UNCERTAIN = "UNCERTAIN"
+
+
+@dataclass
+class TruthAssessment:
+    """Independent execution, claim-goal, and release-readiness conclusions."""
+
+    execution: ExecutionTruth = ExecutionTruth.NOT_RUN
+    goal: GoalTruth = GoalTruth.UNCERTAIN
+    release: ReleaseTruth = ReleaseTruth.NOT_ASSESSED
+    execution_reason: str = "no candidate execution recorded"
+    goal_reason: str = "insufficient evidence"
+    release_reason: str = "release safety was not assessed"
+
+
 class TargetKind(str, enum.Enum):
     """Which second state we compare the base against."""
 
@@ -239,6 +271,7 @@ class Case:
     evidence_strength: Optional[EvidenceStrength] = None
     run_command: str = "pytest -x -q"
     evidence: Evidence = field(default_factory=Evidence)
+    truth: TruthAssessment = field(default_factory=TruthAssessment)
 
     # --- the verdict ---
     verdict: Verdict = Verdict.INSUFFICIENT_EVIDENCE
