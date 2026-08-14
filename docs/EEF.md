@@ -21,13 +21,26 @@ Statement-shaped attestation.
   recorded determinism count, runs the base when present, and submits the fresh raw
   outcomes to the unchanged `flip_check`. The verifier never trusts the recorded
   verdict as a substitute for execution.
+- Replay accepts only the verifier's byte-exact generated Dockerfile and fixed-shape
+  pytest argv. A signed archive cannot substitute its own build instructions or pytest
+  options.
+- ZIP entries must be canonical, uncompressed regular files. Verification rejects path
+  aliases, parent/file collisions, encrypted or compressed entries, more than 10,000
+  entries, any entry above 64 MiB, and archives above 512 MiB before reading payloads.
+- Reruns are strict integers from 1 through 20. Docker builds have a five-minute host
+  timeout; test runs have a two-minute timeout plus CPU, memory, and PID limits. Captured
+  output is capped at 8 MiB per stream, named replay containers are force-removed, and
+  verifier-created images use per-run names and are cleaned up.
 - ZIP entries are sorted, uncompressed, timestamped at the ZIP epoch, and assigned a
   fixed mode. Identical Case/source/key inputs produce byte-identical archives.
 
 The Docker base image and `pytest==8.4.1` must already exist in the local Docker
-cache for offline re-execution. EEF v1 does not embed OCI layers. Repository source
+cache for offline re-execution. The reference `python:3.12-slim` tag is not yet bound
+to an OCI digest, so the local image cache remains an explicit replay trust boundary.
+EEF v1 does not embed OCI layers. Repository source
 snapshots exclude `.git`, `.exhibit-a`, `__pycache__`, and `.env`; publishers must
-still review bundles for repository-specific secrets before sharing them.
+still review bundles for repository-specific secrets before sharing them. EEF is a
+private/full-fidelity evidence archive, not a sanitized public passport.
 
 ## Reference commands
 
