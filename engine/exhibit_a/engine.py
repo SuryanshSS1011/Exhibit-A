@@ -14,7 +14,6 @@ per the plan; on exhaustion the verdict is honest silence, not a guess.
 
 from __future__ import annotations
 
-import math
 import shlex
 import uuid
 from dataclasses import dataclass
@@ -23,10 +22,9 @@ from typing import Any, Callable, Optional
 
 from .connectors import (
     Connector,
-    EvidenceKind,
     LocalTestConnector,
     LocalTestRequest,
-    local_test_digests,
+    collect_validated_local_test,
 )
 from .executor.base import EnvironmentSetupError, ExecOutcome, ExecSpec, Executor, RepoState
 from .hypothesis.generator import Candidate, Claim, Feedback, HypothesisGenerator
@@ -634,38 +632,9 @@ class EvidenceEngine:
 
     def _collect_test(self, case: Case, repo: RepoState, spec: ExecSpec) -> ExecOutcome:
         request = LocalTestRequest(repo, spec)
-        collected = self.test_connector.collect(request)
-        outcome = collected.payload
-        provenance = collected.provenance
-        descriptor = self.test_connector.descriptor
-        if not isinstance(outcome, ExecOutcome):
-            raise TypeError("test connector returned a non-ExecOutcome payload")
-        if (
-            not isinstance(outcome.exit_code, int)
-            or isinstance(outcome.exit_code, bool)
-            or not isinstance(outcome.stdout, str)
-            or not isinstance(outcome.stderr, str)
-            or not isinstance(outcome.timed_out, bool)
-            or isinstance(outcome.duration_s, bool)
-            or not isinstance(outcome.duration_s, (int, float))
-            or not math.isfinite(outcome.duration_s)
-            or outcome.duration_s < 0
-        ):
-            raise ValueError("test connector returned an invalid ExecOutcome")
-        if (
-            EvidenceKind.TEST_EXECUTION not in descriptor.capabilities
-            or provenance.connector_id != descriptor.id
-            or provenance.connector_version != descriptor.version
-            or provenance.capability is not EvidenceKind.TEST_EXECUTION
-            or provenance.freshness is not descriptor.freshness_basis
-            or provenance.security != descriptor.security
-        ):
-            raise ValueError("test connector provenance does not match its descriptor")
-        expected = local_test_digests(request, outcome)
-        if any(getattr(provenance, key) != value for key, value in expected.items()):
-            raise ValueError("test connector provenance does not cover its request and response")
-        case.evidence_sources.append(provenance)
-        return outcome
+        collected = collect_validated_local_test(self.test_connector, request)
+        case.evidence_sources.append(collected.provenance)
+        return collected.payload
 
     def _score_evidence_strength(
         self,

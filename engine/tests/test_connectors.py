@@ -7,11 +7,14 @@ import pytest
 
 from exhibit_a.connectors import (
     Connector,
+    ConnectorOutput,
     EvidenceKind,
     Freshness,
     LocalTestConnector,
     LocalTestRequest,
+    collect_validated_local_test,
     hash_payload,
+    local_test_digests,
 )
 from exhibit_a.engine import EvidenceEngine
 from exhibit_a.executor.base import ExecOutcome, ExecSpec, Executor, RepoState
@@ -53,6 +56,7 @@ def test_local_test_connector_preserves_raw_evidence_and_records_provenance():
     assert executor.request == (repo, spec)
     assert evidence.payload.log == "captured stdout\ncaptured stderr"
     assert evidence.provenance.connector_id == "local_test_runner"
+    assert evidence.provenance.connector_version == "2"
     assert evidence.provenance.capability is EvidenceKind.TEST_EXECUTION
     assert evidence.provenance.source == "https://example.com/org/repo.git"
     assert evidence.provenance.source_revision == "a" * 40
@@ -60,6 +64,8 @@ def test_local_test_connector_preserves_raw_evidence_and_records_provenance():
     assert evidence.provenance.request_sha256 == hash_payload(
         {
             "command": "pytest -q",
+            "image": None,
+            "network": False,
             "repo_revision": "a" * 40,
             "state": "target",
             "test_code": "def test_repro(): assert False\n",
@@ -139,3 +145,159 @@ def test_engine_rejects_connector_receipt_that_does_not_cover_execution():
     with pytest.raises(ValueError, match="does not cover"):
         engine._collect_test(case, repo, spec)
     assert case.evidence_sources == []
+
+
+def test_validated_collector_rejects_forged_request_provenance():
+    inner = LocalTestConnector(StubExecutor())
+
+    class ForgedSourceConnector:
+        descriptor = inner.descriptor
+
+        def collect(self, request: LocalTestRequest):
+            output = inner.collect(request)
+            return replace(
+                output,
+                provenance=replace(output.provenance, source_revision="b" * 40),
+            )
+
+    request = LocalTestRequest(
+        RepoState("/checkout", "target", commit="a" * 40),
+        ExecSpec("test_repro.py", "assert False\n", "pytest -q"),
+    )
+
+    with pytest.raises(ValueError, match="does not match its request"):
+        collect_validated_local_test(ForgedSourceConnector(), request)
+
+
+def test_validated_collector_rejects_descriptor_mutation_during_collection():
+    inner = LocalTestConnector(StubExecutor())
+
+    class MutatingDescriptorConnector:
+        descriptor = replace(inner.descriptor)
+
+        def collect(self, request: LocalTestRequest):
+            object.__setattr__(self.descriptor, "version", "forged")
+            return inner.collect(request)
+
+    request = LocalTestRequest(
+        RepoState("/checkout", "target"),
+        ExecSpec("test_repro.py", "assert False\n", "pytest -q"),
+    )
+
+    with pytest.raises(ValueError, match="descriptor changed"):
+        collect_validated_local_test(MutatingDescriptorConnector(), request)
+
+
+def test_validated_collector_returns_snapshot_bound_to_receipt():
+    class RetainingExecutor(StubExecutor):
+        def __init__(self):
+            super().__init__()
+            self.outcome = ExecOutcome(1, "captured stdout", "captured stderr", duration_s=0)
+
+        def run(self, repo: RepoState, spec: ExecSpec) -> ExecOutcome:
+            self.request = (repo, spec)
+            return self.outcome
+
+    executor = RetainingExecutor()
+    connector = LocalTestConnector(executor)
+    request = LocalTestRequest(
+        RepoState("/checkout", "target"),
+        ExecSpec("test_repro.py", "assert False\n", "pytest -q"),
+    )
+
+    output = collect_validated_local_test(connector, request)
+    assert executor.request is not None
+
+    executor.outcome.stdout = "mutated original"
+
+    assert output.payload.stdout == "captured stdout"
+    assert (
+        output.provenance.response_sha256
+        == local_test_digests(request, output.payload)["response_sha256"]
+    )
+
+
+def test_validated_collector_snapshots_connector_owned_provenance():
+    inner = LocalTestConnector(StubExecutor())
+
+    class RetainingConnector:
+        descriptor = inner.descriptor
+        original: ConnectorOutput | None = None
+
+        def collect(self, request: LocalTestRequest):
+            self.original = inner.collect(request)
+            return self.original
+
+    connector = RetainingConnector()
+    request = LocalTestRequest(
+        RepoState("/checkout", "target"),
+        ExecSpec("test_repro.py", "assert False\n", "pytest -q"),
+    )
+
+    output = collect_validated_local_test(connector, request)
+    assert connector.original is not None
+    original_id = output.provenance.evidence_id
+    original_hash = output.provenance.response_sha256
+
+    object.__setattr__(connector.original.provenance, "evidence_id", "0" * 32)
+    object.__setattr__(connector.original.provenance, "response_sha256", "0" * 64)
+    object.__setattr__(connector.original.provenance.security, "isolation", "unknown")
+
+    assert output.provenance.evidence_id == original_id
+    assert output.provenance.response_sha256 == original_hash
+    assert output.provenance.security.isolation == "host_subprocess"
+    assert (
+        output.provenance.response_sha256
+        == local_test_digests(request, output.payload)["response_sha256"]
+    )
+
+
+def test_validated_collector_rejects_outcome_subclasses():
+    inner = LocalTestConnector(StubExecutor())
+
+    class DerivedOutcome(ExecOutcome):
+        pass
+
+    class DerivedConnector:
+        descriptor = inner.descriptor
+
+        def collect(self, request: LocalTestRequest):
+            output = inner.collect(request)
+            payload = DerivedOutcome(
+                output.payload.exit_code,
+                output.payload.stdout,
+                output.payload.stderr,
+                duration_s=output.payload.duration_s,
+            )
+            return ConnectorOutput(payload, output.provenance)
+
+    request = LocalTestRequest(
+        RepoState("/checkout", "target"),
+        ExecSpec("test_repro.py", "assert False\n", "pytest -q"),
+    )
+
+    with pytest.raises(TypeError, match="non-ExecOutcome"):
+        collect_validated_local_test(DerivedConnector(), request)
+
+
+def test_request_digest_binds_network_and_prepared_image():
+    repo = RepoState("/checkout", "target", commit="a" * 40)
+    plain = LocalTestRequest(repo, ExecSpec("test.py", "assert True\n", "pytest -q"))
+    image = LocalTestRequest(
+        repo,
+        ExecSpec("test.py", "assert True\n", "pytest -q", image="image:prepared"),
+    )
+    network = LocalTestRequest(
+        repo,
+        ExecSpec("test.py", "assert True\n", "pytest -q", network=True),
+    )
+    outcome = ExecOutcome(0, "1 passed", "")
+
+    assert (
+        local_test_digests(plain, outcome)["request_sha256"]
+        != local_test_digests(image, outcome)["request_sha256"]
+    )
+    assert (
+        local_test_digests(plain, outcome)["request_sha256"]
+        != local_test_digests(network, outcome)["request_sha256"]
+    )

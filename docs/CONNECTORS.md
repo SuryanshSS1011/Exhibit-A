@@ -42,3 +42,9 @@ paths and URL credentials are not included in public provenance.
 Connectors are trusted evidence collectors, but they have no verdict authority. Before
 raw test output reaches the deterministic judge, the engine validates the connector's
 payload type, descriptor-bound metadata, and request/response hash.
+
+Local test receipts are version 2. Their request digest binds the state and revision,
+contract artifact, fixed command, timeout, network policy, and prepared environment handle.
+A shared fail-closed collector also validates source identity, observation time, descriptor
+metadata, primitive outcome fields, and every digest before returning a fresh outcome
+snapshot. Both bug-flip and refactor workflows use this same distrust boundary.

@@ -33,3 +33,10 @@ boundary; `LocalExecutor` is intentionally limited to trusted fixtures and devel
 because it inherits host network and credentials. The counterexample fixture is excluded
 from the innocent-pair self-audit manifest and exists only to prove that observable changes
 produce `FAILED`.
+
+`behavior-refactor-evidence/v1` is the machine-readable result shape. It links every raw
+base and target run to one validated connector evidence ID, includes the deterministic
+truth assessment, and binds every receipt to the same contract artifact. A single invalid
+receipt aborts collection before a verdict is returned. This is passport-ready machine
+evidence, not yet a public passport: raw execution logs may contain sensitive application
+data and require an explicit publication policy.

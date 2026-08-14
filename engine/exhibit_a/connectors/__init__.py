@@ -12,7 +12,12 @@ from .base import (
     hash_payload,
 )
 from .git import GitChange, GitMetadata, GitMetadataConnector, GitMetadataRequest
-from .local_test import LocalTestConnector, LocalTestRequest, local_test_digests
+from .local_test import (
+    LocalTestConnector,
+    LocalTestRequest,
+    collect_validated_local_test,
+    local_test_digests,
+)
 
 __all__ = [
     "Connector",
@@ -28,6 +33,7 @@ __all__ = [
     "GitMetadataRequest",
     "LocalTestConnector",
     "LocalTestRequest",
+    "collect_validated_local_test",
     "hash_payload",
     "credential_free_source",
     "local_test_digests",

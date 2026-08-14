@@ -1,15 +1,21 @@
 from __future__ import annotations
 
+import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
+import exhibit_a.verdict.refactor_runner as refactor_runner
+from exhibit_a.connectors import LocalTestConnector
 from exhibit_a.executor.base import ExecOutcome, ExecSpec, Executor, RepoState
 from exhibit_a.executor.local_exec import LocalExecutor
 from exhibit_a.models.case import ExecutionTruth, GoalTruth, ReleaseTruth, Verdict
 from exhibit_a.verdict.refactor_runner import (
     CONTRACT_COMMAND,
     CONTRACT_PATH,
+    EVIDENCE_SCHEMA,
+    collect_refactor_evidence,
     run_refactor_contract,
 )
 
@@ -78,6 +84,82 @@ def test_runner_reports_a_stable_behavior_change_as_failed():
     assert result.execution is ExecutionTruth.COMPLETED
     assert result.goal is GoalTruth.FAILED
     assert result.release is ReleaseTruth.NOT_ASSESSED
+
+
+def test_runner_emits_one_validated_receipt_per_state_run():
+    executor = RecordingExecutor()
+    base = RepoState(
+        "/secret/base",
+        "base",
+        commit="a" * 40,
+        source="https://user:token@example.com/org/repo.git?credential=secret",
+    )
+    target = RepoState(
+        "/secret/target",
+        "target",
+        commit="b" * 40,
+        source="https://user:token@example.com/org/repo.git?credential=secret",
+    )
+
+    evidence = collect_refactor_evidence(
+        executor,
+        base,
+        target,
+        "def test_contract(): assert True\n",
+    )
+
+    assert evidence.schema_version == EVIDENCE_SCHEMA
+    assert len(evidence.runs) == len(evidence.evidence_sources) == 6
+    assert [run.state for run in evidence.runs] == ["base"] * 3 + ["target"] * 3
+    assert [run.ordinal for run in evidence.runs] == [1, 2, 3, 1, 2, 3]
+    assert {run.evidence_id for run in evidence.runs} == {
+        source.evidence_id for source in evidence.evidence_sources
+    }
+    assert {source.artifact_sha256 for source in evidence.evidence_sources} == {
+        evidence.contract_sha256
+    }
+    assert {source.source_revision for source in evidence.evidence_sources} == {
+        "a" * 40,
+        "b" * 40,
+    }
+    assert {source.source for source in evidence.evidence_sources} == {
+        "https://example.com/org/repo.git"
+    }
+    encoded = json.dumps(evidence.to_dict(), sort_keys=True)
+    assert '"claim_type": "behavior_preserving_refactor"' in encoded
+    assert "/secret/" not in encoded
+    assert "token" not in encoded
+    assert "credential=secret" not in encoded
+
+
+def test_runner_emits_no_result_when_a_later_receipt_is_invalid(monkeypatch):
+    class TamperingConnector(LocalTestConnector):
+        def __init__(self, executor):
+            super().__init__(executor)
+            self.calls = 0
+
+        def collect(self, request):
+            self.calls += 1
+            output = super().collect(request)
+            if self.calls == 4:
+                return replace(
+                    output,
+                    provenance=replace(output.provenance, response_sha256="0" * 64),
+                )
+            return output
+
+    executor = RecordingExecutor()
+    monkeypatch.setattr(refactor_runner, "LocalTestConnector", TamperingConnector)
+
+    with pytest.raises(ValueError, match="does not cover"):
+        collect_refactor_evidence(
+            executor,
+            RepoState("/base", "base"),
+            RepoState("/target", "target"),
+            "def test_contract(): assert True\n",
+        )
+
+    assert len(executor.runs) == 4
 
 
 @pytest.mark.parametrize(
