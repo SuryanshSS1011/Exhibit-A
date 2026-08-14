@@ -25,3 +25,11 @@ For the initial pytest contract runner, only exit code 1 is a behavioral test fa
 internal, usage, collection, timeout, signal, and no-tests outcomes are infrastructure.
 Release truth remains `NOT_ASSESSED` for every result because passing a selected contract
 does not establish that a refactor is safe to ship.
+
+The fixed-shape runner injects only `test_refactor_contract.py`, invokes only that test,
+disables network requests in its execution specification, and prepares each code state
+once before the repeated runs. `DockerExecutor` supplies the production containment
+boundary; `LocalExecutor` is intentionally limited to trusted fixtures and development
+because it inherits host network and credentials. The counterexample fixture is excluded
+from the innocent-pair self-audit manifest and exists only to prove that observable changes
+produce `FAILED`.
