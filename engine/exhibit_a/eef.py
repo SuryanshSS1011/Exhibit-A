@@ -17,15 +17,20 @@ import zipfile
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .verdict.refactor_runner import RefactorEvidence
 
 from .executor.base import ExecOutcome
 from .models.case import Verdict, normalize_case_payload, normalize_verdict
 from .verdict.flip_check import flip_check
 
-FORMAT_VERSION = "eef/v1"
+FORMAT_VERSION = "eef/v2"
 STATEMENT_TYPE = "https://in-toto.io/Statement/v1"
-PREDICATE_TYPE = "https://exhibit-a.dev/eef/v1"
+PREDICATE_TYPE = "https://exhibit-a.dev/eef/v2"
+_LEGACY_FORMAT_VERSION = "eef/v1"
+_LEGACY_PREDICATE_TYPE = "https://exhibit-a.dev/eef/v1"
 _ZIP_TIME = (1980, 1, 1, 0, 0, 0)
 _EXCLUDED_PARTS = {".git", ".exhibit-a", "__pycache__", ".env"}
 _MAX_ARCHIVE_ENTRIES = 10_000
@@ -91,51 +96,38 @@ def create_bundle(
     payloads["logs/existing_suite_log.txt"] = str(case.get("existing_suite_log", "")).encode()
     payloads["Dockerfile"] = _dockerfile(run_argv).encode()
 
-    manifest = {
-        "format": FORMAT_VERSION,
-        "case_id": case.get("id"),
-        "entries": {
-            name: {"sha256": hashlib.sha256(content).hexdigest(), "size": len(content)}
-            for name, content in sorted(payloads.items())
-        },
-    }
-    manifest_bytes = _canonical(manifest) + b"\n"
-    statement = {
-        "_type": STATEMENT_TYPE,
-        "subject": [
-            {
-                "name": "manifest.json",
-                "digest": {"sha256": hashlib.sha256(manifest_bytes).hexdigest()},
-            }
-        ],
-        "predicateType": PREDICATE_TYPE,
-        "predicate": {
+    return _write_bundle(
+        payloads,
+        output,
+        signing_key,
+        manifest_metadata={"claim_type": "bug_flip", "case_id": case.get("id")},
+        predicate={
+            "claim_type": "bug_flip",
             "case_id": case.get("id"),
             "verdict": case.get("verdict"),
             "created_at": case.get("created_at"),
         },
-    }
-    statement_bytes = _canonical(statement)
-    attestation = {
-        "statement": statement,
-        "signature": {
-            "algorithm": "hmac-sha256",
-            "value": hmac.new(signing_key, statement_bytes, hashlib.sha256).hexdigest(),
-        },
-    }
-    payloads["manifest.json"] = manifest_bytes
-    payloads["attestation.json"] = _canonical(attestation) + b"\n"
-    _validate_payload_limits(payloads)
+    )
 
-    destination = Path(output)
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_STORED) as archive:
-        for name, content in sorted(payloads.items()):
-            info = zipfile.ZipInfo(name, _ZIP_TIME)
-            info.create_system = 3
-            info.external_attr = 0o100644 << 16
-            archive.writestr(info, content)
-    return destination
+
+def create_refactor_bundle(
+    evidence: RefactorEvidence,
+    output: str | Path,
+    *,
+    base_source: str | Path,
+    target_source: str | Path,
+    signing_key: bytes,
+) -> Path:
+    """Serialize behavior-refactor evidence through its claim-specific EEF adapter."""
+    from .eef_refactor import create_refactor_bundle as create
+
+    return create(
+        evidence,
+        output,
+        base_source=base_source,
+        target_source=target_source,
+        signing_key=signing_key,
+    )
 
 
 def verify_bundle(
@@ -167,16 +159,20 @@ def verify_bundle(
         attestation = json.loads(blobs["attestation.json"])
     except KeyError as exc:
         raise ValueError(f"EEF is missing required entry: {exc.args[0]}") from exc
-    if not isinstance(manifest, dict) or manifest.get("format") != FORMAT_VERSION:
+    if not isinstance(manifest, dict) or manifest.get("format") not in {
+        FORMAT_VERSION,
+        _LEGACY_FORMAT_VERSION,
+    }:
         raise ValueError("EEF manifest format is unsupported")
+    format_version = manifest["format"]
     entries = manifest.get("entries")
     if not isinstance(entries, dict):
         raise ValueError("EEF manifest entries are invalid")
     expected_names = set(entries) | {"manifest.json", "attestation.json"}
     if set(blobs) != expected_names:
         raise ValueError("EEF contains unsigned or missing entries")
-    if "case.json" not in entries or "reproduce.json" not in entries or "Dockerfile" not in entries:
-        raise ValueError("EEF bug claim payload is incomplete")
+    if "reproduce.json" not in entries or "Dockerfile" not in entries:
+        raise ValueError("EEF claim payload is incomplete")
     for name, metadata in entries.items():
         if not isinstance(name, str) or not isinstance(metadata, dict):
             raise ValueError("EEF manifest entry metadata is invalid")
@@ -203,7 +199,8 @@ def verify_bundle(
     if (
         not isinstance(statement, dict)
         or statement.get("_type") != STATEMENT_TYPE
-        or statement.get("predicateType") != PREDICATE_TYPE
+        or statement.get("predicateType")
+        != (PREDICATE_TYPE if format_version == FORMAT_VERSION else _LEGACY_PREDICATE_TYPE)
         or not isinstance(signature, dict)
         or signature.get("algorithm") != "hmac-sha256"
     ):
@@ -229,12 +226,37 @@ def verify_bundle(
     ):
         raise ValueError("EEF signature verification failed")
 
-    _validate_bug_bundle(blobs, manifest, statement)
-    execution_verified = _reexecute(blobs, docker_bin=docker_bin) if execute else None
+    predicate = statement.get("predicate")
+    if not isinstance(predicate, dict):
+        raise ValueError("EEF attestation predicate is invalid")
+    claim_type = manifest.get("claim_type") if format_version == FORMAT_VERSION else "bug_flip"
+    if format_version == FORMAT_VERSION and predicate.get("claim_type") != claim_type:
+        raise ValueError("EEF signed claim type is inconsistent")
+    has_case = "case.json" in entries
+    has_refactor = "refactor.json" in entries
+    if has_case == has_refactor:
+        raise ValueError("EEF must contain exactly one claim payload")
+    if claim_type == "bug_flip" and has_case:
+        _validate_bug_bundle(
+            blobs,
+            manifest,
+            statement,
+            legacy=format_version == _LEGACY_FORMAT_VERSION,
+        )
+        execution_verified = _reexecute_bug(blobs, docker_bin=docker_bin) if execute else None
+    elif claim_type == "behavior_preserving_refactor" and has_refactor:
+        from .eef_refactor import reexecute_refactor, validate_refactor_bundle
+
+        validated = validate_refactor_bundle(blobs, manifest, statement)
+        execution_verified = (
+            reexecute_refactor(blobs, validated, docker_bin=docker_bin) if execute else None
+        )
+    else:
+        raise ValueError("EEF claim type and payload are unsupported")
     return VerificationResult(True, True, execution_verified)
 
 
-def _reexecute(blobs: dict[str, bytes], *, docker_bin: str) -> bool:
+def _reexecute_bug(blobs: dict[str, bytes], *, docker_bin: str) -> bool:
     reproduce = json.loads(blobs["reproduce.json"])
     case = json.loads(blobs["case.json"])
     if not isinstance(reproduce, dict) or not isinstance(case, dict):
@@ -292,7 +314,11 @@ def _reexecute(blobs: dict[str, bytes], *, docker_bin: str) -> bool:
 
 
 def _validate_bug_bundle(
-    blobs: dict[str, bytes], manifest: dict[str, Any], statement: dict[str, Any]
+    blobs: dict[str, bytes],
+    manifest: dict[str, Any],
+    statement: dict[str, Any],
+    *,
+    legacy: bool = False,
 ) -> None:
     try:
         case = json.loads(blobs["case.json"])
@@ -351,12 +377,21 @@ def _validate_bug_bundle(
     if case_verdict is not reproduce_verdict:
         raise ValueError("EEF claim verdict metadata is inconsistent")
     predicate = statement.get("predicate")
+    expected_manifest_keys = {"format", "case_id", "entries"}
+    expected_predicate = {
+        "case_id": case.get("id"),
+        "verdict": case_verdict.value,
+        "created_at": case.get("created_at"),
+    }
+    if not legacy:
+        expected_manifest_keys.add("claim_type")
+        expected_predicate["claim_type"] = "bug_flip"
     if (
-        not isinstance(predicate, dict)
+        set(manifest) != expected_manifest_keys
+        or not isinstance(predicate, dict)
+        or predicate != expected_predicate
         or manifest.get("case_id") != case.get("id")
         or predicate.get("case_id") != case.get("id")
-        or predicate.get("verdict") != case_verdict.value
-        or predicate.get("created_at") != case.get("created_at")
     ):
         raise ValueError("EEF signed claim metadata is inconsistent")
     fixed_entries = {
@@ -408,7 +443,13 @@ def _build_state(docker_bin: str, root: Path, state: str, image: str) -> None:
         raise RuntimeError(f"offline EEF image build failed for {state}: {proc.stderr.strip()}")
 
 
-def _run_state(docker_bin: str, image: str, argv: list[str]) -> ExecOutcome:
+def _run_state(
+    docker_bin: str,
+    image: str,
+    argv: list[str],
+    *,
+    timeout_s: int = _RUN_TIMEOUT_S,
+) -> ExecOutcome:
     container_name = f"exhibit-a-eef-{uuid.uuid4().hex}"
     command = [
         docker_bin,
@@ -435,7 +476,7 @@ def _run_state(docker_bin: str, image: str, argv: list[str]) -> ExecOutcome:
         *argv,
     ]
     try:
-        proc, timed_out = _run_process_capped(command, timeout_s=_RUN_TIMEOUT_S)
+        proc, timed_out = _run_process_capped(command, timeout_s=timeout_s)
     finally:
         _remove_container(docker_bin, container_name)
     if timed_out:
@@ -444,7 +485,7 @@ def _run_state(docker_bin: str, image: str, argv: list[str]) -> ExecOutcome:
             "",
             "TIMEOUT: EEF replay exceeded wall-clock budget",
             timed_out=True,
-            duration_s=float(_RUN_TIMEOUT_S),
+            duration_s=float(timeout_s),
         )
     return ExecOutcome(proc.returncode, proc.stdout, proc.stderr)
 
@@ -644,6 +685,58 @@ def _validate_payload_limits(payloads: dict[str, bytes]) -> None:
         total += len(content)
         if total > _MAX_ARCHIVE_BYTES:
             raise ValueError("EEF exceeds the total uncompressed size limit")
+
+
+def _write_bundle(
+    payloads: dict[str, bytes],
+    output: str | Path,
+    signing_key: bytes,
+    *,
+    manifest_metadata: Mapping[str, Any],
+    predicate: Mapping[str, Any],
+) -> Path:
+    if len(signing_key) < 32:
+        raise ValueError("EEF signing key must contain at least 32 bytes")
+    manifest = {
+        "format": FORMAT_VERSION,
+        **manifest_metadata,
+        "entries": {
+            name: {"sha256": hashlib.sha256(content).hexdigest(), "size": len(content)}
+            for name, content in sorted(payloads.items())
+        },
+    }
+    manifest_bytes = _canonical(manifest) + b"\n"
+    statement = {
+        "_type": STATEMENT_TYPE,
+        "subject": [
+            {
+                "name": "manifest.json",
+                "digest": {"sha256": hashlib.sha256(manifest_bytes).hexdigest()},
+            }
+        ],
+        "predicateType": PREDICATE_TYPE,
+        "predicate": dict(predicate),
+    }
+    attestation = {
+        "statement": statement,
+        "signature": {
+            "algorithm": "hmac-sha256",
+            "value": hmac.new(signing_key, _canonical(statement), hashlib.sha256).hexdigest(),
+        },
+    }
+    payloads["manifest.json"] = manifest_bytes
+    payloads["attestation.json"] = _canonical(attestation) + b"\n"
+    _validate_payload_limits(payloads)
+
+    destination = Path(output)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_STORED) as archive:
+        for name, content in sorted(payloads.items()):
+            info = zipfile.ZipInfo(name, _ZIP_TIME)
+            info.create_system = 3
+            info.external_attr = 0o100644 << 16
+            archive.writestr(info, content)
+    return destination
 
 
 def _open_directory_no_follow(path: Path) -> int:

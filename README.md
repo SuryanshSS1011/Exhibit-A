@@ -104,7 +104,9 @@ evidence-backed `FAILED` rather than being confused with infrastructure failure.
   training set.
 - **Signed, replayable evidence bundles.** A Case can be exported as a self-contained
   bundle (pinned commits, the test, the run command, logs, and content hashes) that anyone
-  can re-execute and verify offline. See [`docs/EEF.md`](./docs/EEF.md).
+  can re-execute and verify offline. EEF v2 supports both bug-flip Cases and repeated
+  before/after refactor evidence while retaining v1 bug-bundle verification. See
+  [`docs/EEF.md`](./docs/EEF.md).
 - **Negative results as a dataset.** The Silence Ledger records what the engine suspected
   but could not prove. Nobody publishes what reproduction tools fail to reproduce, which
   makes this a genuinely novel research asset. See

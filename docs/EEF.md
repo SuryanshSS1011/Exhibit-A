@@ -3,24 +3,28 @@ layout: default
 title: Executable Evidence Format
 ---
 
-# Executable Evidence Format (EEF) v1
+# Executable Evidence Format (EEF) v2
 
-EEF is Exhibit A's deterministic archive format for transporting a Case without
+EEF is Exhibit A's deterministic archive format for transporting signed evidence without
 asking the recipient to trust a screenshot, model summary, or hosted service. A
-bundle contains the canonical Case JSON, target/base source snapshots, generated
-pytest file, exact argv, raw logs, a Dockerfile, content manifest, and an in-toto
-Statement-shaped attestation.
+bundle contains one claim payload, source snapshots, the exact pytest contract and argv,
+a Dockerfile, content manifest, and an in-toto Statement-shaped attestation. EEF v2
+supports bug-flip Cases and behavior-preserving refactor evidence. The verifier remains
+backward-compatible with signed `eef/v1` bug bundles.
 
 ## Guarantees
 
 - `verify` checks every payload size and SHA-256 hash entirely offline.
 - The attestation signs the manifest with HMAC-SHA256. Verification therefore proves
   that the holder of the shared publisher key minted the bundle. Key distribution is
-  deliberately outside EEF v1; this is not a public-key identity claim.
-- `verify --execute` builds with Docker networking disabled, runs the target for the
-  recorded determinism count, runs the base when present, and submits the fresh raw
-  outcomes to the unchanged `flip_check`. The verifier never trusts the recorded
-  verdict as a substitute for execution.
+  deliberately outside EEF v2; this is not a public-key identity claim.
+- `verify` also validates claim-specific structure. For refactor evidence it revalidates
+  every run/receipt digest and linkage and re-derives the complete recorded truth from the
+  signed outcomes. This detects internally inconsistent evidence without executing code.
+- `verify --execute` builds with Docker networking disabled. Bug bundles submit fresh raw
+  outcomes to the unchanged `flip_check`. Refactor bundles repeat both archived states and
+  compare the newly derived complete result with the recorded result. Replay can therefore
+  confirm a reproducible `FAILED` claim as well as a `VERIFIED` one.
 - Replay accepts only the verifier's byte-exact generated Dockerfile and fixed-shape
   pytest argv. A signed archive cannot substitute its own build instructions or pytest
   options.
@@ -37,10 +41,19 @@ Statement-shaped attestation.
 The Docker base image and `pytest==8.4.1` must already exist in the local Docker
 cache for offline re-execution. The reference `python:3.12-slim` tag is not yet bound
 to an OCI digest, so the local image cache remains an explicit replay trust boundary.
-EEF v1 does not embed OCI layers. Repository source
+EEF v2 does not embed OCI layers. Repository source
 snapshots exclude `.git`, `.exhibit-a`, `__pycache__`, and `.env`; publishers must
 still review bundles for repository-specific secrets before sharing them. EEF is a
-private/full-fidelity evidence archive, not a sanitized public passport.
+private/full-fidelity evidence archive, not a sanitized public passport. Refactor bundles
+also retain bounded local executor image handles so signed request digests can be
+recomputed; URL-, path-, and userinfo-shaped handles are rejected, but publishers must
+still treat all source and log content as private.
+
+Integrity verification proves that the signed refactor evidence is internally coherent
+and that the archived trees match their signed tree digests. Only `verify --execute`
+establishes that fresh executions of those archived trees reproduce the recorded result;
+an HMAC signature alone does not prove that historical receipts were originally produced
+from the archived bytes.
 
 ## Reference commands
 
@@ -58,12 +71,13 @@ python3 -m exhibit_a.cli verify case.eef --signing-key /secure/eef.key --execute
 
 ```text
 attestation.json       in-toto Statement + HMAC signature
-case.json              canonical Case contract
+case.json              canonical bug-flip Case (exactly one claim payload)
+refactor.json          canonical refactor evidence (alternative claim payload)
 manifest.json          SHA-256 and byte size of every signed payload
-reproduce.json         argv, rerun count, expected signature, evidence tier
+reproduce.json         claim-specific argv, budgets, tree digests, and expectations
 Dockerfile             no-network replay environment
-sources/target/**      bad-state snapshot plus generated test
-sources/base/**        known-good snapshot plus generated test (when available)
+sources/target/**      target snapshot plus generated test/contract
+sources/base/**        base snapshot plus generated test/contract
 logs/**                 raw target/base/control/bisect/suite logs
 ```
 

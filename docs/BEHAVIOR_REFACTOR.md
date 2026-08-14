@@ -34,9 +34,17 @@ because it inherits host network and credentials. The counterexample fixture is 
 from the innocent-pair self-audit manifest and exists only to prove that observable changes
 produce `FAILED`.
 
-`behavior-refactor-evidence/v1` is the machine-readable result shape. It links every raw
+`behavior-refactor-evidence/v2` is the machine-readable result shape. It links every raw
 base and target run to one validated connector evidence ID, includes the deterministic
-truth assessment, and binds every receipt to the same contract artifact. A single invalid
-receipt aborts collection before a verdict is returned. This is passport-ready machine
-evidence, not yet a public passport: raw execution logs may contain sensitive application
-data and require an explicit publication policy.
+truth assessment, binds every receipt to the same contract artifact, and retains the
+bounded local image handle needed to recompute each request digest. A single invalid
+receipt aborts collection before a verdict is returned.
+
+EEF v2 can archive this evidence with both source states. Offline integrity verification
+checks the signature, tree digests, exact run-to-receipt linkage, and independently
+re-derives the recorded truth. Executable verification then rebuilds and repeats both
+archived states and compares the complete fresh result with the recorded one. A stable
+`FAILED` result can therefore be successfully replay-verified: replay truth means “the
+record is reproducible,” not “the refactor passed.” This is passport-ready machine
+evidence, not yet a public passport; source snapshots, raw execution logs, and opaque
+executor metadata may contain sensitive data and require an explicit publication policy.

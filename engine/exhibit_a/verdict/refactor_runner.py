@@ -16,7 +16,7 @@ from .refactor_check import RefactorCheckResult, refactor_check
 
 CONTRACT_PATH = "test_refactor_contract.py"
 CONTRACT_COMMAND = f"python3 -m pytest -x -q {CONTRACT_PATH}"
-EVIDENCE_SCHEMA = "behavior-refactor-evidence/v1"
+EVIDENCE_SCHEMA = "behavior-refactor-evidence/v2"
 CLAIM_TYPE = "behavior_preserving_refactor"
 
 
@@ -30,6 +30,7 @@ class RefactorRunEvidence:
     stderr: str
     timed_out: bool
     duration_s: int | float
+    image: str | None
 
 
 @dataclass(frozen=True)
@@ -121,7 +122,14 @@ def collect_refactor_evidence(
         timeout_s=timeout_s,
         result=result,
         runs=tuple(
-            _run_evidence(output.provenance, output.payload, index, reruns)
+            _run_evidence(
+                output.provenance,
+                output.payload,
+                index,
+                reruns,
+                base_image,
+                target_image,
+            )
             for index, output in enumerate(outputs)
         ),
         evidence_sources=sources,
@@ -144,6 +152,8 @@ def _run_evidence(
     outcome: ExecOutcome,
     index: int,
     reruns: int,
+    base_image: str | None,
+    target_image: str | None,
 ) -> RefactorRunEvidence:
     state = "base" if index < reruns else "target"
     ordinal = index + 1 if state == "base" else index - reruns + 1
@@ -156,4 +166,5 @@ def _run_evidence(
         stderr=outcome.stderr,
         timed_out=outcome.timed_out,
         duration_s=outcome.duration_s,
+        image=base_image if state == "base" else target_image,
     )

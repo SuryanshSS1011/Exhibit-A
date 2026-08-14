@@ -121,6 +121,34 @@ def test_eef_is_byte_deterministic_and_verifies_offline(tmp_path: Path):
         verify_bundle(first, signing_key=b"different-publisher-key-32-bytes!!!")
 
 
+def test_eef_verifier_preserves_legacy_v1_bug_bundle_compatibility(tmp_path: Path):
+    target = tmp_path / "target"
+    target.mkdir()
+    (target / "inventory.py").write_text("def stock_for(rows, sku): return 1\n")
+    current = create_bundle(
+        _case(),
+        tmp_path / "current.eef",
+        target_source=target,
+        base_source=None,
+        signing_key=KEY,
+    )
+
+    def make_legacy(blobs: dict[str, bytes]) -> None:
+        manifest = json.loads(blobs["manifest.json"])
+        manifest["format"] = "eef/v1"
+        manifest.pop("claim_type")
+        blobs["manifest.json"] = eef._canonical(manifest) + b"\n"
+        attestation = json.loads(blobs["attestation.json"])
+        attestation["statement"]["predicateType"] = "https://exhibit-a.dev/eef/v1"
+        attestation["statement"]["predicate"].pop("claim_type")
+        blobs["attestation.json"] = eef._canonical(attestation) + b"\n"
+
+    legacy = _resign_bundle(current, tmp_path / "legacy-v1.eef", make_legacy)
+    result = verify_bundle(legacy, signing_key=KEY)
+    assert result.integrity_verified and result.signature_verified
+    assert result.execution_verified is None
+
+
 def test_eef_detects_runtime_model_evidence_tampering(tmp_path: Path):
     target = tmp_path / "target"
     target.mkdir()
