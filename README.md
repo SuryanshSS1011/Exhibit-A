@@ -93,6 +93,10 @@ with deterministic claim-specific code.
 The first non-test connector reads immutable commit and changed-path metadata from an
 already-local Git checkout without fetching or exposing author identities.
 
+The second claim type begins with a [deterministic behavior-preservation judge](docs/BEHAVIOR_REFACTOR.md):
+trusted contracts run before and after a refactor, and stable differences produce an
+evidence-backed `FAILED` rather than being confused with infrastructure failure.
+
 - **Contamination-free benchmarks.** Each `VERIFIED` Case carries a commit SHA, a
   fail-to-pass test, and a date, which is exactly the shape of a SWE-bench-style instance.
   Because instances are minted continuously from live fixes and tagged by date, they can
