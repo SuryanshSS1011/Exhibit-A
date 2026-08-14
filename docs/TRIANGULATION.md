@@ -5,7 +5,7 @@ title: Counterfactual patch triangulation
 
 # Counterfactual patch triangulation
 
-Triangulation asks a second, explicitly untrusted question after a Case is PROVEN: can a
+Triangulation asks a second, explicitly untrusted question after a Case is VERIFIED: can a
 small counterpatch make the frozen test pass without breaking the repository's full
 suite? The model proposes a unified diff; it never applies or judges it.
 

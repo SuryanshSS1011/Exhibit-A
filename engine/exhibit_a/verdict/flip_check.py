@@ -10,7 +10,7 @@ A test is admissible evidence IFF:
   (d) it did not tamper with the harness.
 
 The checker trusts its own execution logs over anything the generator claims
-(AnyPoC rule). If any gate fails, the verdict is INSUFFICIENT_EVIDENCE and a
+(AnyPoC rule). If any gate fails, the verdict is UNCERTAIN and a
 silence_reason is recorded — never a guess.
 
 `expected_signature` guards the "right failure for the wrong reason" trap
@@ -147,7 +147,7 @@ def detect_vacuous(test_code: str) -> Optional[str]:
 #
 # We reject them regardless of whether an expected_signature was supplied, because
 # the most dangerous case is Detective mode with expected_signature=None, where an
-# env failure would otherwise sail through as PROVEN. A signature naming the bug is
+# env failure would otherwise sail through as VERIFIED. A signature naming the bug is
 # a *positive* filter; this is the *negative* one that must always run.
 _INFRA_SIGNATURES = (
     "ModuleNotFoundError",
@@ -178,7 +178,7 @@ def detect_infra_failure(outcome: ExecOutcome) -> Optional[str]:
     log = outcome.log
     # A timed-out run is NOT evidence of a bug — the code hung (infinite loop, deadlock,
     # slow I/O) rather than raising. Must be rejected even with no expected_signature,
-    # or a hang on the buggy state would be stamped as a false PROVEN.
+    # or a hang on the buggy state would be stamped as a false VERIFIED.
     if outcome.timed_out:
         return "target run timed out (hang/deadlock/slow I/O), not a reproduced bug"
     # pytest: exit 1 = tests failed (legitimate), exit 2 = collection/usage error.
@@ -201,9 +201,9 @@ class FlipResult:
     fail_signature: Optional[str] = None
     deterministic: bool = False
     # Evidence tier for an admissible result:
-    #   "flip"       -> full fail-on-target + pass-on-base (maps to Verdict.PROVEN)
+    #   "flip"       -> full fail-on-target + pass-on-base (maps to Verdict.VERIFIED)
     #   "reproduced" -> deterministic, signature-matched failure with NO pass state
-    #                   (maps to Verdict.REPRODUCED — weaker, honest about the gap)
+    #                   (maps to Verdict.PARTIAL — weaker, honest about the gap)
     # None when not admissible.
     tier: Optional[str] = None
 
@@ -228,7 +228,7 @@ def flip_check(
       we return admissible=False. A flip we could not run is not a proven regression.
     - `allow_reproduced=True` AND an `expected_signature` was supplied AND the target
       fails deterministically with that signature: we return admissible with
-      tier="reproduced" -> Verdict.REPRODUCED. This is signature-matched reproduction,
+      tier="reproduced" -> Verdict.PARTIAL. This is signature-matched reproduction,
       explicitly weaker than a full flip, and requires a signature so a vacuous
       `assert False` cannot "reproduce" an arbitrary claim.
     """
@@ -261,7 +261,7 @@ def flip_check(
     # (a'') infra-failure gate — the target must fail because the CODE raised, not
     # because the environment/harness broke (missing dep, import/collection/syntax
     # error). This runs even when no expected_signature is supplied, closing the
-    # env-failure -> false-PROVEN hole (SWE-Doctor "fail for the wrong reason").
+    # env-failure -> false-VERIFIED hole (SWE-Doctor "fail for the wrong reason").
     infra = detect_infra_failure(target_runs[0])
     if infra:
         return FlipResult(
@@ -295,7 +295,7 @@ def flip_check(
 
     # (b) pass-on-base.
     if base_run is None:
-        # No fixed state to flip against. Only offer the weaker REPRODUCED tier, and
+        # No fixed state to flip against. Only offer the weaker PARTIAL tier, and
         # only when the caller opted in AND the failure is signature-matched (so a
         # vacuous failure cannot masquerade as a reproduction of a specific claim).
         if allow_reproduced and expected_signature is not None:

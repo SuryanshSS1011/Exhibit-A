@@ -66,7 +66,7 @@ python3 -m exhibit_a.cli repro ../fixtures/buggy_slice \
   --offline
 ```
 
-This command intentionally exits `1` with `INSUFFICIENT_EVIDENCE`: the diagnostic
+This command intentionally exits `1` with `UNCERTAIN`: the diagnostic
 stub proposes a vacuous placeholder test, and the gate rejects it. That is a healthy
 offline smoke result, not a failed setup. It should print a Case path and must not
 crash or modify either fixture.
@@ -81,9 +81,9 @@ python3 -m exhibit_a.cli repro \
   --replay ../fixtures/cases/inventory_silence.json --json
 ```
 
-The first exits `0` with raw verdict `PROVEN` and disposition
+The first exits `0` with raw verdict `VERIFIED` and disposition
 `PROVEN_REGRESSION`. The second intentionally exits `1` with
-`INSUFFICIENT_EVIDENCE` because it has no proven pass state.
+`UNCERTAIN` because it has no proven pass state.
 
 ## 3. Run the live Codex investigation
 
@@ -113,7 +113,7 @@ four-minute timeout. It writes the terminal artifact to
 - [ ] The target checkout fails five times.
 - [ ] Every target failure has the same `KeyError` signature.
 - [ ] The fixed checkout passes the exact same test once.
-- [ ] The raw deterministic verdict is `PROVEN`, `deterministic` is `true`, and
+- [ ] The raw deterministic verdict is `VERIFIED`, `deterministic` is `true`, and
       `suite_gap` is `true`.
 - [ ] The generated test appears in `fail_to_pass` and the original fixture trees
       remain unchanged.
@@ -124,7 +124,7 @@ The live Detective CLI currently has no PR/issue intent context and therefore do
 not invoke the separate intent judge. Its honest output is:
 
 ```text
-verdict: PROVEN
+verdict: VERIFIED
 intent_judgment: not_assessed
 disposition: BEHAVIOR_CHANGE
 ```
@@ -179,11 +179,11 @@ for an interrupted child process before calling the web path verified.
 | `Codex CLI not found` | Set `EXHIBIT_A_CODEX_BIN` to the absolute executable path, then rerun the resolver check. |
 | `Not logged in` or authentication failure | Run `"$exhibit_codex_bin" login` in a trusted terminal, then confirm with `login status`. |
 | Read-only `~/.codex/state_5.sqlite` or `Operation not permitted` | The verification is running inside a restricted filesystem/process sandbox. Run it in a normal terminal with access to the authenticated Codex state. |
-| Codex returns no admissible candidate | The result should be `INSUFFICIENT_EVIDENCE` with a concrete generation/rejection reason. This is honest silence, not a crash. Retry once; do not replace it with a claimed proof. |
+| Codex returns no admissible candidate | The result should be `UNCERTAIN` with a concrete generation/rejection reason. This is honest silence, not a crash. Retry once; do not replace it with a claimed proof. |
 | Target failures disagree across reruns | The candidate is flaky and must remain quarantined/silent. Use the sealed exhibit for the stage; do not lower the determinism count. |
 | Docker daemon unavailable | Omit `--docker` for these dependency-free trusted fixtures. Do not weaken Docker isolation for an untrusted repository. |
 | Web UI stops before the terminal Case | Confirm the CLI live command first, inspect the Next terminal, then verify the SSE API emits both `verdict` and `case`. |
-| Raw `PROVEN`, disposition `BEHAVIOR_CHANGE` | Expected for live Detective without intent context. The flip succeeded; regression intent was not assessed. |
+| Raw `VERIFIED`, disposition `BEHAVIOR_CHANGE` | Expected for live Detective without intent context. The flip succeeded; regression intent was not assessed. |
 
 ## 6. Stage fallback
 
@@ -194,7 +194,7 @@ State clearly that they are recorded Case Files; do not present a replay as a li
 
 Last verified locally on 2026-07-21:
 
-- the exact live CLI command produced a deterministic five-fail/one-pass `PROVEN` Case;
+- the exact live CLI command produced a deterministic five-fail/one-pass `VERIFIED` Case;
 - the exact SSE request emitted the full event sequence and terminal Case;
 - the live Detective disposition was correctly conservative at `BEHAVIOR_CHANGE`;
 - both sealed replay commands returned their documented results.

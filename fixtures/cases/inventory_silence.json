@@ -52,8 +52,8 @@
     "goal_reason": "no deterministic signature-matching flip",
     "release_reason": "release safety was not assessed"
   },
-  "verdict": "INSUFFICIENT_EVIDENCE",
-  "disposition": "INSUFFICIENT_EVIDENCE",
+  "verdict": "UNCERTAIN",
+  "disposition": "UNCERTAIN",
   "silence_reason": "confirmed deterministic failure on target, but no base/fixed state to prove the pass side",
   "license_name": "MIT",
   "fail_to_pass": [],

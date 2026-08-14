@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import subprocess
 import zipfile
 from pathlib import Path
@@ -27,7 +28,7 @@ TEST_CODE = (
 def _case() -> dict:
     case = Case(id="eef-fixture", mode=Mode.DETECTIVE)
     case.created_at = "2026-07-21T00:00:00+00:00"
-    case.verdict = Verdict.PROVEN
+    case.verdict = Verdict.VERIFIED
     case.test_file = CaseTestArtifact("test_repro.py", TEST_CODE)
     case.run_command = "python3 -m pytest -x -q test_repro.py"
     case.proposal_runs = [
@@ -106,6 +107,32 @@ def test_eef_detects_runtime_model_evidence_tampering(tmp_path: Path):
 
     with pytest.raises(ValueError, match="entry (size|hash) mismatch"):
         verify_bundle(tampered, signing_key=KEY)
+
+
+def test_eef_canonicalizes_legacy_verdict_metadata(tmp_path: Path):
+    target = tmp_path / "target"
+    target.mkdir()
+    (target / "inventory.py").write_text("def stock_for(rows, sku): return 1\n")
+    case = _case()
+    case["verdict"] = "PROVEN"
+    case["disposition"] = "REPRODUCED"
+
+    bundle = create_bundle(
+        case,
+        tmp_path / "legacy.eef",
+        target_source=target,
+        base_source=None,
+        signing_key=KEY,
+    )
+
+    with zipfile.ZipFile(bundle) as archive:
+        bundled_case = json.loads(archive.read("case.json"))
+        reproduce = json.loads(archive.read("reproduce.json"))
+        attestation = json.loads(archive.read("attestation.json"))
+    assert bundled_case["verdict"] == "VERIFIED"
+    assert bundled_case["disposition"] == "PARTIAL"
+    assert reproduce["verdict"] == "VERIFIED"
+    assert attestation["statement"]["predicate"]["verdict"] == "VERIFIED"
 
 
 def test_eef_reexecution_uses_docker_argv_and_unchanged_flip_judge(

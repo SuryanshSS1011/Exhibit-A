@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from ..models.case import Case
+from ..models.case import Case, normalize_case_payload
 
 
 class JsonCaseStore:
@@ -27,14 +27,17 @@ class JsonCaseStore:
         return p
 
     def load(self, case_id: str) -> dict:
-        return json.loads(self._path(case_id).read_text())
+        return normalize_case_payload(json.loads(self._path(case_id).read_text()))
 
     def list_ids(self) -> list[str]:
         return sorted(p.stem for p in self.root.glob("*.json"))
 
     def all(self) -> list[dict]:
-        return [json.loads(p.read_text()) for p in sorted(self.root.glob("*.json"))]
+        return [
+            normalize_case_payload(json.loads(p.read_text()))
+            for p in sorted(self.root.glob("*.json"))
+        ]
 
     def silence_log(self) -> list[dict]:
         """Every case that stayed silent — the negative-results asset (plan §5)."""
-        return [c for c in self.all() if c.get("verdict") == "INSUFFICIENT_EVIDENCE"]
+        return [c for c in self.all() if c.get("verdict") == "UNCERTAIN"]

@@ -40,7 +40,7 @@ def test_offline_study_writes_consistent_silence_as_a_valid_negative_result(tmp_
     assert payload["root_cause"]["coverage"] == 0.0
     assert payload["test_semantics"]["coverage"] == 0.0
     assert payload["converged"] is False
-    assert {run["verdict"] for run in payload["runs"]} == {"INSUFFICIENT_EVIDENCE"}
+    assert {run["verdict"] for run in payload["runs"]} == {"UNCERTAIN"}
 
 
 def test_study_rejects_too_few_samples(tmp_path: Path, capsys):

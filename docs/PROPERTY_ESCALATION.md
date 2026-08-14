@@ -5,7 +5,7 @@ title: Property-based escalation
 
 # Property-based escalation
 
-After a concrete Case is PROVEN, Exhibit A may ask Codex to generalize its single
+After a concrete Case is VERIFIED, Exhibit A may ask Codex to generalize its single
 example into a broader property. The generator works read-only and may return either a
 Hypothesis `@given` test when that dependency already exists or a pytest parametrization
 with at least three explicit examples. It may also decline.

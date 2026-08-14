@@ -17,14 +17,14 @@ def _repo(path: Path, *, x_fixed: bool, y_fixed: bool) -> None:
     )
 
 
-def _case(root: Path, case_id: str, assertion: str) -> str:
+def _case(root: Path, case_id: str, assertion: str, verdict: str = "VERIFIED") -> str:
     path = root / f"{case_id}.json"
     test_path = f"test_{case_id}.py"
     path.write_text(
         json.dumps(
             {
                 "id": case_id,
-                "verdict": "PROVEN",
+                "verdict": verdict,
                 "test_file": {
                     "path": test_path,
                     "code": f"from app import at_least_ten, double\n\ndef test_repro():\n    {assertion}\n",
@@ -46,7 +46,7 @@ def test_execution_dedup_finds_equivalent_and_distinct_bugs(tmp_path: Path):
     _repo(tmp_path / "fixed-c", x_fixed=False, y_fixed=True)
     cases = [
         {
-            "case": _case(tmp_path, "case_a", "assert at_least_ten(10)"),
+            "case": _case(tmp_path, "case_a", "assert at_least_ten(10)", "PROVEN"),
             "target": "target-a",
             "fixed": "fixed-a",
         },

@@ -27,7 +27,7 @@ const config: Config = {
           200: "#cbcbd2",
         },
         // Verdict semantics — the ONLY decorative-looking colours, and they aren't decorative.
-        proven: "#2f9e5f", // green stamp: PROVEN
+        proven: "#2f9e5f", // green stamp: VERIFIED
         fail: "#d1443f", // red: the failing assertion line, on the buggy state
         pass: "#2f9e5f", // green: the passing run, on the base state
         silence: "#6b6b73", // grey stamp: INSUFFICIENT EVIDENCE

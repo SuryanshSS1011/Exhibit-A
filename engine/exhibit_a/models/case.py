@@ -13,6 +13,7 @@ from __future__ import annotations
 import enum
 import math
 import string
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -26,13 +27,29 @@ class Mode(str, enum.Enum):
 class Verdict(str, enum.Enum):
     # A full flip: the test FAILS on target and PASSES on a base/fixed state, with a
     # matching, deterministic failure signature. The strongest evidence tier.
-    PROVEN = "PROVEN"
+    VERIFIED = "VERIFIED"
     # A signature-matched reproduction WITHOUT a proven pass state (the common
     # Detective case: a fresh bug exists on every recent commit, so there is no
     # fixed state to pass on). Deterministic + signature-matched, but materially
-    # weaker than PROVEN — we do not overclaim a flip we could not run.
-    REPRODUCED = "REPRODUCED"
-    INSUFFICIENT_EVIDENCE = "INSUFFICIENT_EVIDENCE"
+    # weaker than VERIFIED — we do not overclaim a flip we could not run.
+    PARTIAL = "PARTIAL"
+    FAILED = "FAILED"
+    UNCERTAIN = "UNCERTAIN"
+    # Source-compatible aliases. Serialization remains canonical because aliases
+    # share the new member values.
+    PROVEN = "VERIFIED"
+    REPRODUCED = "PARTIAL"
+    INSUFFICIENT_EVIDENCE = "UNCERTAIN"
+
+    @classmethod
+    def _missing_(cls, value: object) -> Verdict | None:
+        if value == "PROVEN":
+            return cls.VERIFIED
+        if value == "REPRODUCED":
+            return cls.PARTIAL
+        if value == "INSUFFICIENT_EVIDENCE":
+            return cls.UNCERTAIN
+        return None
 
 
 class ExecutionTruth(str, enum.Enum):
@@ -87,19 +104,66 @@ class Disposition(str, enum.Enum):
 
     PROVEN_REGRESSION = "PROVEN_REGRESSION"
     BEHAVIOR_CHANGE = "BEHAVIOR_CHANGE"
-    REPRODUCED = "REPRODUCED"
-    INSUFFICIENT_EVIDENCE = "INSUFFICIENT_EVIDENCE"
+    PARTIAL = "PARTIAL"
+    FAILED = "FAILED"
+    UNCERTAIN = "UNCERTAIN"
+    REPRODUCED = "PARTIAL"
+    INSUFFICIENT_EVIDENCE = "UNCERTAIN"
+
+    @classmethod
+    def _missing_(cls, value: object) -> Disposition | None:
+        if value == "REPRODUCED":
+            return cls.PARTIAL
+        if value == "INSUFFICIENT_EVIDENCE":
+            return cls.UNCERTAIN
+        return None
 
 
 def derive_disposition(verdict: Verdict, intent: IntentJudgment) -> Disposition:
     """Relabel evidence without changing what execution proved."""
-    if verdict is Verdict.PROVEN:
+    if verdict is Verdict.VERIFIED:
         if intent is IntentJudgment.UNINTENDED:
             return Disposition.PROVEN_REGRESSION
         return Disposition.BEHAVIOR_CHANGE
-    if verdict is Verdict.REPRODUCED:
-        return Disposition.REPRODUCED
-    return Disposition.INSUFFICIENT_EVIDENCE
+    if verdict is Verdict.PARTIAL:
+        return Disposition.PARTIAL
+    if verdict is Verdict.FAILED:
+        return Disposition.FAILED
+    return Disposition.UNCERTAIN
+
+
+_LEGACY_VERDICTS = {
+    "PROVEN": Verdict.VERIFIED,
+    "REPRODUCED": Verdict.PARTIAL,
+    "INSUFFICIENT_EVIDENCE": Verdict.UNCERTAIN,
+}
+
+_LEGACY_DISPOSITIONS = {
+    "REPRODUCED": Disposition.PARTIAL,
+    "INSUFFICIENT_EVIDENCE": Disposition.UNCERTAIN,
+}
+
+
+def normalize_verdict(value: object) -> Verdict:
+    """Parse current verdicts and upgrade legacy Case values at ingestion."""
+    if isinstance(value, Verdict):
+        return value
+    if isinstance(value, str) and value in _LEGACY_VERDICTS:
+        return _LEGACY_VERDICTS[value]
+    return Verdict(value)
+
+
+def normalize_case_payload(case: Mapping[str, Any]) -> dict[str, Any]:
+    """Return a Case payload with legacy public enum values upgraded."""
+    normalized = dict(case)
+    verdict = normalize_verdict(normalized.get("verdict"))
+    normalized["verdict"] = verdict.value
+    disposition = normalized.get("disposition")
+    if isinstance(disposition, str) and disposition in _LEGACY_DISPOSITIONS:
+        normalized["disposition"] = _LEGACY_DISPOSITIONS[disposition].value
+    elif disposition is not None:
+        normalized["disposition"] = Disposition(disposition).value
+    return normalized
 
 
 @dataclass
@@ -257,7 +321,7 @@ class Case:
     hypotheses: list[Hypothesis] = field(default_factory=list)
     proposal_runs: list[ProposalRun] = field(default_factory=list)
     root_cause_narrative: str = ""
-    # Separate, fallible interpretation of PR/issue intent. Never part of PROVEN.
+    # Separate, fallible interpretation of PR/issue intent. Never part of VERIFIED.
     intent_judgment: IntentJudgment = IntentJudgment.NOT_ASSESSED
     intent_rationale: Optional[str] = None
     intent_model: Optional[str] = None
@@ -274,9 +338,9 @@ class Case:
     truth: TruthAssessment = field(default_factory=TruthAssessment)
 
     # --- the verdict ---
-    verdict: Verdict = Verdict.INSUFFICIENT_EVIDENCE
-    disposition: Disposition = Disposition.INSUFFICIENT_EVIDENCE
-    silence_reason: Optional[str] = None  # populated iff INSUFFICIENT_EVIDENCE
+    verdict: Verdict = Verdict.UNCERTAIN
+    disposition: Disposition = Disposition.UNCERTAIN
+    silence_reason: Optional[str] = None  # populated iff UNCERTAIN
 
     # --- open-science / benchmark fields (SWE-bench compatible) ---
     license_name: Optional[str] = None  # SPDX of source repo @ commit
@@ -291,13 +355,13 @@ class Case:
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def is_proven(self) -> bool:
-        """True only for a full flip (PROVEN). REPRODUCED is deliberately excluded —
+        """True only for a full flip (VERIFIED). PARTIAL is deliberately excluded —
         it is admissible evidence but not a proven regression."""
-        return self.verdict is Verdict.PROVEN
+        return self.verdict is Verdict.VERIFIED
 
     def is_evidence(self) -> bool:
-        """True for any admissible verdict tier (PROVEN or REPRODUCED)."""
-        return self.verdict in (Verdict.PROVEN, Verdict.REPRODUCED)
+        """True for any admissible verdict tier (VERIFIED or PARTIAL)."""
+        return self.verdict in (Verdict.VERIFIED, Verdict.PARTIAL)
 
     def to_dict(self) -> dict[str, Any]:
         """Plain-dict form for JSON / API / dataset export."""

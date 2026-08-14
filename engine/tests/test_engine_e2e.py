@@ -3,8 +3,8 @@
 These run with the LocalExecutor (no Docker) and small hand-written generators, so
 they exercise the executor + flip-check + verdict wiring without a live model.
 They prove the two verdicts the whole product hinges on:
-  - PROVEN: a real fail-to-pass test that fails on buggy, passes on fixed.
-  - INSUFFICIENT_EVIDENCE: silence when no admissible flip is found.
+  - VERIFIED: a real fail-to-pass test that fails on buggy, passes on fixed.
+  - UNCERTAIN: silence when no admissible flip is found.
 """
 
 from __future__ import annotations
@@ -129,7 +129,7 @@ def test_proven_flip():
         target=RepoState(path=str(FIXTURES / "buggy_slice"), label="target"),
         base=RepoState(path=str(FIXTURES / "fixed_slice"), label="base"),
     )
-    assert case.verdict is Verdict.PROVEN, case.silence_reason
+    assert case.verdict is Verdict.VERIFIED, case.silence_reason
     assert case.test_file is not None
     assert case.evidence.deterministic
     assert case.evidence.fail_signature and "AssertionError" in case.evidence.fail_signature
@@ -153,7 +153,7 @@ def test_realistic_inventory_fixture_proves_missing_sku_key_error():
         base=RepoState(path=str(FIXTURES / "fixed_inventory"), label="base"),
     )
 
-    assert case.verdict is Verdict.PROVEN, case.silence_reason
+    assert case.verdict is Verdict.VERIFIED, case.silence_reason
     assert case.test_file and case.test_file.path == "test_inventory_repro.py"
     assert case.evidence.fail_signature and "KeyError" in case.evidence.fail_signature
 
@@ -198,7 +198,7 @@ def test_proven_case_keeps_original_and_emits_verified_minimized_evidence():
         base=RepoState(path=str(FIXTURES / "fixed_inventory"), label="base"),
     )
 
-    assert case.verdict is Verdict.PROVEN
+    assert case.verdict is Verdict.VERIFIED
     assert case.original_test_file is not None
     assert case.test_file is not None
     assert case.minimization is not None and case.minimization.verified
@@ -232,7 +232,7 @@ def test_evidence_strength_integrates_mutation_measurement_without_changing_verd
         base=RepoState(path=str(FIXTURES / "fixed_slice"), label="base"),
     )
 
-    assert case.verdict is Verdict.PROVEN
+    assert case.verdict is Verdict.VERIFIED
     assert case.evidence_strength is not None
     assert case.evidence_strength.mutation.score == 0.0
     assert "0/1 eligible mutants killed" in case.evidence_strength.mutation.basis
@@ -264,7 +264,7 @@ def test_strength_measurement_failure_cannot_change_the_proven_verdict():
         base=RepoState(path=str(FIXTURES / "fixed_slice"), label="base"),
     )
 
-    assert case.verdict is Verdict.PROVEN
+    assert case.verdict is Verdict.VERIFIED
     assert case.evidence_strength is None
 
 
@@ -298,7 +298,7 @@ def test_minimization_failure_cannot_change_the_proven_verdict():
         base=RepoState(path=str(FIXTURES / "fixed_inventory"), label="base"),
     )
 
-    assert case.verdict is Verdict.PROVEN
+    assert case.verdict is Verdict.VERIFIED
     assert case.test_file and case.test_file.code == INVENTORY_FLIP_TEST
     assert case.original_test_file and case.original_test_file.code == INVENTORY_FLIP_TEST
     assert case.minimization is not None and not case.minimization.verified
@@ -322,7 +322,7 @@ def test_prosecutor_requires_failure_traceback_to_touch_inventory_diff():
         base=RepoState(path=str(FIXTURES / "fixed_inventory"), label="base"),
     )
 
-    assert case.verdict is Verdict.PROVEN, case.silence_reason
+    assert case.verdict is Verdict.VERIFIED, case.silence_reason
 
 
 def test_prosecutor_intent_judgment_is_separate_from_proven_verdict():
@@ -342,7 +342,7 @@ def test_prosecutor_intent_judgment_is_separate_from_proven_verdict():
         intent_context="This PR intentionally makes missing inventory an error.",
     )
 
-    assert case.verdict is Verdict.PROVEN
+    assert case.verdict is Verdict.VERIFIED
     assert case.intent_judgment is IntentJudgment.INTENDED
     assert case.disposition is Disposition.BEHAVIOR_CHANGE
     assert case.declared_behavior_delta == (
@@ -370,7 +370,7 @@ def test_unintended_intent_relabels_but_does_not_change_proven_verdict():
         intent_context="Refactor only; preserve behavior.",
     )
 
-    assert case.verdict is Verdict.PROVEN
+    assert case.verdict is Verdict.VERIFIED
     assert case.intent_judgment is IntentJudgment.UNINTENDED
     assert case.disposition is Disposition.PROVEN_REGRESSION
 
@@ -385,7 +385,7 @@ def test_engine_stops_at_first_admissible_candidate():
         base=RepoState(path=str(FIXTURES / "fixed_slice"), label="base"),
     )
 
-    assert case.verdict is Verdict.PROVEN
+    assert case.verdict is Verdict.VERIFIED
     assert [hyp.text for hyp in case.hypotheses] == [
         "last_n drops the final element (off-by-one slice)"
     ]
@@ -404,7 +404,7 @@ def test_control_state_is_recorded_and_must_pass():
         control=RepoState(path=str(FIXTURES / "fixed_slice"), label="control"),
     )
 
-    assert case.verdict is Verdict.PROVEN
+    assert case.verdict is Verdict.VERIFIED
     assert case.evidence.control_log
     assert [run.state for run in case.evidence.runs][-1] == "control"
 
@@ -429,8 +429,8 @@ def test_remote_commit_proven_case_records_benchmark_provenance():
 
 
 def test_base_only_yields_reproduced_when_allowed():
-    # No fixed state, but allow_reproduced=True + a signature -> the weaker REPRODUCED
-    # tier instead of silence or an overclaimed PROVEN.
+    # No fixed state, but allow_reproduced=True + a signature -> the weaker PARTIAL
+    # tier instead of silence or an overclaimed VERIFIED.
     cfg = EngineConfig(
         reruns=3,
         run_command=f"{sys.executable} -m pytest -x -q test_repro.py",
@@ -448,7 +448,7 @@ def test_base_only_yields_reproduced_when_allowed():
         target=RepoState(path=str(FIXTURES / "buggy_slice"), label="target"),
         base=None,
     )
-    assert case.verdict is Verdict.REPRODUCED
+    assert case.verdict is Verdict.PARTIAL
     assert case.truth.goal is GoalTruth.PARTIAL
     assert case.truth.release is ReleaseTruth.NOT_ASSESSED
     assert not case.is_proven()  # explicitly NOT a full flip
@@ -489,7 +489,7 @@ def test_engine_streams_each_execution_before_the_terminal_verdict():
         "target",
         "base",
     ]
-    assert events[-1]["verdict"] == "PROVEN"
+    assert events[-1]["verdict"] == "VERIFIED"
 
 
 def test_silence_when_no_base_to_prove_pass_side():
@@ -506,7 +506,7 @@ def test_silence_when_no_base_to_prove_pass_side():
         target=RepoState(path=str(FIXTURES / "buggy_slice"), label="target"),
         base=None,
     )
-    assert case.verdict is Verdict.INSUFFICIENT_EVIDENCE
+    assert case.verdict is Verdict.UNCERTAIN
     assert "pass side" in (case.silence_reason or "")
 
 
@@ -515,7 +515,7 @@ def test_stub_generator_stays_silent():
     engine = EvidenceEngine(StubGenerator(), LocalExecutor(), EngineConfig(reruns=2))
     claim = Claim(text="anything", repo_path=str(FIXTURES / "buggy_slice"))
     case = engine.investigate(claim, mode=Mode.DETECTIVE)
-    assert case.verdict is Verdict.INSUFFICIENT_EVIDENCE
+    assert case.verdict is Verdict.UNCERTAIN
     assert case.silence_reason
     assert case.truth.execution is ExecutionTruth.COMPLETED
     assert case.truth.goal is GoalTruth.UNCERTAIN
@@ -551,7 +551,7 @@ def test_existing_suite_failure_stays_silent_before_generation():
 
     case = engine.investigate(claim)
 
-    assert case.verdict is Verdict.INSUFFICIENT_EVIDENCE
+    assert case.verdict is Verdict.UNCERTAIN
     assert case.existing_suite_passed is False
     assert case.suite_gap is False
     assert case.existing_suite_log == "FAILED tests/test_existing.py"
@@ -579,7 +579,7 @@ def test_engine_rejects_out_of_scope_command_before_execution():
 
     case = engine.investigate(claim)
 
-    assert case.verdict is Verdict.INSUFFICIENT_EVIDENCE
+    assert case.verdict is Verdict.UNCERTAIN
     assert "shell control" in (case.silence_reason or "")
 
 
@@ -594,7 +594,7 @@ def test_environment_build_failure_becomes_honest_silence():
 
     case = engine.investigate(claim)
 
-    assert case.verdict is Verdict.INSUFFICIENT_EVIDENCE
+    assert case.verdict is Verdict.UNCERTAIN
     assert case.hypotheses == []
     assert case.silence_reason == "could not build environment: no pinned lockfile"
     assert case.truth.execution is ExecutionTruth.FAILED
@@ -629,7 +629,7 @@ def test_flaky_rejection_retains_candidate_and_environment_for_private_quarantin
 
     case = engine.investigate(claim)
 
-    assert case.verdict is Verdict.INSUFFICIENT_EVIDENCE
+    assert case.verdict is Verdict.UNCERTAIN
     assert case.silence_reason and case.silence_reason.startswith("flaky on target")
     assert case.test_file and case.test_file.path == "test_repro.py"
     assert case.environment_ref == "exhibit-a-env:flaky-fixture"

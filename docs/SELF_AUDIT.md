@@ -23,7 +23,7 @@ the live Codex generator and hardened executor. Reports default to
 per-category result. They are private research records; claims and model output may be
 sensitive.
 
-Any `PROVEN` Case on a validated behavior-preserving pair is a false conviction,
+Any `VERIFIED` Case on a validated behavior-preserving pair is a false conviction,
 regardless of its later intent label. The report shows the observed rate and a two-sided
 Wilson 95% interval. Small clean corpora retain wide upper bounds: 0/3 is not evidence
 of perfect precision.

@@ -13,6 +13,7 @@ from pathlib import Path
 from ..engine import candidate_policy_reason
 from ..executor.base import ExecSpec, Executor, RepoState
 from ..hypothesis.property import PropertyCandidate, PropertyGenerator
+from ..models.case import Verdict, normalize_verdict
 from ..store.suite_gap import ENGINE_VERSION
 from ..verdict.flip_check import flip_check
 from ..verdict.mutation_testing import discover_mutations, score_mutations
@@ -162,8 +163,10 @@ def _name(node: ast.AST) -> str:
 
 def _load_case(path: str | Path) -> dict:
     case = json.loads(Path(path).read_text())
-    if case.get("verdict") != "PROVEN" or not isinstance(case.get("test_file"), dict):
-        raise ValueError("property escalation requires a sealed PROVEN Case")
+    if normalize_verdict(case.get("verdict")) is not Verdict.VERIFIED or not isinstance(
+        case.get("test_file"), dict
+    ):
+        raise ValueError("property escalation requires a sealed VERIFIED Case")
     return case
 
 

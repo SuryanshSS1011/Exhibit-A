@@ -4,7 +4,7 @@
  */
 
 export type Mode = "prosecutor" | "detective";
-export type Verdict = "PROVEN" | "REPRODUCED" | "INSUFFICIENT_EVIDENCE";
+export type Verdict = "VERIFIED" | "PARTIAL" | "FAILED" | "UNCERTAIN";
 export type ExecutionTruth = "NOT_RUN" | "COMPLETED" | "FAILED";
 export type GoalTruth = "VERIFIED" | "PARTIAL" | "FAILED" | "UNCERTAIN";
 export type ReleaseTruth = "NOT_ASSESSED" | "SAFE" | "UNSAFE" | "UNCERTAIN";
@@ -13,8 +13,9 @@ export type IntentJudgment = "not_assessed" | "intended" | "unintended" | "uncle
 export type Disposition =
   | "PROVEN_REGRESSION"
   | "BEHAVIOR_CHANGE"
-  | "REPRODUCED"
-  | "INSUFFICIENT_EVIDENCE";
+  | "PARTIAL"
+  | "FAILED"
+  | "UNCERTAIN";
 
 export interface TestArtifact {
   path: string;
@@ -138,7 +139,33 @@ export interface Case {
   created_at: string;
 }
 
-export const isProven = (c: Case): boolean => c.verdict === "PROVEN";
-/** Any admissible tier: a full flip (PROVEN) or a signature-matched REPRODUCED. */
+export const isProven = (c: Case): boolean => c.verdict === "VERIFIED";
+export const isVerified = isProven;
+/** Any admissible tier: a full flip (VERIFIED) or a signature-matched PARTIAL. */
 export const isEvidence = (c: Case): boolean =>
-  c.verdict === "PROVEN" || c.verdict === "REPRODUCED";
+  c.verdict === "VERIFIED" || c.verdict === "PARTIAL";
+
+const LEGACY_VERDICTS: Record<string, Verdict> = {
+  PROVEN: "VERIFIED",
+  REPRODUCED: "PARTIAL",
+  INSUFFICIENT_EVIDENCE: "UNCERTAIN",
+};
+
+const LEGACY_DISPOSITIONS: Record<string, Disposition> = {
+  REPRODUCED: "PARTIAL",
+  INSUFFICIENT_EVIDENCE: "UNCERTAIN",
+};
+
+/** Upgrade persisted pre-migration Case values at a web/API ingestion boundary. */
+export function normalizeCasePayload<T extends Record<string, unknown>>(value: T): T {
+  const verdict = typeof value.verdict === "string" ? LEGACY_VERDICTS[value.verdict] : undefined;
+  const disposition =
+    typeof value.disposition === "string"
+      ? LEGACY_DISPOSITIONS[value.disposition]
+      : undefined;
+  return {
+    ...value,
+    ...(verdict ? { verdict } : {}),
+    ...(disposition ? { disposition } : {}),
+  };
+}

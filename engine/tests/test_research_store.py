@@ -7,8 +7,10 @@ from exhibit_a.models.case import (
     Hypothesis,
     Mode,
     RunResult,
-    TestArtifact as CaseTestArtifact,
     Verdict,
+)
+from exhibit_a.models.case import (
+    TestArtifact as CaseTestArtifact,
 )
 from exhibit_a.store.research import RESEARCH_SCHEMA, ResearchStore
 
@@ -35,7 +37,7 @@ def test_flaky_quarantine_preserves_candidate_environment_and_raw_runs(tmp_path:
 
 
 def test_observatory_registration_and_longitudinal_history_are_versioned(tmp_path: Path):
-    case = Case(id="proven-1", mode=Mode.DETECTIVE, verdict=Verdict.PROVEN)
+    case = Case(id="proven-1", mode=Mode.DETECTIVE, verdict=Verdict.VERIFIED)
     case.test_file = CaseTestArtifact("test_repro.py", "from app import value\nassert value()\n")
     case.evidence.fail_signature = "AssertionError"
     store = ResearchStore(tmp_path)

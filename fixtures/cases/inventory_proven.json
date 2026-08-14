@@ -80,7 +80,7 @@
     "goal_reason": "deterministic fail-on-target and pass-on-base flip",
     "release_reason": "release safety was not assessed"
   },
-  "verdict": "PROVEN",
+  "verdict": "VERIFIED",
   "disposition": "PROVEN_REGRESSION",
   "silence_reason": null,
   "license_name": "MIT",

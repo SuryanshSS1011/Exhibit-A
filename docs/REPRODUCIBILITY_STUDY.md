@@ -53,7 +53,7 @@ checkouts; callers should make both directories immutable snapshots of the same 
 
 Every metric reports coverage separately. Strict convergence requires all requested
 runs to complete and both executable-evidence fingerprints to have full modal agreement.
-Consistent `INSUFFICIENT_EVIDENCE` is therefore a valuable negative result with perfect
+Consistent `UNCERTAIN` is therefore a valuable negative result with perfect
 verdict convergence, but it is not mislabeled reproduction convergence.
 
 ## Output and interpretation
@@ -66,6 +66,6 @@ consented datasets with engine/model/date provenance.
 
 Divergence is a study result, not a command failure. The CLI exits nonzero only for an
 invalid setup or an unwritable report. Runtime and model cost scale approximately with
-K; every `PROVEN` sample still performs the real bounded minimization and strength
+K; every `VERIFIED` sample still performs the real bounded minimization and strength
 measurements. Start with K=5 for exploration and pre-register a larger K and analysis
 plan before making research claims.

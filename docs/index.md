@@ -7,7 +7,7 @@ title: Documentation
 
 Exhibit A has one rule: a runnable fail-to-pass test, or silence.
 
-A PROVEN Case shows that an exact generated test failed on the reported state for the
+A VERIFIED Case shows that an exact generated test failed on the reported state for the
 expected reason and passed on the fixed state under deterministic execution. It does not
 prove developer intent, complete program correctness, universal causality, or that a
 candidate repair should be merged. Research scores and study reports are descriptive.

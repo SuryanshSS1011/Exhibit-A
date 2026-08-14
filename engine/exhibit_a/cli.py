@@ -16,8 +16,8 @@ import sys
 from pathlib import Path
 from typing import Any, Callable
 
-from .engine import EngineConfig, EvidenceEngine, candidate_policy_reason
 from .eef import create_bundle, verify_bundle
+from .engine import EngineConfig, EvidenceEngine, candidate_policy_reason
 from .executor.base import ExecSpec, RepoState
 from .executor.instrumented import RecordingExecutor, summarize_environment_attempts
 from .executor.local_exec import LocalExecutor
@@ -26,19 +26,19 @@ from .hypothesis.generator import Candidate, Claim, CodexGenerator, Feedback, St
 from .hypothesis.property import CodexPropertyGenerator
 from .intake.git_bisect import bisect_reproduction
 from .intake.git_checkout import checkout_context, checkout_pair, checkout_triplet
-from .models.case import Case, Mode, Verdict
+from .models.case import Case, Mode, Verdict, normalize_case_payload
 from .providers import ProviderRole, load_provider_config
 from .store.json_store import JsonCaseStore
 from .store.research import ResearchStore
 from .store.suite_gap import SuiteGapStore
 from .studies.archaeology import run_archaeology, save_archaeology_report
 from .studies.bug_identity import run_bug_identity, save_bug_identity_report
+from .studies.oracle_gap import run_oracle_gap, save_oracle_gap_report
+from .studies.property_escalation import run_property_escalation, save_property_report
 from .studies.reproducibility import (
     run_reproducibility_study,
     save_reproducibility_report,
 )
-from .studies.oracle_gap import run_oracle_gap, save_oracle_gap_report
-from .studies.property_escalation import run_property_escalation, save_property_report
 from .studies.self_audit import run_self_audit, save_self_audit_report
 from .studies.triangulation import run_triangulation, save_triangulation_report
 from .verdict.flip_check import extract_signature, signatures_match
@@ -96,7 +96,7 @@ def cmd_repro(args: argparse.Namespace) -> int:
             print(f"case file: {Path(args.replay).resolve()}")
             if args.json:
                 print(json.dumps(case, indent=2))
-        return 0 if case["verdict"] in {"PROVEN", "REPRODUCED"} else 1
+        return 0 if case["verdict"] in {"VERIFIED", "PARTIAL"} else 1
 
     if not args.repo:
         print("error: provide a repo, or use --replay <case.json>", file=sys.stderr)
@@ -159,7 +159,7 @@ def cmd_repro(args: argparse.Namespace) -> int:
                     target=target,
                     repo_source=args.repo,
                 )
-                if case.verdict is Verdict.REPRODUCED:
+                if case.verdict is Verdict.PARTIAL:
                     image = engine.executor.prepare(target)
                     if image is None:
                         raise RuntimeError("bisect requires a prepared Docker image")
@@ -658,7 +658,9 @@ def _load_replay(path: Path) -> dict[str, Any]:
         raise ValueError("Case JSON must contain an object")
     if not isinstance(payload.get("id"), str) or not payload["id"]:
         raise ValueError("Case JSON is missing a valid id")
-    if payload.get("verdict") not in {"PROVEN", "REPRODUCED", "INSUFFICIENT_EVIDENCE"}:
+    try:
+        payload = normalize_case_payload(payload)
+    except (TypeError, ValueError):
         raise ValueError("Case JSON has an invalid verdict")
     if not isinstance(payload.get("evidence"), dict):
         raise ValueError("Case JSON is missing evidence")
@@ -682,7 +684,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--expect", help="expected failure signature (e.g. 'KeyError')")
     p.add_argument(
         "--fixed",
-        help="path to a fixed/base checkout; required for a PROVEN fail-to-pass verdict",
+        help="path to a fixed/base checkout; required for a VERIFIED fail-to-pass verdict",
     )
     p.add_argument("--base-sha", help="buggy/base commit SHA for remote-repo intake")
     p.add_argument("--fix-sha", help="fixing commit or PR-head SHA for remote-repo intake")
@@ -702,7 +704,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--reproduced",
         action="store_true",
-        help="allow the weaker REPRODUCED verdict (signature-matched, no pass state) "
+        help="allow the weaker PARTIAL verdict (signature-matched, no pass state) "
         "when there is no fixed state to flip against; requires --expect",
     )
     p.add_argument("--docker", action="store_true", help="use the Docker executor")
@@ -832,7 +834,7 @@ def main(argv: list[str] | None = None) -> int:
     environments.set_defaults(func=cmd_environment_summary)
 
     dedup = sub.add_parser(
-        "dedup", help="cluster PROVEN Cases by mutual execution on their fixed states"
+        "dedup", help="cluster VERIFIED Cases by mutual execution on their fixed states"
     )
     dedup.add_argument("manifest", help="versioned local Case/checkouts manifest")
     dedup.add_argument("--docker", action="store_true", help="use the Docker executor")
@@ -846,9 +848,9 @@ def main(argv: list[str] | None = None) -> int:
     dedup.set_defaults(func=cmd_dedup)
 
     history = sub.add_parser(
-        "archaeology", help="run a sealed PROVEN test across pinned release history"
+        "archaeology", help="run a sealed VERIFIED test across pinned release history"
     )
-    history.add_argument("case", help="sealed PROVEN Case JSON")
+    history.add_argument("case", help="sealed VERIFIED Case JSON")
     history.add_argument("repo_url", help="HTTPS repository URL")
     history.add_argument(
         "--sha",
@@ -870,7 +872,7 @@ def main(argv: list[str] | None = None) -> int:
         "triangulate",
         help="execute an untrusted minimal counterpatch and the full suite",
     )
-    triangulate.add_argument("case", help="sealed PROVEN Case JSON")
+    triangulate.add_argument("case", help="sealed VERIFIED Case JSON")
     triangulate.add_argument("target", help="local buggy/target checkout")
     triangulate.add_argument(
         "--source",
@@ -889,9 +891,9 @@ def main(argv: list[str] | None = None) -> int:
     triangulate.set_defaults(func=cmd_triangulate)
 
     property_parser = sub.add_parser(
-        "property", help="generalize a concrete PROVEN test and reverify its flip"
+        "property", help="generalize a concrete VERIFIED test and reverify its flip"
     )
-    property_parser.add_argument("case", help="sealed PROVEN Case JSON")
+    property_parser.add_argument("case", help="sealed VERIFIED Case JSON")
     property_parser.add_argument("target", help="local buggy/target checkout")
     property_parser.add_argument("--fixed", required=True, help="local fixed/base checkout")
     property_parser.add_argument(
@@ -982,7 +984,7 @@ def _upgrade_with_bisect(
             base=parent,
             repo_source=repo_url,
         )
-    if upgraded.verdict is not Verdict.PROVEN:
+    if upgraded.verdict is not Verdict.VERIFIED:
         return reproduced
     upgraded.id = reproduced.id
     upgraded.culprit_commit = result.culprit

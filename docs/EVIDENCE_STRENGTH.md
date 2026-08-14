@@ -8,7 +8,9 @@ title: Evidence strength scalar
 `evidence-strength/v1` is a descriptive ranking metric for evidence that has already
 cleared the deterministic judge. It never admits evidence, changes a verdict, or
 converts an unavailable measurement into a zero. `flip_check.py` remains the sole
-authority for `PROVEN`, `REPRODUCED`, and `INSUFFICIENT_EVIDENCE`.
+authority for emitted bug-repro verdicts: `VERIFIED`, `PARTIAL`, and `UNCERTAIN`.
+`FAILED` is reserved for a future claim judge with deterministic evidence that the
+stated goal is false; the current bug-repro judge never emits it.
 
 ## Components and initial weights
 

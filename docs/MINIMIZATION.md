@@ -5,7 +5,7 @@ title: Verified evidence minimization
 
 # Verified evidence minimization
 
-Evidence minimization is an optional post-verdict pass for full `PROVEN` flips. It
+Evidence minimization is an optional post-verdict pass for full `VERIFIED` flips. It
 reduces a generated pytest reproduction only when the smaller candidate independently
 clears the same deterministic `flip_check` as the original:
 
@@ -27,5 +27,5 @@ and independent-verification status. These are descriptive provenance and future
 minimality inputs—not evidence admission criteria.
 
 If minimization errors or cannot independently verify its output, the already-proven
-original remains `Case.test_file`. The raw `PROVEN` verdict and its original execution
+original remains `Case.test_file`. The raw `VERIFIED` verdict and its original execution
 logs are unchanged in either case. `verdict/flip_check.py` remains the sole judge.

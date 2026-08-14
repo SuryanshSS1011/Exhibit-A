@@ -1,4 +1,4 @@
-"""Execution-based semantic bug identity over sealed PROVEN Cases."""
+"""Execution-based semantic bug identity over sealed VERIFIED Cases."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from pathlib import Path, PurePosixPath
 from ..engine import candidate_policy_reason
 from ..executor.base import ExecSpec, Executor, RepoState
 from ..hypothesis.generator import Candidate
+from ..models.case import Verdict, normalize_verdict
 from ..store.suite_gap import ENGINE_VERSION
 from ..verdict.flip_check import detect_infra_failure, extract_signature, signatures_match
 
@@ -78,8 +79,12 @@ def load_bug_corpus(path: str | Path) -> tuple[BugArtifact, ...]:
         case_path = _contained(root, raw.get("case"), directory=False)
         case = json.loads(case_path.read_text())
         case_id = str(case.get("id", ""))
-        if not _ID.fullmatch(case_id) or case_id in seen or case.get("verdict") != "PROVEN":
-            raise ValueError(f"invalid, duplicate, or non-PROVEN Case: {case_id!r}")
+        if (
+            not _ID.fullmatch(case_id)
+            or case_id in seen
+            or normalize_verdict(case.get("verdict")) is not Verdict.VERIFIED
+        ):
+            raise ValueError(f"invalid, duplicate, or non-VERIFIED Case: {case_id!r}")
         seen.add(case_id)
         test = case.get("test_file")
         if not isinstance(test, dict):

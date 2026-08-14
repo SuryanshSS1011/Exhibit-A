@@ -8,7 +8,7 @@
 
 *Every proof it produces is also open data for AI-for-software-engineering (AI4SE) research.*
 
-![Exhibit A sealed Case replay: a PROVEN regression and an honest-silence verdict, replayed deterministically with no model call.](./assets/sealed-replays.gif)
+![Exhibit A sealed Case replay: a VERIFIED regression and an honest-silence verdict, replayed deterministically with no model call.](./assets/sealed-replays.gif)
 
 </div>
 
@@ -58,7 +58,7 @@ claim + code state(s)
     -> generate candidate test (pass-then-invert)
     -> execute both states in a sandbox
     -> FLIP CHECK  (deterministic, no model)
-    -> PROVEN Case File   or   INSUFFICIENT_EVIDENCE (Silence Log)
+    -> VERIFIED Case File   or   UNCERTAIN (Silence Log)
 ```
 
 ## What it proves, and what it does not
@@ -72,9 +72,10 @@ Verdicts are tiered so the tool never overclaims:
 
 | Verdict | Meaning |
 |---------|---------|
-| `PROVEN` | Fails on the broken code, passes on the fix. A full flip. |
-| `REPRODUCED` | A deterministic, signature-matched failure with no known-good state to compare against. |
-| `INSUFFICIENT_EVIDENCE` | Nothing cleared the gate. Honest silence. |
+| `VERIFIED` | Fails on the broken code, passes on the fix. A full flip. |
+| `PARTIAL` | A deterministic, signature-matched failure with no known-good state to compare against. |
+| `FAILED` | Reserved for deterministic evidence that disproves the stated goal; the bug-repro judge does not emit it yet. |
+| `UNCERTAIN` | Nothing cleared the gate. Honest silence. |
 
 **Scope:** deterministic functional bugs in Python repos that build in a sandbox. It
 cannot speak to race conditions, performance regressions, or most security issues, and it
@@ -86,7 +87,7 @@ The evidence discipline that makes Exhibit A trustworthy also makes it a data en
 Every verified Case is an execution-validated fact about real code, and the project turns
 those facts into open research assets.
 
-- **Contamination-free benchmarks.** Each `PROVEN` Case carries a commit SHA, a
+- **Contamination-free benchmarks.** Each `VERIFIED` Case carries a commit SHA, a
   fail-to-pass test, and a date, which is exactly the shape of a SWE-bench-style instance.
   Because instances are minted continuously from live fixes and tagged by date, they can
   be filtered against any model's training cutoff, so the benchmark does not rot into the
@@ -160,7 +161,7 @@ npm run dev                      # http://localhost:3000
 ```bash
 cd engine
 
-# 1) Local buggy/fixed checkouts produce a full PROVEN flip
+# 1) Local buggy/fixed checkouts produce a full VERIFIED flip
 python3 -m exhibit_a.cli repro ../fixtures/buggy_inventory \
   --fixed ../fixtures/fixed_inventory \
   --claim "stock_for should return zero for an unknown SKU instead of raising KeyError" \
@@ -199,7 +200,7 @@ component of the product.
   **read-only sandbox** and does exactly one job. It localizes, plans, drafts a passing
   test, inverts it to fail-on-bug (pass-then-invert), and refines on execution feedback. It
   **proposes** reproductions. It **never decides a verdict.** The deterministic flip check
-  alone admits a Case as `PROVEN`, from execution logs, so the product's honesty guarantee
+  alone admits a Case as `VERIFIED`, from execution logs, so the product's honesty guarantee
   holds regardless of how the model behaves. This model-versus-judge split is the core
   design.
 - **As a provider boundary.** Proposal transports normalize structured output and record

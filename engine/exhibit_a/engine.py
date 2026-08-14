@@ -5,7 +5,7 @@ Flow (plan §1 "Shared core"):
     -> executor runs each on the target (buggy) state, N times for determinism
     -> if a base/fixed state exists, run there too
     -> flip check decides admissibility
-    -> emit a Case: PROVEN (with evidence) or INSUFFICIENT_EVIDENCE (Silence Log)
+    -> emit a Case: VERIFIED (with evidence) or UNCERTAIN (Silence Log)
 
 The engine never lets a model's claim override an execution result. It owns
 Execute + Judge; the generator owns the model reasoning. Bounded refinement retries
@@ -25,7 +25,6 @@ from .hypothesis.generator import Candidate, Claim, Feedback, HypothesisGenerato
 from .hypothesis.intent import IntentJudge
 from .models.case import (
     Case,
-    derive_disposition,
     Evidence,
     EvidenceMinimization,
     ExecutionTruth,
@@ -34,19 +33,19 @@ from .models.case import (
     IntentJudgment,
     Mode,
     ProposalRun,
-    ReleaseTruth,
     RunResult,
     TargetKind,
     TestArtifact,
     Verdict,
+    derive_disposition,
 )
-from .verdict.flip_check import detect_infra_failure, extract_signature, flip_check
 from .verdict.diff_location import ChangedLines, changed_line_map
 from .verdict.evidence_strength import (
     compute_evidence_strength,
     imported_source_paths,
     traceback_source_paths,
 )
+from .verdict.flip_check import detect_infra_failure, extract_signature, flip_check
 from .verdict.minimization import minimize_proven_test
 from .verdict.mutation_testing import discover_mutations, score_mutations
 
@@ -59,7 +58,7 @@ class EngineConfig:
     run_command: str = "pytest -x -q"
     # Detective on a live bug often has no fixed state to flip against. When True,
     # a deterministic, signature-matched failure without a pass side yields the
-    # weaker Verdict.REPRODUCED instead of silence. Prosecutor keeps this False so
+    # weaker Verdict.PARTIAL instead of silence. Prosecutor keeps this False so
     # only a full flip speaks.
     allow_reproduced: bool = False
     check_existing_suite: bool = True
@@ -132,7 +131,7 @@ class EvidenceEngine:
             case.silence_reason = f"could not build environment: {exc}"
             self._emit(
                 "verdict",
-                verdict="INSUFFICIENT_EVIDENCE",
+                verdict="UNCERTAIN",
                 reason=case.silence_reason,
             )
             return case
@@ -162,7 +161,7 @@ class EvidenceEngine:
                     case.silence_reason = "existing test suite already fails; CI has this signal"
                     self._emit(
                         "verdict",
-                        verdict="INSUFFICIENT_EVIDENCE",
+                        verdict="UNCERTAIN",
                         reason=case.silence_reason,
                     )
                     return case
@@ -176,7 +175,7 @@ class EvidenceEngine:
                     )
                     self._emit(
                         "verdict",
-                        verdict="INSUFFICIENT_EVIDENCE",
+                        verdict="UNCERTAIN",
                         reason=case.silence_reason,
                     )
                     return case
@@ -187,7 +186,7 @@ class EvidenceEngine:
                 case.silence_reason = "Prosecutor mode requires a base checkout for diff matching"
                 self._emit(
                     "verdict",
-                    verdict="INSUFFICIENT_EVIDENCE",
+                    verdict="UNCERTAIN",
                     reason=case.silence_reason,
                 )
                 return case
@@ -254,14 +253,14 @@ class EvidenceEngine:
 
         # Nothing cleared the gate -> honest silence.
         if not case.is_evidence():
-            case.verdict = Verdict.INSUFFICIENT_EVIDENCE
+            case.verdict = Verdict.UNCERTAIN
             if not case.silence_reason:
                 case.silence_reason = (
                     "no candidate produced a deterministic, signature-matching flip"
                 )
             self._emit(
                 "verdict",
-                verdict="INSUFFICIENT_EVIDENCE",
+                verdict="UNCERTAIN",
                 reason=case.silence_reason,
             )
         return case
@@ -478,14 +477,14 @@ class EvidenceEngine:
             case.truth.goal_reason = flip.reason or "insufficient evidence"
 
         if flip.admissible:
-            verdict = Verdict.PROVEN if flip.tier == "flip" else Verdict.REPRODUCED
+            verdict = Verdict.VERIFIED if flip.tier == "flip" else Verdict.PARTIAL
             case.verdict = verdict
             case.run_command = spec.command
             case.test_file = TestArtifact(path=cand.test_path, code=cand.test_code)
             case.root_cause_narrative = cand.hypothesis
             # Only a full flip yields a benchmark FAIL_TO_PASS pair; a bare
             # reproduction has no proven pass side to record.
-            if verdict is Verdict.PROVEN:
+            if verdict is Verdict.VERIFIED:
                 case.fail_to_pass = [cand.test_path]
             case.evidence = Evidence(
                 fail_log=target_outcomes[0].log,
@@ -496,7 +495,7 @@ class EvidenceEngine:
                 deterministic=flip.deterministic,
                 runs=run_records,
             )
-            if verdict is Verdict.PROVEN and base is not None and self.config.minimize_proven:
+            if verdict is Verdict.VERIFIED and base is not None and self.config.minimize_proven:
                 self._minimize_evidence(
                     case=case,
                     spec=spec,

@@ -289,7 +289,7 @@ export default function Home() {
           </div>
         )}
         <p className="text-xs text-ink-400">
-          A PROVEN verdict requires both sides: fail on the reported state, pass on the fix.
+          A VERIFIED verdict requires both sides: fail on the reported state, pass on the fix.
         </p>
         <button
           onClick={() => investigate()}
@@ -445,7 +445,7 @@ function CaseFile({ c }: { c: Case }) {
               <IntentConfirmation c={c} />
             </div>
           )}
-          {c.verdict === "REPRODUCED" && (
+          {c.verdict === "PARTIAL" && (
             <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-500">
               Reproduced, not fully proven: a deterministic, signature-matched failure with
               no fixed state to flip against. Evidence of a bug&apos;s presence — not a proven

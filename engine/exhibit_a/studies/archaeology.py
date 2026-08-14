@@ -13,6 +13,7 @@ from ..engine import candidate_policy_reason
 from ..executor.base import ExecSpec, Executor
 from ..hypothesis.generator import Candidate
 from ..intake.git_checkout import checkout_context, validate_repo_url, validate_sha
+from ..models.case import Verdict, normalize_verdict
 from ..store.suite_gap import ENGINE_VERSION
 from ..verdict.flip_check import detect_infra_failure, extract_signature, signatures_match
 
@@ -119,8 +120,10 @@ def save_archaeology_report(report: ArchaeologyReport, root: str | Path) -> Path
 
 def _load_case(path: str | Path) -> tuple[str, ExecSpec, str | None]:
     case = json.loads(Path(path).read_text())
-    if case.get("verdict") != "PROVEN" or not isinstance(case.get("test_file"), dict):
-        raise ValueError("archaeology requires a sealed PROVEN Case")
+    if normalize_verdict(case.get("verdict")) is not Verdict.VERIFIED or not isinstance(
+        case.get("test_file"), dict
+    ):
+        raise ValueError("archaeology requires a sealed VERIFIED Case")
     test = case["test_file"]
     candidate = Candidate(
         "frozen evidence",

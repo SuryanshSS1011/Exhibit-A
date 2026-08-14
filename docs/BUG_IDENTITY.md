@@ -6,7 +6,7 @@ title: Execution-based bug identity
 # Execution-based bug identity
 
 Text similarity does not decide whether two reports describe the same bug. The dedup
-study revalidates each sealed PROVEN Case on its own target and fix, then runs test A on
+study revalidates each sealed VERIFIED Case on its own target and fix, then runs test A on
 fix B and test B on fix A. Only deterministic mutual passes count as an equivalent pair.
 Infrastructure failures and flaky cross-results stay inconclusive.
 

@@ -6,6 +6,7 @@ from pathlib import Path
 from exhibit_a.executor.local_exec import LocalExecutor
 from exhibit_a.hypothesis.generator import Candidate
 from exhibit_a.hypothesis.property import PropertyCandidate
+from exhibit_a.studies import property_escalation
 from exhibit_a.studies.property_escalation import (
     PropertyStatus,
     property_kind,
@@ -30,7 +31,7 @@ class FixedPropertyGenerator:
         )
 
 
-def _fixtures(tmp_path: Path) -> tuple[Path, Path, Path]:
+def _fixtures(tmp_path: Path, verdict: str = "VERIFIED") -> tuple[Path, Path, Path]:
     target = tmp_path / "target"
     base = tmp_path / "base"
     target.mkdir()
@@ -42,7 +43,7 @@ def _fixtures(tmp_path: Path) -> tuple[Path, Path, Path]:
         json.dumps(
             {
                 "id": "property-case",
-                "verdict": "PROVEN",
+                "verdict": verdict,
                 "claim_text": "ten is eligible",
                 "test_file": {
                     "path": "test_repro.py",
@@ -54,6 +55,11 @@ def _fixtures(tmp_path: Path) -> tuple[Path, Path, Path]:
         )
     )
     return target, base, case
+
+
+def test_property_escalation_accepts_legacy_proven_case(tmp_path: Path):
+    _, _, case = _fixtures(tmp_path, "PROVEN")
+    assert property_escalation._load_case(case)["id"] == "property-case"
 
 
 def test_parametrized_property_must_clear_real_flip_and_mutation_score(tmp_path: Path):

@@ -9,11 +9,13 @@ import shlex
 import subprocess
 import tempfile
 import zipfile
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import Any, Mapping
+from typing import Any
 
 from .executor.base import ExecOutcome
+from .models.case import Verdict, normalize_case_payload, normalize_verdict
 from .verdict.flip_check import flip_check
 
 FORMAT_VERSION = "eef/v1"
@@ -41,6 +43,7 @@ def create_bundle(
     """Serialize a Case plus source snapshots into a deterministic signed archive."""
     if len(signing_key) < 32:
         raise ValueError("EEF signing key must contain at least 32 bytes")
+    case = normalize_case_payload(case)
     test = case.get("test_file")
     if not isinstance(test, Mapping) or not isinstance(test.get("path"), str):
         raise ValueError("EEF requires a Case with a generated test_file")
@@ -182,14 +185,17 @@ def _reexecute(blobs: dict[str, bytes], *, docker_bin: str) -> bool:
         if any(name.startswith("sources/base/") for name in blobs):
             _build_state(docker_bin, root, "base", base_image)
             base_run = _run_state(docker_bin, base_image, list(reproduce["command_argv"]))
+        expected_verdict = normalize_verdict(reproduce.get("verdict"))
+        if expected_verdict not in (Verdict.VERIFIED, Verdict.PARTIAL):
+            raise ValueError("EEF execution requires a VERIFIED or PARTIAL Case")
         flip = flip_check(
             target_runs=target_runs,
             base_run=base_run,
             test_code=str(case["test_file"]["code"]),
             expected_signature=reproduce.get("expected_signature"),
-            allow_reproduced=reproduce.get("verdict") == "REPRODUCED",
+            allow_reproduced=expected_verdict is Verdict.PARTIAL,
         )
-        expected_tier = "flip" if reproduce.get("verdict") == "PROVEN" else "reproduced"
+        expected_tier = "flip" if expected_verdict is Verdict.VERIFIED else "reproduced"
         return flip.admissible and flip.tier == expected_tier
 
 

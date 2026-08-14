@@ -55,7 +55,7 @@ def test_offline_self_audit_validates_corpus_and_reports_zero_false_convictions(
     assert report.overall.upper_95 == pytest.approx(0.561497, abs=1e-6)
     assert set(report.by_category) == {"rename", "extract_method", "loop_transform"}
     assert all(item.corpus_valid for item in report.items)
-    assert {item.verdict for item in report.items} == {"INSUFFICIENT_EVIDENCE"}
+    assert {item.verdict for item in report.items} == {"UNCERTAIN"}
 
 
 class AlwaysPassExecutor(Executor):
@@ -77,7 +77,7 @@ class FalseConvictionEngine:
         self.executor = AlwaysPassExecutor()
 
     def investigate(self, claim, **kwargs):
-        return Case(id="false-positive", mode=Mode.PROSECUTOR, verdict=Verdict.PROVEN)
+        return Case(id="false-positive", mode=Mode.PROSECUTOR, verdict=Verdict.VERIFIED)
 
 
 def test_audit_counts_any_proven_case_on_an_innocent_pair_as_false_conviction(tmp_path: Path):

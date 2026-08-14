@@ -45,7 +45,7 @@ class ResearchStore:
     def register_observatory(
         self, case: Case, *, model: str, interval_days: int = 7
     ) -> Path | None:
-        if case.verdict is not Verdict.PROVEN or case.test_file is None:
+        if case.verdict is not Verdict.VERIFIED or case.test_file is None:
             return None
         existing = self.root / "observatory" / f"{case.id}.json"
         if existing.is_file():

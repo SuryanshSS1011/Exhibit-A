@@ -33,7 +33,7 @@ The separate `self-audit` command measures the complementary failure mode: speak
 validated behavior-preserving refactors. It reports false convictions with Wilson 95%
 intervals rather than treating a small 0/N sample as perfect precision.
 
-## After PROVEN
+## After VERIFIED
 
 The generated test ships as a Case File artifact or review suggestion. Exhibit A
 does not commit it, push it, or turn it into an automatic patch. A maintainer first

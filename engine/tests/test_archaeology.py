@@ -27,13 +27,13 @@ class TimelineExecutor(Executor):
         return ExecOutcome(1, "", "E   AssertionError: historical bug")
 
 
-def _case(tmp_path: Path) -> Path:
+def _case(tmp_path: Path, verdict: str = "VERIFIED") -> Path:
     path = tmp_path / "case.json"
     path.write_text(
         json.dumps(
             {
                 "id": "case-archaeology",
-                "verdict": "PROVEN",
+                "verdict": verdict,
                 "test_file": {
                     "path": "test_repro.py",
                     "code": "def test_repro(): assert False\n",
@@ -44,6 +44,11 @@ def _case(tmp_path: Path) -> Path:
         )
     )
     return path
+
+
+def test_archaeology_accepts_legacy_proven_case(tmp_path: Path):
+    case_id, _, _ = archaeology._load_case(_case(tmp_path, "PROVEN"))
+    assert case_id == "case-archaeology"
 
 
 @contextmanager

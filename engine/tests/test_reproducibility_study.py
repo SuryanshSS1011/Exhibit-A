@@ -5,16 +5,16 @@ from pathlib import Path
 
 import pytest
 
+from exhibit_a.executor.base import RepoState
 from exhibit_a.hypothesis.generator import Claim
-from exhibit_a.models.case import Case, Evidence, Mode, TestArtifact as CaseTestArtifact, Verdict
+from exhibit_a.models.case import Case, Evidence, Mode, Verdict
+from exhibit_a.models.case import TestArtifact as CaseTestArtifact
 from exhibit_a.studies.reproducibility import (
     SCHEMA_VERSION,
     run_reproducibility_study,
     save_reproducibility_report,
     semantic_test_fingerprint,
 )
-from exhibit_a.executor.base import RepoState
-
 
 TEST_A = """from inventory import stock_for
 
@@ -59,7 +59,7 @@ class FrozenEngine:
 
 
 def _case(index: int, code: str = TEST_A) -> Case:
-    case = Case(id=f"case-{index}", mode=Mode.DETECTIVE, verdict=Verdict.PROVEN)
+    case = Case(id=f"case-{index}", mode=Mode.DETECTIVE, verdict=Verdict.VERIFIED)
     case.test_file = CaseTestArtifact("test_repro.py", code)
     case.evidence = Evidence(
         fail_signature="KeyError: 'missing'",

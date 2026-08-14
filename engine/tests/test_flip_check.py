@@ -28,7 +28,7 @@ def _out(passed: bool, log: str, exit_code: int | None = None) -> ExecOutcome:
 REAL_TEST_CODE = "from slicer import last_n\n\ndef test_x():\n    assert last_n([1, 2], 1) == [2]\n"
 
 
-# --- the env-failure -> false-PROVEN hole (regression) -----------------------
+# --- the env-failure -> false-VERIFIED hole (regression) -----------------------
 
 MODULE_ERR = (
     "ImportError while importing test module 'test_repro.py'.\n"
@@ -38,7 +38,7 @@ MODULE_ERR = (
 
 def test_env_failure_is_not_evidence_even_without_expected_signature():
     # target "fails" only because a dependency is missing; base "passes".
-    # Without the infra gate this was stamped PROVEN — the exact SWE-Doctor trap.
+    # Without the infra gate this was stamped VERIFIED — the exact SWE-Doctor trap.
     target = [_out(False, MODULE_ERR, exit_code=2) for _ in range(3)]
     base = _out(True, "1 passed")
     result = flip_check(

@@ -5,7 +5,7 @@ title: Cross-version evidence archaeology
 
 # Cross-version evidence archaeology
 
-Archaeology freezes the runnable test from a sealed PROVEN Case and executes it across
+Archaeology freezes the runnable test from a sealed VERIFIED Case and executes it across
 an explicit oldest-to-newest list of commit SHAs. It answers whether the behavior was
 already broken before the review window, first appears between two observed revisions,
 never appears, or changes non-monotonically. This differs from bisect: it produces a

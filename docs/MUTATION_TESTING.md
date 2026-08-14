@@ -25,7 +25,9 @@ constrains suspect code. It is deliberately a scoring layer, not an evidence gat
 
 The score reports `killed / (killed + survived)`. Invalid mutants remain visible but
 are excluded from the denominator. No score can upgrade, downgrade, or fabricate the
-raw `PROVEN` / `REPRODUCED` / `INSUFFICIENT_EVIDENCE` verdict.
+raw verdict. The current bug-repro judge emits `VERIFIED`, `PARTIAL`, or
+`UNCERTAIN`; `FAILED` is reserved for a future claim judge that can deterministically
+disprove its stated goal.
 
 ## Initial operator set
 

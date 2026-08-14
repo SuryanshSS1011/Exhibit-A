@@ -1,6 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
+import { normalizeCasePayload } from "@/lib/case";
 
 const CASE_DIR = path.resolve(process.cwd(), "..", "engine", ".exhibit-a", "cases");
 
@@ -36,14 +37,17 @@ export async function GET() {
   const cases = await Promise.all(
     names
       .filter((name) => name.endsWith(".json"))
-      .map(async (name) => JSON.parse(await readFile(path.join(CASE_DIR, name), "utf8"))),
+      .map(async (name) => {
+        const value: unknown = JSON.parse(await readFile(path.join(CASE_DIR, name), "utf8"));
+        return value && typeof value === "object"
+          ? normalizeCasePayload(value as Record<string, unknown>)
+          : null;
+      }),
   );
   const silenceCases = cases
     .filter(
-      (item) =>
-        item &&
-        typeof item === "object" &&
-        item.verdict === "INSUFFICIENT_EVIDENCE",
+      (item): item is Record<string, unknown> =>
+        item !== null && item.verdict === "UNCERTAIN",
     )
     .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
 

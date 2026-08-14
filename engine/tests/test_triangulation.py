@@ -7,6 +7,7 @@ import pytest
 
 from exhibit_a.executor.local_exec import LocalExecutor
 from exhibit_a.hypothesis.counterpatch import CounterpatchCandidate
+from exhibit_a.studies import triangulation
 from exhibit_a.studies.triangulation import (
     TriangulationStatus,
     run_triangulation,
@@ -22,7 +23,7 @@ class FixedGenerator:
         return CounterpatchCandidate(self.patch, "Use an inclusive boundary.")
 
 
-def _fixture(tmp_path: Path) -> tuple[Path, Path, str]:
+def _fixture(tmp_path: Path, verdict: str = "VERIFIED") -> tuple[Path, Path, str]:
     repo = tmp_path / "repo"
     (repo / "tests").mkdir(parents=True)
     (repo / "app.py").write_text("def eligible(value):\n    return value > 10\n")
@@ -34,7 +35,7 @@ def _fixture(tmp_path: Path) -> tuple[Path, Path, str]:
         json.dumps(
             {
                 "id": "boundary-case",
-                "verdict": "PROVEN",
+                "verdict": verdict,
                 "claim_text": "ten should be eligible",
                 "test_file": {
                     "path": "test_repro.py",
@@ -55,6 +56,12 @@ def _fixture(tmp_path: Path) -> tuple[Path, Path, str]:
         "+    return value >= 10\n"
     )
     return repo, case, patch
+
+
+def test_triangulation_accepts_legacy_proven_case(tmp_path: Path):
+    _, case, _ = _fixture(tmp_path, "PROVEN")
+    payload, _, _ = triangulation._load_case(case)
+    assert payload["id"] == "boundary-case"
 
 
 def test_counterpatch_is_viable_only_after_test_and_full_suite_pass(tmp_path: Path):

@@ -17,6 +17,7 @@ from ..engine import candidate_policy_reason
 from ..executor.base import ExecSpec, Executor, RepoState
 from ..hypothesis.counterpatch import CounterpatchGenerator
 from ..hypothesis.generator import Candidate
+from ..models.case import Verdict, normalize_verdict
 from ..store.suite_gap import ENGINE_VERSION
 from ..verdict.flip_check import extract_signature, signatures_match
 
@@ -190,8 +191,8 @@ def _apply_patch(root: Path, patch: str) -> None:
 def _load_case(path: str | Path) -> tuple[dict, ExecSpec, str | None]:
     case = json.loads(Path(path).read_text())
     test = case.get("test_file")
-    if case.get("verdict") != "PROVEN" or not isinstance(test, dict):
-        raise ValueError("triangulation requires a sealed PROVEN Case")
+    if normalize_verdict(case.get("verdict")) is not Verdict.VERIFIED or not isinstance(test, dict):
+        raise ValueError("triangulation requires a sealed VERIFIED Case")
     candidate = Candidate(
         "frozen evidence",
         str(test.get("path", "")),

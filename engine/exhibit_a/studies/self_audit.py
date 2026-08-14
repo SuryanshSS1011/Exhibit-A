@@ -151,7 +151,7 @@ def run_self_audit(
                 base=pair.base,
                 repo_source=pair.target.source,
             )
-            convicted = case.verdict is Verdict.PROVEN
+            convicted = case.verdict is Verdict.VERIFIED
             items.append(
                 AuditItem(
                     pair.id,
