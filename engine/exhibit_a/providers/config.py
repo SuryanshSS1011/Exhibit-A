@@ -14,6 +14,7 @@ from typing import Any
 from .base import Provider
 from .codex_cli import CodexCliProvider
 from .ollama import OllamaProvider
+from .openai_compatible import OpenAICompatibleProvider
 
 
 class ProviderRole(StrEnum):
@@ -23,6 +24,7 @@ class ProviderRole(StrEnum):
 class ProviderKind(StrEnum):
     CODEX_CLI = "codex_cli"
     OLLAMA = "ollama"
+    OPENAI_COMPATIBLE = "openai_compatible"
 
 
 @dataclass(frozen=True)
@@ -124,6 +126,12 @@ def _parse_provider(name: object, raw: object) -> ProviderSpec:
     kind_options = {
         ProviderKind.CODEX_CLI: {"codex_bin"},
         ProviderKind.OLLAMA: {"base_url", "max_response_bytes", "max_context_bytes"},
+        ProviderKind.OPENAI_COMPATIBLE: {
+            "api_key_env",
+            "base_url",
+            "max_context_bytes",
+            "max_response_bytes",
+        },
     }[kind]
     unexpected = set(raw) - common - kind_options
     if unexpected:
@@ -154,7 +162,7 @@ def _validate_options(name: str, options: dict[str, Any]) -> None:
             not isinstance(value, int) or isinstance(value, bool) or value <= 0
         ):
             raise ValueError(f"provider {name!r} {key} must be a positive integer")
-    for key in ("codex_bin", "base_url"):
+    for key in ("api_key_env", "codex_bin", "base_url"):
         if key in options:
             options[key] = _nonempty_string(options[key], f"{key} for provider {name!r}")
 
@@ -164,6 +172,8 @@ def _provider_from_spec(spec: ProviderSpec) -> Provider:
         return CodexCliProvider(model=spec.model, **spec.options)
     if spec.kind is ProviderKind.OLLAMA:
         return OllamaProvider(model=spec.model, **spec.options)
+    if spec.kind is ProviderKind.OPENAI_COMPATIBLE:
+        return OpenAICompatibleProvider(model=spec.model, **spec.options)
     raise ValueError(f"unsupported provider type {spec.kind!r}")
 
 

@@ -146,3 +146,30 @@ def test_proposal_run_rejects_ambiguous_unknown_identity():
             confirmed_version="unknown_no_telemetry",
             output_sha256="0" * 64,
         )
+
+
+def test_engine_records_legitimate_model_name_containing_unknown(tmp_path: Path):
+    class NamedTelemetryGenerator(RefiningTelemetryGenerator):
+        def propose(self, claim: Claim, max_hypotheses: int = 3) -> list[Candidate]:
+            self.responses.append(
+                ProviderResponse(
+                    output={},
+                    runtime_model=RuntimeModel(
+                        provider="test-provider",
+                        requested_model="alias",
+                        confirmed_model="company/unknown-7b",
+                        confirmed_version=UnknownModelIdentity.UNVERIFIED_BACKEND,
+                    ),
+                )
+            )
+            return []
+
+    engine = EvidenceEngine(
+        NamedTelemetryGenerator(),
+        NoRunExecutor(),
+        EngineConfig(check_existing_suite=False),
+    )
+
+    case = engine.investigate(Claim("claim", str(tmp_path)))
+
+    assert case.proposal_runs[0].confirmed_model == "company/unknown-7b"

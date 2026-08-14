@@ -33,8 +33,8 @@ same security boundary.
   modify the checkout. Future CLI adapters must document and minimize inherited environment,
   readable scope, and transport egress rather than inheriting these properties silently.
 - Direct HTTP adapters must send only the intended prompt and schema to the configured
-  endpoint, keep credentials out of prompts, responses, and logs, enforce timeouts and
-  response-size limits, and never execute returned tool calls. They must also validate
+  endpoint, keep credentials out of prompts, responses, and logs, enforce response-size
+  limits, and never execute returned tool calls. They must also validate
   endpoint and redirect policy, default local endpoints to loopback, use TLS for hosted
   endpoints, and disclose that selected prompt or repository content leaves the machine.
   Any local tool execution added later needs an explicit sandbox equivalent to the CLI
@@ -56,6 +56,18 @@ downstream requirements.
   Ollama's response `model` confirms the served tag; the underlying version remains
   `unknown_unverified_backend` because a mutable tag cannot attest to exact weights or
   quantization.
+- `OpenAICompatibleProvider`: the portable Chat Completions subset used by vLLM,
+  LM Studio, hosted gateways, and similar endpoints. Remote URLs require HTTPS; plain
+  HTTP is accepted only for numeric loopback addresses. The adapter disables redirects
+  and ambient proxy discovery, hard-bounds request, repository-context, traversal, and
+  response sizes, sends no tools, and never executes returned tool calls. Optional
+  bearer credentials are read
+  at request time from `api_key_env`; literal keys and arbitrary headers are rejected by
+  configuration. Repository context leaves the machine when a remote endpoint is used.
+  A returned `model` is recorded as the backend's claim while the exact version remains
+  `unknown_unverified_backend`; an omitted model is `unknown_no_telemetry`.
+  Its timeout bounds each socket operation, not the full wall-clock request; callers that
+  require a total deadline must supervise the Exhibit A process externally.
 
 ## Configuration
 
@@ -76,5 +88,23 @@ workflows consume the same configuration rather than accepting inert settings.
     }
   },
   "roles": {"proposer": "local"}
+}
+```
+
+For a hosted or TLS-terminated OpenAI-compatible endpoint, keep the credential out of
+the JSON file and name its environment variable instead:
+
+```json
+{
+  "providers": {
+    "hosted": {
+      "type": "openai_compatible",
+      "model": "deployment-alias",
+      "base_url": "https://models.example.com/v1",
+      "api_key_env": "HOSTED_MODEL_API_KEY",
+      "roles": ["proposer"]
+    }
+  },
+  "roles": {"proposer": "hosted"}
 }
 ```

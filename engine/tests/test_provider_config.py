@@ -8,6 +8,7 @@ import pytest
 from exhibit_a.cli import _build_engine, main
 from exhibit_a.providers import (
     OllamaProvider,
+    OpenAICompatibleProvider,
     ProviderKind,
     ProviderRole,
     load_provider_config,
@@ -45,6 +46,85 @@ def test_config_selects_only_role_authorized_provider(tmp_path: Path):
 
     assert isinstance(config.provider_for(ProviderRole.PROPOSER), OllamaProvider)
     assert config.providers["cloud"].kind is ProviderKind.CODEX_CLI
+
+
+def test_config_constructs_openai_compatible_provider_without_storing_secret(
+    tmp_path: Path,
+):
+    path = _write_config(
+        tmp_path,
+        {
+            "providers": {
+                "hosted": {
+                    "type": "openai_compatible",
+                    "model": "served-alias",
+                    "base_url": "https://models.example.com/v1",
+                    "api_key_env": "HOSTED_MODEL_API_KEY",
+                    "roles": ["proposer"],
+                }
+            },
+            "roles": {"proposer": "hosted"},
+        },
+    )
+
+    config = load_provider_config(path)
+    provider = config.provider_for(ProviderRole.PROPOSER)
+
+    assert isinstance(provider, OpenAICompatibleProvider)
+    assert provider.api_key_env == "HOSTED_MODEL_API_KEY"
+    assert config.providers["hosted"].kind is ProviderKind.OPENAI_COMPATIBLE
+
+
+def test_config_rejects_literal_api_credentials(tmp_path: Path):
+    path = _write_config(
+        tmp_path,
+        {
+            "providers": {
+                "hosted": {
+                    "type": "openai_compatible",
+                    "model": "served-alias",
+                    "base_url": "https://models.example.com/v1",
+                    "api_key": "must-not-be-stored-here",
+                    "roles": ["proposer"],
+                }
+            },
+            "roles": {"proposer": "hosted"},
+        },
+    )
+
+    with pytest.raises(ValueError, match="unexpected keys"):
+        load_provider_config(path)
+
+
+@pytest.mark.parametrize(
+    ("option", "value"),
+    [
+        ("timeout_s", 601),
+        ("max_context_bytes", 200_001),
+        ("max_response_bytes", 2_000_001),
+    ],
+)
+def test_config_rejects_openai_compatible_limits_above_hard_ceiling(
+    tmp_path: Path, option: str, value: int
+):
+    path = _write_config(
+        tmp_path,
+        {
+            "providers": {
+                "hosted": {
+                    "type": "openai_compatible",
+                    "model": "served-alias",
+                    "base_url": "https://models.example.com/v1",
+                    "roles": ["proposer"],
+                    option: value,
+                }
+            },
+            "roles": {"proposer": "hosted"},
+        },
+    )
+
+    with pytest.raises(ValueError, match="at most"):
+        load_provider_config(path)
 
 
 def test_config_cannot_assign_a_model_as_verifier(tmp_path: Path):

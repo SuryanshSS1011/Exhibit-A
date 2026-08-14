@@ -11,10 +11,12 @@ from .base import (
 from .codex_cli import CodexCliProvider
 from .config import ProviderConfig, ProviderKind, ProviderRole, load_provider_config
 from .ollama import OllamaProvider
+from .openai_compatible import OpenAICompatibleProvider
 
 __all__ = [
     "CodexCliProvider",
     "OllamaProvider",
+    "OpenAICompatibleProvider",
     "Provider",
     "ProviderConfig",
     "ProviderKind",

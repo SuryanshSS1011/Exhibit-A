@@ -68,6 +68,20 @@ def test_runtime_model_requires_requested_identity():
         )
 
 
+@pytest.mark.parametrize("field", ["confirmed_model", "confirmed_version"])
+def test_runtime_model_rejects_plain_strings_that_impersonate_unknown_identity(field: str):
+    values = {
+        "provider": "provider",
+        "requested_model": "requested",
+        "confirmed_model": "served",
+        "confirmed_version": "version",
+    }
+    values[field] = UnknownModelIdentity.NO_TELEMETRY.value
+
+    with pytest.raises(ValueError, match="impersonate"):
+        RuntimeModel(**values)
+
+
 def test_codex_binary_uses_known_app_location(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     app_binary = tmp_path / "codex"
     app_binary.touch(mode=0o755)

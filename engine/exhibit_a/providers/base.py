@@ -49,6 +49,13 @@ class RuntimeModel:
             raise ValueError("confirmed model must not be empty")
         if isinstance(self.confirmed_version, str) and not self.confirmed_version.strip():
             raise ValueError("confirmed model version must not be empty")
+        reserved = {item.value for item in UnknownModelIdentity}
+        if type(self.confirmed_model) is str and self.confirmed_model in reserved:
+            raise ValueError("confirmed model cannot impersonate an unknown identity sentinel")
+        if type(self.confirmed_version) is str and self.confirmed_version in reserved:
+            raise ValueError(
+                "confirmed model version cannot impersonate an unknown identity sentinel"
+            )
 
 
 @dataclass(frozen=True)

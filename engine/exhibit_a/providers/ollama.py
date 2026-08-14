@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import json
+import math
 import os
+import stat
 import time
 import urllib.error
 import urllib.request
-from collections.abc import Iterator
 from ipaddress import ip_address
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
@@ -24,6 +25,8 @@ _DEFAULT_BASE_URL = "http://127.0.0.1:11434/v1"
 _MAX_RESPONSE_BYTES = 2_000_000
 _MAX_CONTEXT_BYTES = 200_000
 _MAX_CONTEXT_FILES = 200
+_MAX_CONTEXT_ENTRIES = 10_000
+_MAX_TIMEOUT_S = 600
 _CONTEXT_SUFFIXES = {".py", ".pyi", ".toml", ".txt", ".md"}
 _CONTEXT_NAMES = {"Dockerfile", "requirements.in", "requirements.txt"}
 _IGNORED_DIRECTORIES = {
@@ -84,12 +87,9 @@ class OllamaProvider:
     ):
         if not model.strip():
             raise ValueError("Ollama model must not be empty")
-        if timeout_s <= 0:
-            raise ValueError("Ollama timeout must be positive")
-        if max_response_bytes <= 0:
-            raise ValueError("Ollama response limit must be positive")
-        if max_context_bytes <= 0:
-            raise ValueError("Ollama context limit must be positive")
+        _validate_limit(timeout_s, "timeout", _MAX_TIMEOUT_S, allow_float=True)
+        _validate_limit(max_response_bytes, "response limit", _MAX_RESPONSE_BYTES)
+        _validate_limit(max_context_bytes, "context limit", _MAX_CONTEXT_BYTES)
         self.model = model
         self.url = _chat_completions_url(base_url)
         self.timeout_s = timeout_s
@@ -208,60 +208,137 @@ def _response_message(payload: dict) -> dict:
 
 
 def _optional_int(value: object) -> int | None:
-    return value if isinstance(value, int) and not isinstance(value, bool) else None
+    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
 
 
 def _repository_context(repo_path: Path, max_bytes: int) -> str:
-    root = repo_path.resolve()
-    if not root.is_dir():
-        raise ValueError(f"repo checkout not found: {root}")
-
+    root = repo_path.absolute()
+    root_descriptor = _open_directory_no_follow(root)
     sections: list[str] = []
     used = 0
     file_count = 0
-    for path in _context_paths(root):
-        if file_count >= _MAX_CONTEXT_FILES or used >= max_bytes:
-            break
-        relative = path.relative_to(root).as_posix()
-        header = f"\n--- {relative} ---\n".encode()
-        remaining = max_bytes - used - len(header)
-        if remaining <= 0:
-            break
-        try:
-            with path.open("rb") as source:
-                content = source.read(remaining)
-            text = content.decode("utf-8", errors="ignore")
-        except OSError:
-            continue
-        section = header.decode() + text
-        sections.append(section)
-        used += len(section.encode())
-        file_count += 1
+    try:
+        for relative in _context_paths(root_descriptor):
+            if file_count >= _MAX_CONTEXT_FILES or used >= max_bytes:
+                break
+            header = f"\n--- {relative.as_posix()} ---\n".encode()
+            remaining = max_bytes - used - len(header)
+            if remaining <= 0:
+                break
+            try:
+                content = _read_context_file(root_descriptor, relative, remaining)
+            except (OSError, ValueError):
+                continue
+            section = header.decode() + content.decode("utf-8", errors="ignore")
+            sections.append(section)
+            used += len(section.encode())
+            file_count += 1
+    finally:
+        os.close(root_descriptor)
     return "".join(sections) or "[no supported repository files found]"
 
 
-def _context_paths(root: Path) -> Iterator[Path]:
-    for python_only in (True, False):
-        for directory, directory_names, file_names in os.walk(root, followlinks=False):
-            directory_names[:] = sorted(
-                name
-                for name in directory_names
-                if name not in _IGNORED_DIRECTORIES
-                and not name.startswith(".")
-                and not (Path(directory) / name).is_symlink()
+def _open_directory_no_follow(root: Path) -> int:
+    no_follow = getattr(os, "O_NOFOLLOW", None)
+    directory = getattr(os, "O_DIRECTORY", None)
+    if no_follow is None or directory is None:
+        raise RuntimeError("provider context collection requires O_NOFOLLOW and O_DIRECTORY")
+    current = os.open(os.sep, os.O_RDONLY | directory)
+    try:
+        for part in root.parts[1:]:
+            following = os.open(
+                part,
+                os.O_RDONLY | directory | no_follow,
+                dir_fd=current,
             )
-            for name in sorted(file_names):
-                path = Path(directory) / name
-                is_python = path.suffix in {".py", ".pyi"}
-                is_supported = path.suffix in _CONTEXT_SUFFIXES or name in _CONTEXT_NAMES
-                if (
-                    path.is_symlink()
-                    or not is_supported
-                    or (python_only and not is_python)
-                    or (not python_only and is_python)
-                ):
+            os.close(current)
+            current = following
+    except OSError as exc:
+        os.close(current)
+        raise ValueError(f"repo checkout could not be opened safely: {root}") from exc
+    return current
+
+
+def _context_paths(root_descriptor: int) -> list[Path]:
+    paths: list[Path] = []
+    visited = 0
+
+    def walk(directory_descriptor: int, parent: Path) -> None:
+        nonlocal visited
+        with os.scandir(directory_descriptor) as entries:
+            for entry in entries:
+                visited += 1
+                if visited > _MAX_CONTEXT_ENTRIES:
+                    raise ValueError("provider context contains too many entries")
+                if entry.name in _IGNORED_DIRECTORIES or entry.name.startswith("."):
                     continue
-                yield path
+                relative = parent / entry.name
+                if entry.is_dir(follow_symlinks=False):
+                    try:
+                        child = os.open(
+                            entry.name,
+                            os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                            dir_fd=directory_descriptor,
+                        )
+                    except OSError:
+                        continue
+                    try:
+                        walk(child, relative)
+                    finally:
+                        os.close(child)
+                elif entry.is_file(follow_symlinks=False) and (
+                    relative.suffix in _CONTEXT_SUFFIXES or entry.name in _CONTEXT_NAMES
+                ):
+                    paths.append(relative)
+
+    walk(root_descriptor, Path())
+    return sorted(
+        paths,
+        key=lambda path: (path.suffix not in {".py", ".pyi"}, path.as_posix()),
+    )
+
+
+def _read_context_file(root_descriptor: int, relative: Path, limit: int) -> bytes:
+    parent = os.dup(root_descriptor)
+    try:
+        for part in relative.parts[:-1]:
+            following = os.open(
+                part,
+                os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                dir_fd=parent,
+            )
+            os.close(parent)
+            parent = following
+        descriptor = os.open(relative.name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=parent)
+    finally:
+        os.close(parent)
+    with os.fdopen(descriptor, "rb") as source:
+        before = os.fstat(source.fileno())
+        if not stat.S_ISREG(before.st_mode) or before.st_nlink != 1:
+            raise ValueError(f"provider context is not a private regular file: {relative}")
+        content = source.read(limit)
+        after = os.fstat(source.fileno())
+    if (
+        before.st_dev != after.st_dev
+        or before.st_ino != after.st_ino
+        or before.st_size != after.st_size
+        or before.st_mtime_ns != after.st_mtime_ns
+        or len(content) != min(after.st_size, limit)
+    ):
+        raise ValueError(f"provider context changed while it was read: {relative}")
+    return content
+
+
+def _validate_limit(value: object, label: str, maximum: int, *, allow_float: bool = False) -> None:
+    expected = (int, float) if allow_float else (int,)
+    if (
+        not isinstance(value, expected)
+        or isinstance(value, bool)
+        or not math.isfinite(value)
+        or value <= 0
+        or value > maximum
+    ):
+        raise ValueError(f"Ollama {label} must be positive and at most {maximum}")
 
 
 def _validate_schema(value: object, schema: dict, path: str = "$") -> None:

@@ -278,9 +278,8 @@ class ProposalRun:
         ):
             if not value.strip():
                 raise ValueError(f"proposal {label} must not be empty")
-        allowed_unknown = {"unknown_no_telemetry", "unknown_unverified_backend"}
         for value in (self.confirmed_model, self.confirmed_version):
-            if "unknown" in value.lower() and value not in allowed_unknown:
+            if value.casefold() == "unknown":
                 raise ValueError(f"unsupported unknown model identity {value!r}")
         if len(self.output_sha256) != 64 or any(
             character not in string.hexdigits for character in self.output_sha256
