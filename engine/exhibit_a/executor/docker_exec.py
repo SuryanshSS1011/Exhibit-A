@@ -20,8 +20,8 @@ import shutil
 import subprocess
 import tempfile
 import time
-from pathlib import Path
 import tomllib
+from pathlib import Path
 
 from .base import (
     EnvironmentSetupError,
@@ -39,6 +39,11 @@ _PINNED_REQUIREMENT = re.compile(r"^[A-Za-z0-9_.-]+(?:\[[A-Za-z0-9_,.-]+\])?==[^
 
 class DockerExecutor(Executor):
     """Isolate untrusted test runs in a short-lived container."""
+
+    source_access = "disposable_copy"
+    network_access = "disabled"
+    isolation = "container"
+    credential_access = "none"
 
     def __init__(self, base_image: str = DEFAULT_IMAGE, docker_bin: str = "docker"):
         self.base_image = base_image

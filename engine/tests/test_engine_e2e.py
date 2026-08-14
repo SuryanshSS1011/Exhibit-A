@@ -137,6 +137,14 @@ def test_proven_flip():
     assert case.truth.execution is ExecutionTruth.COMPLETED
     assert case.truth.goal is GoalTruth.VERIFIED
     assert case.truth.release is ReleaseTruth.NOT_ASSESSED
+    assert [source.description for source in case.evidence_sources] == [
+        "Executed the configured test against the target code state",
+        "Executed the configured test against the target code state",
+        "Executed the configured test against the target code state",
+        "Executed the configured test against the base code state",
+    ]
+    assert {source.source for source in case.evidence_sources} == {"local-checkout"}
+    assert {source.security.isolation for source in case.evidence_sources} == {"host_subprocess"}
 
 
 def test_realistic_inventory_fixture_proves_missing_sku_key_error():

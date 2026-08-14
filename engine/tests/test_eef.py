@@ -3,11 +3,14 @@ from __future__ import annotations
 import json
 import subprocess
 import zipfile
+from dataclasses import asdict
 from pathlib import Path
 
 import pytest
 
+from exhibit_a.connectors import LocalTestConnector, LocalTestRequest
 from exhibit_a.eef import create_bundle, verify_bundle
+from exhibit_a.executor.base import ExecOutcome, ExecSpec, Executor, RepoState
 from exhibit_a.models.case import (
     Case,
     Evidence,
@@ -103,6 +106,44 @@ def test_eef_detects_runtime_model_evidence_tampering(tmp_path: Path):
                 content = content.replace(
                     b'"requested_model":"requested"', b'"requested_model":"swapped"'
                 )
+            destination.writestr(info, content)
+
+    with pytest.raises(ValueError, match="entry (size|hash) mismatch"):
+        verify_bundle(tampered, signing_key=KEY)
+
+
+def test_eef_detects_connector_provenance_tampering(tmp_path: Path):
+    class StubExecutor(Executor):
+        def prepare(self, repo: RepoState) -> None:
+            return None
+
+        def run(self, repo: RepoState, spec: ExecSpec) -> ExecOutcome:
+            return ExecOutcome(1, "", "E   AssertionError: wrong value")
+
+    target = tmp_path / "target"
+    target.mkdir()
+    (target / "inventory.py").write_text("def stock_for(rows, sku): return 1\n")
+    case = _case()
+    request = LocalTestRequest(
+        RepoState(str(target), "target"),
+        ExecSpec("test_repro.py", TEST_CODE, "python3 -m pytest -x -q test_repro.py"),
+    )
+    case["evidence_sources"] = [
+        asdict(LocalTestConnector(StubExecutor()).collect(request).provenance)
+    ]
+    bundle = create_bundle(
+        case,
+        tmp_path / "case.eef",
+        target_source=target,
+        base_source=None,
+        signing_key=KEY,
+    )
+    tampered = tmp_path / "tampered-connector.eef"
+    with zipfile.ZipFile(bundle) as source, zipfile.ZipFile(tampered, "w") as destination:
+        for info in source.infolist():
+            content = source.read(info.filename)
+            if info.filename == "case.json":
+                content = content.replace(b'"isolation":"unknown"', b'"isolation":"container"')
             destination.writestr(info, content)
 
     with pytest.raises(ValueError, match="entry (size|hash) mismatch"):

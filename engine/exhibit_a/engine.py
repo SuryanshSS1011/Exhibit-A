@@ -14,13 +14,21 @@ per the plan; on exhaustion the verdict is honest silence, not a guess.
 
 from __future__ import annotations
 
+import math
 import shlex
 import uuid
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Any, Callable, Optional
 
-from .executor.base import EnvironmentSetupError, ExecSpec, Executor, RepoState
+from .connectors import (
+    Connector,
+    EvidenceKind,
+    LocalTestConnector,
+    LocalTestRequest,
+    local_test_digests,
+)
+from .executor.base import EnvironmentSetupError, ExecOutcome, ExecSpec, Executor, RepoState
 from .hypothesis.generator import Candidate, Claim, Feedback, HypothesisGenerator
 from .hypothesis.intent import IntentJudge
 from .models.case import (
@@ -78,12 +86,14 @@ class EvidenceEngine:
         config: Optional[EngineConfig] = None,
         event_sink: Optional[Callable[[dict[str, Any]], None]] = None,
         intent_judge: IntentJudge | None = None,
+        test_connector: Connector[LocalTestRequest, ExecOutcome] | None = None,
     ):
         self.generator = generator
         self.executor = executor
         self.config = config or EngineConfig()
         self.event_sink = event_sink
         self.intent_judge = intent_judge
+        self.test_connector = test_connector or LocalTestConnector(executor)
 
     def investigate(
         self,
@@ -366,7 +376,7 @@ class EvidenceEngine:
         target_outcomes = []
         run_records: list[RunResult] = []
         for attempt in range(1, self.config.reruns + 1):
-            out = self.executor.run(target, target_spec)
+            out = self._collect_test(case, target, target_spec)
             target_outcomes.append(out)
             run_records.append(
                 RunResult(
@@ -392,7 +402,7 @@ class EvidenceEngine:
 
         base_outcome = None
         if base is not None:
-            base_outcome = self.executor.run(base, base_spec)
+            base_outcome = self._collect_test(case, base, base_spec)
             run_records.append(
                 RunResult(
                     state="base",
@@ -416,7 +426,7 @@ class EvidenceEngine:
 
         control_outcome = None
         if control is not None:
-            control_outcome = self.executor.run(control, control_spec)
+            control_outcome = self._collect_test(case, control, control_spec)
             run_records.append(
                 RunResult(
                     state="control",
@@ -590,6 +600,7 @@ class EvidenceEngine:
                 base_image=base_image,
                 control_image=control_image,
                 max_attempts=self.config.minimization_max_attempts,
+                runner=lambda repo, run_spec: self._collect_test(case, repo, run_spec),
             )
         except Exception as exc:
             case.minimization = EvidenceMinimization(
@@ -620,6 +631,41 @@ class EvidenceEngine:
             minimized_lines=result.minimized_lines,
             reduction_ratio=result.reduction_ratio,
         )
+
+    def _collect_test(self, case: Case, repo: RepoState, spec: ExecSpec) -> ExecOutcome:
+        request = LocalTestRequest(repo, spec)
+        collected = self.test_connector.collect(request)
+        outcome = collected.payload
+        provenance = collected.provenance
+        descriptor = self.test_connector.descriptor
+        if not isinstance(outcome, ExecOutcome):
+            raise TypeError("test connector returned a non-ExecOutcome payload")
+        if (
+            not isinstance(outcome.exit_code, int)
+            or isinstance(outcome.exit_code, bool)
+            or not isinstance(outcome.stdout, str)
+            or not isinstance(outcome.stderr, str)
+            or not isinstance(outcome.timed_out, bool)
+            or isinstance(outcome.duration_s, bool)
+            or not isinstance(outcome.duration_s, (int, float))
+            or not math.isfinite(outcome.duration_s)
+            or outcome.duration_s < 0
+        ):
+            raise ValueError("test connector returned an invalid ExecOutcome")
+        if (
+            EvidenceKind.TEST_EXECUTION not in descriptor.capabilities
+            or provenance.connector_id != descriptor.id
+            or provenance.connector_version != descriptor.version
+            or provenance.capability is not EvidenceKind.TEST_EXECUTION
+            or provenance.freshness is not descriptor.freshness_basis
+            or provenance.security != descriptor.security
+        ):
+            raise ValueError("test connector provenance does not match its descriptor")
+        expected = local_test_digests(request, outcome)
+        if any(getattr(provenance, key) != value for key, value in expected.items()):
+            raise ValueError("test connector provenance does not cover its request and response")
+        case.evidence_sources.append(provenance)
+        return outcome
 
     def _score_evidence_strength(
         self,

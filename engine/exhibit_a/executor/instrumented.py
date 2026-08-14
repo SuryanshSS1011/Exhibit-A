@@ -9,8 +9,8 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .base import ExecOutcome, ExecSpec, Executor, RepoState, SourceMutation
 from ..store.suite_gap import ENGINE_VERSION
+from .base import ExecOutcome, ExecSpec, Executor, RepoState, SourceMutation
 
 SCHEMA_VERSION = "environment-attempt/v1"
 _LOCKFILES = (
@@ -51,6 +51,22 @@ class RecordingExecutor(Executor):
 
     def __getattr__(self, name: str):
         return getattr(self.inner, name)
+
+    @property
+    def source_access(self) -> str:
+        return self.inner.source_access
+
+    @property
+    def network_access(self) -> str:
+        return self.inner.network_access
+
+    @property
+    def isolation(self) -> str:
+        return self.inner.isolation
+
+    @property
+    def credential_access(self) -> str:
+        return self.inner.credential_access
 
     def prepare(self, repo: RepoState) -> str | None:
         start = time.monotonic()

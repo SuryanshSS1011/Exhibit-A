@@ -18,6 +18,8 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+from ..connectors.base import EvidenceProvenance
+
 
 class Mode(str, enum.Enum):
     PROSECUTOR = "prosecutor"  # reviews a PR: comment only on a proven flip
@@ -335,6 +337,7 @@ class Case:
     evidence_strength: Optional[EvidenceStrength] = None
     run_command: str = "pytest -x -q"
     evidence: Evidence = field(default_factory=Evidence)
+    evidence_sources: list[EvidenceProvenance] = field(default_factory=list)
     truth: TruthAssessment = field(default_factory=TruthAssessment)
 
     # --- the verdict ---

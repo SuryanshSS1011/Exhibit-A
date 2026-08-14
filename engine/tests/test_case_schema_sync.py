@@ -1,11 +1,12 @@
+import re
 from dataclasses import fields
 from pathlib import Path
-import re
 
 from exhibit_a.models.case import (
     Case,
     Evidence,
     EvidenceMinimization,
+    EvidenceProvenance,
     EvidenceStrength,
     Hypothesis,
     ProposalRun,
@@ -24,6 +25,7 @@ def test_typescript_case_schema_matches_python_dataclasses():
         "TestArtifact": CaseTestArtifact,
         "RunResult": RunResult,
         "Evidence": Evidence,
+        "EvidenceProvenance": EvidenceProvenance,
         "TruthAssessment": TruthAssessment,
         "EvidenceMinimization": EvidenceMinimization,
         "StrengthComponent": StrengthComponent,

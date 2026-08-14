@@ -13,7 +13,7 @@ import math
 from dataclasses import dataclass
 from typing import Callable, Iterator
 
-from ..executor.base import ExecSpec, Executor, RepoState
+from ..executor.base import ExecOutcome, ExecSpec, Executor, RepoState
 from ..models.case import TestArtifact
 from .diff_location import ChangedLines
 from .flip_check import flip_check
@@ -36,6 +36,7 @@ class MinimizationResult:
 
 
 Verifier = Callable[[str], bool]
+Runner = Callable[[RepoState, ExecSpec], ExecOutcome]
 
 
 def minimize_proven_test(
@@ -52,6 +53,7 @@ def minimize_proven_test(
     base_image: str | None = None,
     control_image: str | None = None,
     max_attempts: int = 32,
+    runner: Runner | None = None,
 ) -> MinimizationResult:
     """Return the smallest candidate found under a bounded, real flip oracle."""
     if reruns < 1:
@@ -61,6 +63,7 @@ def minimize_proven_test(
 
     attempts = 0
     accepted = 0
+    execute = runner or executor.run
 
     def verifies(code: str) -> bool:
         nonlocal attempts
@@ -77,9 +80,9 @@ def minimize_proven_test(
         target_spec = ExecSpec(**{**candidate.__dict__, "image": target_image})
         base_spec = ExecSpec(**{**candidate.__dict__, "image": base_image})
         control_spec = ExecSpec(**{**candidate.__dict__, "image": control_image})
-        target_runs = [executor.run(target, target_spec) for _ in range(reruns)]
-        base_run = executor.run(base, base_spec)
-        control_run = executor.run(control, control_spec) if control is not None else None
+        target_runs = [execute(target, target_spec) for _ in range(reruns)]
+        base_run = execute(base, base_spec)
+        control_run = execute(control, control_spec) if control is not None else None
         result = flip_check(
             target_runs=target_runs,
             base_run=base_run,

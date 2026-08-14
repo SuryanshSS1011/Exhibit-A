@@ -44,6 +44,31 @@ export interface Evidence {
   runs: RunResult[];
 }
 
+export interface ConnectorSecurity {
+  source_access: string;
+  network_access: string;
+  isolation: string;
+  credential_access: string;
+}
+
+export interface EvidenceProvenance {
+  evidence_id: string;
+  connector_id: string;
+  connector_version: string;
+  capability: "test_execution";
+  source: string;
+  source_revision: string | null;
+  observed_at: string;
+  source_updated_at: string | null;
+  freshness: "point_in_time" | "cached" | "unknown";
+  description: string;
+  request_sha256: string;
+  response_sha256: string;
+  artifact_sha256: string;
+  content_sha256: string;
+  security: ConnectorSecurity;
+}
+
 export interface TruthAssessment {
   execution: ExecutionTruth;
   goal: GoalTruth;
@@ -126,6 +151,7 @@ export interface Case {
   evidence_strength: EvidenceStrength | null;
   run_command: string;
   evidence: Evidence;
+  evidence_sources?: EvidenceProvenance[];
   truth?: TruthAssessment;
   verdict: Verdict;
   disposition: Disposition;

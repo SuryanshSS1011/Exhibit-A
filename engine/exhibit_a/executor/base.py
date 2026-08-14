@@ -103,6 +103,11 @@ class ExecOutcome:
 class Executor(abc.ABC):
     """Runs untrusted, model-generated test code in isolation."""
 
+    source_access = "unknown"
+    network_access = "unknown"
+    isolation = "unknown"
+    credential_access = "unknown"
+
     @abc.abstractmethod
     def prepare(self, repo: RepoState) -> Optional[str]:
         """Build/cache the environment for a repo state.

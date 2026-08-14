@@ -87,6 +87,10 @@ The evidence discipline that makes Exhibit A trustworthy also makes it a data en
 Every verified Case is an execution-validated fact about real code, and the project turns
 those facts into open research assets.
 
+Evidence collection is exposed through [typed, read-only connectors](docs/CONNECTORS.md).
+Each connector emits raw facts and hash-linked provenance, while verdict authority stays
+with deterministic claim-specific code.
+
 - **Contamination-free benchmarks.** Each `VERIFIED` Case carries a commit SHA, a
   fail-to-pass test, and a date, which is exactly the shape of a SWE-bench-style instance.
   Because instances are minted continuously from live fixes and tagged by date, they can

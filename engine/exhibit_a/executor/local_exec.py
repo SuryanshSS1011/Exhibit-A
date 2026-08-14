@@ -32,6 +32,11 @@ from .base import (
 class LocalExecutor(Executor):
     """Run the test file in a host subprocess against a disposable copy."""
 
+    source_access = "disposable_copy"
+    network_access = "host_unrestricted"
+    isolation = "host_subprocess"
+    credential_access = "ambient_host"
+
     def prepare(self, repo: RepoState) -> str | None:
         return None
 
