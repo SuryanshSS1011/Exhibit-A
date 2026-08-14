@@ -55,12 +55,12 @@ export interface EvidenceProvenance {
   evidence_id: string;
   connector_id: string;
   connector_version: string;
-  capability: "test_execution";
+  capability: "test_execution" | "git_metadata";
   source: string;
   source_revision: string | null;
   observed_at: string;
   source_updated_at: string | null;
-  freshness: "point_in_time" | "cached" | "unknown";
+  freshness: "point_in_time" | "immutable_revision" | "cached" | "unknown";
   description: string;
   request_sha256: string;
   response_sha256: string;

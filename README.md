@@ -90,6 +90,8 @@ those facts into open research assets.
 Evidence collection is exposed through [typed, read-only connectors](docs/CONNECTORS.md).
 Each connector emits raw facts and hash-linked provenance, while verdict authority stays
 with deterministic claim-specific code.
+The first non-test connector reads immutable commit and changed-path metadata from an
+already-local Git checkout without fetching or exposing author identities.
 
 - **Contamination-free benchmarks.** Each `VERIFIED` Case carries a commit SHA, a
   fail-to-pass test, and a date, which is exactly the shape of a SWE-bench-style instance.

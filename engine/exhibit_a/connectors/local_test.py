@@ -6,7 +6,6 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable
-from urllib.parse import urlsplit, urlunsplit
 
 from ..executor.base import ExecOutcome, ExecSpec, Executor, RepoState
 from .base import (
@@ -16,6 +15,7 @@ from .base import (
     EvidenceKind,
     EvidenceProvenance,
     Freshness,
+    credential_free_source,
     hash_payload,
 )
 
@@ -62,7 +62,7 @@ class LocalTestConnector:
             connector_id=self.descriptor.id,
             connector_version=self.descriptor.version,
             capability=EvidenceKind.TEST_EXECUTION,
-            source=_credential_free_source(request.repo.source),
+            source=credential_free_source(request.repo.source),
             source_revision=request.repo.commit,
             observed_at=observed_at.astimezone(timezone.utc).isoformat(),
             source_updated_at=None,
@@ -110,18 +110,3 @@ def local_test_digests(request: LocalTestRequest, outcome: ExecOutcome) -> dict[
         "artifact_sha256": artifact_sha256,
         "content_sha256": content_sha256,
     }
-
-
-def _credential_free_source(source: str | None) -> str:
-    if not source:
-        return "local-checkout"
-    parts = urlsplit(source)
-    if parts.scheme not in {"http", "https"} or not parts.hostname:
-        return "local-checkout"
-    hostname = parts.hostname
-    try:
-        if parts.port is not None:
-            hostname = f"{hostname}:{parts.port}"
-    except ValueError:
-        return "local-checkout"
-    return urlunsplit((parts.scheme, hostname, parts.path, "", ""))

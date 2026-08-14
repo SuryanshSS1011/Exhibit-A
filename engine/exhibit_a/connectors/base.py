@@ -7,6 +7,7 @@ import json
 from dataclasses import dataclass
 from enum import Enum
 from typing import Generic, Mapping, Protocol, TypeVar
+from urllib.parse import urlsplit, urlunsplit
 
 RequestT = TypeVar("RequestT", contravariant=True)
 PayloadT = TypeVar("PayloadT", covariant=True)
@@ -14,10 +15,12 @@ PayloadT = TypeVar("PayloadT", covariant=True)
 
 class EvidenceKind(str, Enum):
     TEST_EXECUTION = "test_execution"
+    GIT_METADATA = "git_metadata"
 
 
 class Freshness(str, Enum):
     POINT_IN_TIME = "point_in_time"
+    IMMUTABLE_REVISION = "immutable_revision"
     CACHED = "cached"
     UNKNOWN = "unknown"
 
@@ -112,3 +115,19 @@ def hash_payload(payload: Mapping[str, object]) -> str:
         sort_keys=True,
     ).encode()
     return hashlib.sha256(encoded).hexdigest()
+
+
+def credential_free_source(source: str | None) -> str:
+    """Return a public repository identity without paths, queries, or credentials."""
+    if not source:
+        return "local-checkout"
+    parts = urlsplit(source)
+    if parts.scheme not in {"http", "https"} or not parts.hostname:
+        return "local-checkout"
+    hostname = parts.hostname
+    try:
+        if parts.port is not None:
+            hostname = f"{hostname}:{parts.port}"
+    except ValueError:
+        return "local-checkout"
+    return urlunsplit((parts.scheme, hostname, parts.path, "", ""))
