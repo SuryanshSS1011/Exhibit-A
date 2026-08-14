@@ -33,8 +33,11 @@ backward-compatible with signed `eef/v1` bug bundles.
   entries, any entry above 64 MiB, and archives above 512 MiB before reading payloads.
 - Reruns are strict integers from 1 through 20. Docker builds have a five-minute host
   timeout; test runs have a two-minute timeout plus CPU, memory, and PID limits. Captured
-  output is capped at 8 MiB per stream, named replay containers are force-removed, and
-  verifier-created images use per-run names and are cleaned up.
+  bug-replay output is capped at 8 MiB per stream. `refactor-bundle` signs a 64 KiB
+  per-stream collection/replay cap so all 40 possible runs remain within the 64 MiB
+  claim-entry limit. Earlier refactor v2 bundles without this metadata retain the prior
+  8 MiB replay default. Named replay containers are force-removed, and verifier-created
+  images use per-run names and are cleaned up.
 - ZIP entries are sorted, uncompressed, timestamped at the ZIP epoch, and assigned a
   fixed mode. Identical Case/source/key inputs produce byte-identical archives.
 
@@ -62,6 +65,12 @@ from the archived bytes.
 python3 -m exhibit_a.cli bundle case.json \
   --target-source /path/to/bad --base-source /path/to/good \
   --signing-key /secure/eef.key --out case.eef
+
+# Execute a trusted before/after contract in the Docker sandbox and bundle its evidence.
+python3 -m exhibit_a.cli refactor-bundle \
+  --base-source /path/to/before --target-source /path/to/after \
+  --contract /path/to/test_contract.py \
+  --signing-key /secure/eef.key --out refactor.eef
 
 python3 -m exhibit_a.cli verify case.eef --signing-key /secure/eef.key
 python3 -m exhibit_a.cli verify case.eef --signing-key /secure/eef.key --execute

@@ -48,3 +48,23 @@ archived states and compares the complete fresh result with the recorded one. A 
 record is reproducible,” not “the refactor passed.” This is passport-ready machine
 evidence, not yet a public passport; source snapshots, raw execution logs, and opaque
 executor metadata may contain sensitive data and require an explicit publication policy.
+
+The CLI collector uses the same resource-bounded, network-disabled Docker harness as EEF
+replay rather than the host-local development runner:
+
+```bash
+python3 -m exhibit_a.cli refactor-bundle \
+  --base-source /path/to/before --target-source /path/to/after \
+  --contract /path/to/test_contract.py \
+  --signing-key /secure/eef.key --out refactor.eef
+```
+
+The command rejects identical source paths, keys or outputs inside a source tree, and any
+key aliased to the contract or output. It then materializes each checkout once through
+EEF's no-symlink, race-safe source reader and uses those exact snapshots for every
+execution and for the archive. Collection and replay share the byte-exact Dockerfile,
+fixed pytest argv, offline build, 64 KiB per-stream output cap, and CPU/memory/PID/time
+limits. Contracts are capped at 1 MiB so the complete repeated evidence remains one valid
+EEF entry. The contract file is injected at the fixed `test_refactor_contract.py` path in
+both states; it is not copied from either checkout. The command closes the executor on
+success or failure.

@@ -172,7 +172,8 @@ def test_refactor_eef_replay_verifies_the_complete_recorded_result(
         lambda docker, root, state, image: built.append(state),
     )
 
-    def run(docker, image, argv, *, timeout_s):
+    def run(docker, image, argv, *, timeout_s, output_limit_bytes):
+        assert output_limit_bytes == eef._OUTPUT_LIMIT_BYTES
         if image.endswith("-target"):
             return target_outcome
         return ExecOutcome(0, "1 passed", "")
@@ -323,6 +324,22 @@ def test_refactor_eef_rejects_signed_claim_metadata_disagreement(tmp_path: Path)
         verify_bundle(tampered, signing_key=KEY)
 
 
+def test_refactor_eef_preserves_pre_output_cap_metadata_compatibility(tmp_path: Path):
+    bundle = _bundle(tmp_path)
+
+    def mutate(blobs: dict[str, bytes]) -> None:
+        _mutate_json(
+            blobs,
+            "reproduce.json",
+            lambda value: value.pop("output_limit_bytes"),
+        )
+
+    legacy = _resign_bundle(bundle, tmp_path / "legacy-refactor-v2.eef", mutate)
+    result = verify_bundle(legacy, signing_key=KEY)
+    assert result.integrity_verified and result.signature_verified
+    assert result.execution_verified is None
+
+
 def test_refactor_eef_rejects_ambiguous_extra_manifest_truth(tmp_path: Path):
     bundle = _bundle(
         tmp_path,
@@ -362,3 +379,114 @@ def test_refactor_eef_rejects_credential_shaped_executor_handles(tmp_path: Path)
             target_source=target,
             signing_key=KEY,
         )
+
+
+def test_refactor_replay_executor_collects_in_the_exact_bounded_harness(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    root = tmp_path / "context"
+    base = root / "sources" / "base"
+    target = root / "sources" / "target"
+    base.mkdir(parents=True)
+    target.mkdir(parents=True)
+    (base / "behavior.py").write_text("VALUE = 10\n")
+    (target / "behavior.py").write_text("VALUE = 10\n")
+    builds: list[tuple[str, str]] = []
+    runs: list[tuple[str, int]] = []
+    removed: list[str] = []
+
+    def build(docker: str, context: Path, state: str, image: str) -> None:
+        assert docker == "test-docker"
+        assert context == root.resolve()
+        assert (context / "Dockerfile").read_text() == eef._dockerfile(
+            ["python3", "-m", "pytest", "-x", "-q", "test_refactor_contract.py"]
+        )
+        assert (context / "sources" / state / "test_refactor_contract.py").read_text() == CONTRACT
+        builds.append((state, image))
+
+    def run(
+        docker: str,
+        image: str,
+        argv: list[str],
+        *,
+        timeout_s: int,
+        output_limit_bytes: int,
+    ) -> ExecOutcome:
+        assert docker == "test-docker"
+        assert argv == [
+            "python3",
+            "-m",
+            "pytest",
+            "-x",
+            "-q",
+            "test_refactor_contract.py",
+        ]
+        assert output_limit_bytes == eef_refactor.REFACTOR_OUTPUT_LIMIT_BYTES
+        runs.append((image, timeout_s))
+        return ExecOutcome(0, "1 passed", "")
+
+    monkeypatch.setattr(eef_refactor, "_build_state", build)
+    monkeypatch.setattr(eef_refactor, "_run_state", run)
+    monkeypatch.setattr(eef_refactor, "_remove_image", lambda docker, image: removed.append(image))
+    executor = eef_refactor.RefactorReplayExecutor(root, CONTRACT, docker_bin="test-docker")
+
+    evidence = collect_refactor_evidence(
+        executor,
+        RepoState(str(base), "base"),
+        RepoState(str(target), "target"),
+        CONTRACT,
+        reruns=3,
+        timeout_s=17,
+    )
+    executor.close()
+
+    assert evidence.result.verdict is Verdict.VERIFIED
+    assert [state for state, _ in builds] == ["base", "target"]
+    assert len(runs) == 6
+    assert {timeout for _, timeout in runs} == {17}
+    assert all(run.image is None for run in evidence.runs)
+    assert removed == [builds[1][1], builds[0][1]]
+
+
+def test_refactor_max_rerun_output_stays_within_single_entry_limit(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    root = tmp_path / "context"
+    base = root / "sources" / "base"
+    target = root / "sources" / "target"
+    base.mkdir(parents=True)
+    target.mkdir(parents=True)
+    (base / "behavior.py").write_text("VALUE = 10\n")
+    (target / "behavior.py").write_text("VALUE = 10\n")
+    limit = eef_refactor.REFACTOR_OUTPUT_LIMIT_BYTES
+
+    monkeypatch.setattr(eef_refactor, "_build_state", lambda *args: None)
+
+    def run(*args, output_limit_bytes: int, **kwargs) -> ExecOutcome:
+        assert output_limit_bytes == limit
+        return ExecOutcome(0, "x" * limit, "y" * limit)
+
+    monkeypatch.setattr(eef_refactor, "_run_state", run)
+    monkeypatch.setattr(eef_refactor, "_remove_image", lambda *args: None)
+    executor = eef_refactor.RefactorReplayExecutor(root, CONTRACT)
+    evidence = collect_refactor_evidence(
+        executor,
+        RepoState(str(base), "base"),
+        RepoState(str(target), "target"),
+        CONTRACT,
+        reruns=20,
+    )
+    executor.close()
+
+    bundle = create_refactor_bundle(
+        evidence,
+        tmp_path / "high-output.eef",
+        base_source=base,
+        target_source=target,
+        signing_key=KEY,
+        output_limit_bytes=limit,
+    )
+    with zipfile.ZipFile(bundle) as archive:
+        assert archive.getinfo("refactor.json").file_size < eef._MAX_ENTRY_BYTES
+    worst_case_escaped_streams = 2 * 2 * 20 * limit * 6
+    assert worst_case_escaped_streams < eef._MAX_ENTRY_BYTES // 2

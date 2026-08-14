@@ -23,6 +23,7 @@ from .connectors import (
 )
 from .eef import (
     _MAX_RERUNS,
+    _OUTPUT_LIMIT_BYTES,
     _RUN_TIMEOUT_S,
     _add_source,
     _bounded_int,
@@ -36,7 +37,7 @@ from .eef import (
     _safe_relative,
     _write_bundle,
 )
-from .executor.base import ExecOutcome, ExecSpec, RepoState
+from .executor.base import ExecOutcome, ExecSpec, Executor, RepoState
 from .models.case import ExecutionTruth, GoalTruth, ReleaseTruth, Verdict
 from .verdict.refactor_check import SuiteStatus, refactor_check
 from .verdict.refactor_runner import (
@@ -107,6 +108,8 @@ _EVIDENCE_KEYS = {
     "runs",
     "evidence_sources",
 }
+REFACTOR_OUTPUT_LIMIT_BYTES = 64 * 1024
+MAX_REFACTOR_CONTRACT_BYTES = 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -116,7 +119,79 @@ class ValidatedRefactorBundle:
     target_runs: tuple[ExecOutcome, ...]
     reruns: int
     timeout_s: int
+    output_limit_bytes: int
     argv: tuple[str, ...]
+
+
+class RefactorReplayExecutor(Executor):
+    """Collect refactor evidence in the exact bounded EEF replay harness."""
+
+    source_access = "disposable_copy"
+    network_access = "disabled"
+    isolation = "container"
+    credential_access = "none"
+
+    def __init__(self, root: str | Path, contract_code: str, *, docker_bin: str = "docker"):
+        if not isinstance(contract_code, str):
+            raise TypeError("refactor EEF collector contract must be text")
+        if len(contract_code.encode()) > MAX_REFACTOR_CONTRACT_BYTES:
+            raise ValueError("refactor EEF collector contract exceeds the size limit")
+        self._root = Path(root).resolve()
+        self._docker_bin = docker_bin
+        self._images: dict[str, str] = {}
+        self._contract_sha256 = hashlib.sha256(contract_code.encode()).hexdigest()
+        argv = _safe_pytest_argv(CONTRACT_COMMAND, CONTRACT_PATH)
+        (self._root / "Dockerfile").write_text(_dockerfile(argv))
+        for state in ("base", "target"):
+            source = self._root / "sources" / state
+            if not source.is_dir():
+                raise ValueError(f"refactor EEF collector is missing the {state} snapshot")
+            (source / CONTRACT_PATH).write_text(contract_code)
+
+    def prepare(self, repo: RepoState) -> None:
+        self._validate_repo(repo)
+
+    def run(self, repo: RepoState, spec: ExecSpec) -> ExecOutcome:
+        self._validate_repo(repo)
+        if (
+            spec.test_path != CONTRACT_PATH
+            or spec.command != CONTRACT_COMMAND
+            or spec.network
+            or spec.image is not None
+            or not isinstance(spec.timeout_s, int)
+            or isinstance(spec.timeout_s, bool)
+            or not 1 <= spec.timeout_s <= _RUN_TIMEOUT_S
+        ):
+            raise ValueError("refactor EEF collector received an invalid execution spec")
+        contract_sha256 = hashlib.sha256(spec.test_code.encode()).hexdigest()
+        if self._contract_sha256 != contract_sha256:
+            raise ValueError("refactor EEF collector contract changed between states")
+        state = repo.label
+        argv = _safe_pytest_argv(spec.command, spec.test_path)
+        image = self._images.get(state)
+        if image is None:
+            image = f"exhibit-a-eef-collect:{uuid.uuid4().hex}-{state}"
+            self._images[state] = image
+            _build_state(self._docker_bin, self._root, state, image)
+        return _run_state(
+            self._docker_bin,
+            image,
+            argv,
+            timeout_s=spec.timeout_s,
+            output_limit_bytes=REFACTOR_OUTPUT_LIMIT_BYTES,
+        )
+
+    def close(self) -> None:
+        for image in reversed(tuple(self._images.values())):
+            _remove_image(self._docker_bin, image)
+        self._images.clear()
+
+    def _validate_repo(self, repo: RepoState) -> None:
+        if repo.label not in {"base", "target"}:
+            raise ValueError("refactor EEF collector state label is invalid")
+        expected = (self._root / "sources" / repo.label).resolve()
+        if Path(repo.path).resolve() != expected or not expected.is_dir():
+            raise ValueError("refactor EEF collector source does not match its snapshot")
 
 
 def create_refactor_bundle(
@@ -126,6 +201,7 @@ def create_refactor_bundle(
     base_source: str | Path,
     target_source: str | Path,
     signing_key: bytes,
+    output_limit_bytes: int = _OUTPUT_LIMIT_BYTES,
 ) -> Path:
     """Serialize typed refactor evidence and both source states into EEF v2."""
     if len(signing_key) < 32:
@@ -135,6 +211,12 @@ def create_refactor_bundle(
     # Validate the exact JSON shape readers receive, not dataclass tuple internals.
     data = json.loads(_canonical(evidence.to_dict()))
     validated = _validate_evidence(data)
+    output_limit_bytes = _bounded_int(
+        output_limit_bytes,
+        "refactor output limit",
+        1,
+        _OUTPUT_LIMIT_BYTES,
+    )
     test_path = PurePosixPath(CONTRACT_PATH)
     argv = list(validated.argv)
     payloads = {
@@ -149,6 +231,7 @@ def create_refactor_bundle(
         "command_argv": argv,
         "reruns": evidence.reruns,
         "timeout_s": evidence.timeout_s,
+        "output_limit_bytes": output_limit_bytes,
         "base_tree_sha256": _tree_sha256(payloads, "base"),
         "target_tree_sha256": _tree_sha256(payloads, "target"),
     }
@@ -189,7 +272,7 @@ def validate_refactor_bundle(
     if not isinstance(evidence, dict) or not isinstance(reproduce, dict):
         raise ValueError("refactor EEF claim payload is invalid")
     validated = _validate_evidence(evidence)
-    if set(reproduce) != {
+    replay_keys = {
         "claim_type",
         "evidence_schema",
         "contract_path",
@@ -198,7 +281,8 @@ def validate_refactor_bundle(
         "timeout_s",
         "base_tree_sha256",
         "target_tree_sha256",
-    }:
+    }
+    if set(reproduce) not in (replay_keys, replay_keys | {"output_limit_bytes"}):
         raise ValueError("refactor EEF replay metadata has an invalid shape")
     argv = reproduce.get("command_argv")
     if not isinstance(argv, list) or not all(isinstance(item, str) for item in argv):
@@ -213,6 +297,12 @@ def validate_refactor_bundle(
         or reproduce.get("timeout_s") != validated.timeout_s
     ):
         raise ValueError("refactor EEF replay metadata does not match its evidence")
+    output_limit_bytes = _bounded_int(
+        reproduce.get("output_limit_bytes", _OUTPUT_LIMIT_BYTES),
+        "refactor output limit",
+        1,
+        _OUTPUT_LIMIT_BYTES,
+    )
     base_tree_sha = reproduce.get("base_tree_sha256")
     target_tree_sha = reproduce.get("target_tree_sha256")
     if (
@@ -261,7 +351,15 @@ def validate_refactor_bundle(
         }
     ):
         raise ValueError("refactor EEF signed claim metadata is inconsistent")
-    return validated
+    return ValidatedRefactorBundle(
+        evidence=validated.evidence,
+        base_runs=validated.base_runs,
+        target_runs=validated.target_runs,
+        reruns=validated.reruns,
+        timeout_s=validated.timeout_s,
+        output_limit_bytes=output_limit_bytes,
+        argv=validated.argv,
+    )
 
 
 def reexecute_refactor(
@@ -295,6 +393,7 @@ def reexecute_refactor(
                         image,
                         list(validated.argv),
                         timeout_s=validated.timeout_s,
+                        output_limit_bytes=validated.output_limit_bytes,
                     )
                     for _ in range(validated.reruns)
                 ]
@@ -385,6 +484,7 @@ def _validate_evidence(evidence: dict[str, Any]) -> ValidatedRefactorBundle:
         target_runs=tuple(outcomes["target"]),
         reruns=reruns,
         timeout_s=timeout_s,
+        output_limit_bytes=_OUTPUT_LIMIT_BYTES,
         argv=argv,
     )
 

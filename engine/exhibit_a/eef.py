@@ -53,6 +53,24 @@ class VerificationResult:
     execution_verified: bool | None
 
 
+@dataclass
+class SourceSnapshotBudget:
+    """Shared incremental limits for source trees materialized into one EEF."""
+
+    entries: int = 0
+    total_bytes: int = 0
+
+    def consume(self, size: int) -> None:
+        if size < 0 or size > _MAX_ENTRY_BYTES:
+            raise ValueError("EEF source entry exceeds the size limit")
+        self.entries += 1
+        self.total_bytes += size
+        if self.entries > _MAX_ARCHIVE_ENTRIES:
+            raise ValueError("EEF source snapshots contain too many entries")
+        if self.total_bytes > _MAX_ARCHIVE_BYTES:
+            raise ValueError("EEF source snapshots exceed the total size limit")
+
+
 def create_bundle(
     case: Mapping[str, Any],
     output: str | Path,
@@ -117,6 +135,7 @@ def create_refactor_bundle(
     base_source: str | Path,
     target_source: str | Path,
     signing_key: bytes,
+    output_limit_bytes: int = _OUTPUT_LIMIT_BYTES,
 ) -> Path:
     """Serialize behavior-refactor evidence through its claim-specific EEF adapter."""
     from .eef_refactor import create_refactor_bundle as create
@@ -127,6 +146,7 @@ def create_refactor_bundle(
         base_source=base_source,
         target_source=target_source,
         signing_key=signing_key,
+        output_limit_bytes=output_limit_bytes,
     )
 
 
@@ -449,6 +469,7 @@ def _run_state(
     argv: list[str],
     *,
     timeout_s: int = _RUN_TIMEOUT_S,
+    output_limit_bytes: int | None = None,
 ) -> ExecOutcome:
     container_name = f"exhibit-a-eef-{uuid.uuid4().hex}"
     command = [
@@ -476,7 +497,11 @@ def _run_state(
         *argv,
     ]
     try:
-        proc, timed_out = _run_process_capped(command, timeout_s=timeout_s)
+        proc, timed_out = _run_process_capped(
+            command,
+            timeout_s=timeout_s,
+            output_limit_bytes=output_limit_bytes,
+        )
     finally:
         _remove_container(docker_bin, container_name)
     if timed_out:
@@ -491,8 +516,16 @@ def _run_state(
 
 
 def _run_process_capped(
-    argv: list[str], *, timeout_s: int
+    argv: list[str], *, timeout_s: int, output_limit_bytes: int | None = None
 ) -> tuple[subprocess.CompletedProcess[str], bool]:
+    output_limit = _OUTPUT_LIMIT_BYTES if output_limit_bytes is None else output_limit_bytes
+    if (
+        not isinstance(output_limit, int)
+        or isinstance(output_limit, bool)
+        or output_limit < 1
+        or output_limit > _OUTPUT_LIMIT_BYTES
+    ):
+        raise ValueError("EEF process output limit is invalid")
     process = subprocess.Popen(
         argv,
         stdout=subprocess.PIPE,
@@ -504,7 +537,7 @@ def _run_process_capped(
 
     def drain(stream, destination: bytearray, index: int) -> None:
         while chunk := stream.read(64 * 1024):
-            remaining = _OUTPUT_LIMIT_BYTES - len(destination)
+            remaining = output_limit - len(destination)
             if remaining > 0:
                 destination.extend(chunk[:remaining])
             if len(chunk) > remaining:
@@ -573,24 +606,98 @@ def _add_source(
     test_path: PurePosixPath,
     test_code: str,
 ) -> None:
+    for relative, content in _read_source_snapshot(source).items():
+        name = f"sources/{state}/{relative.as_posix()}"
+        _safe_relative(name)
+        payloads[name] = content
+    payloads[f"sources/{state}/{test_path.as_posix()}"] = test_code.encode()
+
+
+def materialize_source_snapshot(
+    source: str | Path,
+    destination: str | Path,
+    *,
+    budget: SourceSnapshotBudget | None = None,
+) -> Path:
+    """Copy one source tree through EEF's race-safe, no-symlink reader."""
+    target_root = Path(destination)
+    if target_root.exists():
+        raise ValueError(f"EEF snapshot destination already exists: {target_root}")
+    target_root.mkdir(parents=True)
+    for relative, content in _read_source_snapshot(Path(source), budget=budget).items():
+        target = target_root.joinpath(*relative.parts)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(content)
+    return target_root
+
+
+def _read_source_snapshot(
+    source: Path, *, budget: SourceSnapshotBudget | None = None
+) -> dict[PurePosixPath, bytes]:
     root = source.absolute()
     root_descriptor = _open_directory_no_follow(root)
+    files: dict[PurePosixPath, bytes] = {}
     try:
         if not stat.S_ISDIR(os.fstat(root_descriptor).st_mode):
             raise ValueError(f"EEF source snapshot is not a directory: {source}")
-        for path in sorted(root.rglob("*")):
-            relative = path.relative_to(root)
-            if any(part in _EXCLUDED_PARTS for part in relative.parts):
-                continue
-            if path.is_symlink():
-                raise ValueError(f"EEF source snapshots cannot contain symlinks: {relative}")
-            if path.is_file():
-                name = f"sources/{state}/{relative.as_posix()}"
-                _safe_relative(name)
-                payloads[name] = _read_source_file(root_descriptor, relative)
-        payloads[f"sources/{state}/{test_path.as_posix()}"] = test_code.encode()
+        for relative in _discover_source_files(root_descriptor):
+            content = _read_source_file(root_descriptor, relative)
+            if budget is not None:
+                budget.consume(len(content))
+            files[PurePosixPath(relative.as_posix())] = content
     finally:
         os.close(root_descriptor)
+    return files
+
+
+def _discover_source_files(root_descriptor: int) -> list[Path]:
+    """Stream a bounded, no-symlink tree walk before sorting its file paths."""
+    files: list[Path] = []
+    visited = 0
+
+    def walk(directory_descriptor: int, parent: Path) -> None:
+        nonlocal visited
+        try:
+            entries = os.scandir(directory_descriptor)
+            with entries:
+                for entry in entries:
+                    if entry.name in _EXCLUDED_PARTS:
+                        continue
+                    visited += 1
+                    if visited > _MAX_ARCHIVE_ENTRIES:
+                        raise ValueError("EEF source snapshots contain too many entries")
+                    relative = parent / entry.name
+                    _safe_relative(relative.as_posix())
+                    try:
+                        if entry.is_symlink():
+                            raise ValueError(
+                                f"EEF source snapshots cannot contain symlinks: {relative}"
+                            )
+                        if entry.is_dir(follow_symlinks=False):
+                            child = os.open(
+                                entry.name,
+                                os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                                dir_fd=directory_descriptor,
+                            )
+                            try:
+                                walk(child, relative)
+                            finally:
+                                os.close(child)
+                        elif entry.is_file(follow_symlinks=False):
+                            files.append(relative)
+                        else:
+                            raise ValueError(
+                                f"EEF source snapshot entry is not a regular file: {relative}"
+                            )
+                    except OSError as exc:
+                        raise ValueError(
+                            f"EEF source snapshot changed during traversal: {relative}"
+                        ) from exc
+        except OSError as exc:
+            raise ValueError("EEF source snapshot could not be traversed safely") from exc
+
+    walk(root_descriptor, Path())
+    return sorted(files)
 
 
 def _dockerfile(argv: list[str]) -> str:

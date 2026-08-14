@@ -13,10 +13,22 @@ import argparse
 import json
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any, Callable
 
-from .eef import create_bundle, verify_bundle
+from .eef import (
+    SourceSnapshotBudget,
+    create_bundle,
+    create_refactor_bundle,
+    materialize_source_snapshot,
+    verify_bundle,
+)
+from .eef_refactor import (
+    MAX_REFACTOR_CONTRACT_BYTES,
+    REFACTOR_OUTPUT_LIMIT_BYTES,
+    RefactorReplayExecutor,
+)
 from .engine import EngineConfig, EvidenceEngine, candidate_policy_reason
 from .executor.base import ExecSpec, RepoState
 from .executor.instrumented import RecordingExecutor, summarize_environment_attempts
@@ -42,6 +54,7 @@ from .studies.reproducibility import (
 from .studies.self_audit import run_self_audit, save_self_audit_report
 from .studies.triangulation import run_triangulation, save_triangulation_report
 from .verdict.flip_check import extract_signature, signatures_match
+from .verdict.refactor_runner import collect_refactor_evidence
 
 
 def _build_engine(
@@ -281,6 +294,98 @@ def cmd_bundle(args: argparse.Namespace) -> int:
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(f"error: cannot create EEF bundle: {exc}", file=sys.stderr)
         return 2
+    print(path)
+    return 0
+
+
+def cmd_refactor_bundle(args: argparse.Namespace) -> int:
+    """Execute a refactor contract and mint its signed EEF archive."""
+    if not 2 <= args.reruns <= 20:
+        print("error: --reruns must be between 2 and 20", file=sys.stderr)
+        return 2
+    if not 1 <= args.timeout <= 120:
+        print("error: --timeout must be between 1 and 120 seconds", file=sys.stderr)
+        return 2
+
+    executor = None
+    try:
+        base_input = Path(args.base_source).resolve(strict=True)
+        target_input = Path(args.target_source).resolve(strict=True)
+        contract_path = Path(args.contract).resolve(strict=True)
+        key_path = Path(args.signing_key).resolve(strict=True)
+        output_path = Path(args.out).resolve(strict=False)
+        if not base_input.is_dir() or not target_input.is_dir():
+            raise ValueError("refactor sources must be directories")
+        if base_input.is_relative_to(target_input) or target_input.is_relative_to(base_input):
+            raise ValueError(
+                "base and target sources must be separate, non-overlapping directories"
+            )
+        if any(key_path.is_relative_to(source) for source in (base_input, target_input)):
+            raise ValueError("EEF signing key cannot be inside a source tree")
+        if contract_path == key_path:
+            raise ValueError("EEF signing key must be separate from the contract file")
+        if output_path in {key_path, contract_path}:
+            raise ValueError("refactor EEF output must not overwrite an input file")
+        if any(output_path.is_relative_to(source) for source in (base_input, target_input)):
+            raise ValueError("refactor EEF output cannot be inside a source tree")
+
+        contract_code = contract_path.read_text()
+        key = key_path.read_bytes()
+        if len(key) < 32:
+            raise ValueError("EEF signing key must contain at least 32 bytes")
+        source_budget = SourceSnapshotBudget()
+        for _ in range(5):
+            source_budget.consume(0)
+        contract_bytes = contract_code.encode()
+        if len(contract_bytes) > MAX_REFACTOR_CONTRACT_BYTES:
+            raise ValueError("refactor contract exceeds the EEF size limit")
+        source_budget.consume(len(contract_bytes))
+        source_budget.consume(len(contract_bytes))
+        temporary_parent = Path(tempfile.gettempdir()).resolve()
+        with tempfile.TemporaryDirectory(
+            prefix="exhibit-a-refactor-input-", dir=temporary_parent
+        ) as tmp:
+            snapshot_root = Path(tmp)
+            base_source = materialize_source_snapshot(
+                base_input,
+                snapshot_root / "sources" / "base",
+                budget=source_budget,
+            )
+            target_source = materialize_source_snapshot(
+                target_input,
+                snapshot_root / "sources" / "target",
+                budget=source_budget,
+            )
+            executor = RefactorReplayExecutor(snapshot_root, contract_code)
+            evidence = collect_refactor_evidence(
+                executor,
+                RepoState(str(base_source), "base"),
+                RepoState(str(target_source), "target"),
+                contract_code,
+                reruns=args.reruns,
+                timeout_s=args.timeout,
+            )
+            path = create_refactor_bundle(
+                evidence,
+                args.out,
+                base_source=base_source,
+                target_source=target_source,
+                signing_key=key,
+                output_limit_bytes=REFACTOR_OUTPUT_LIMIT_BYTES,
+            )
+    except (
+        OSError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+        json.JSONDecodeError,
+        subprocess.SubprocessError,
+    ) as exc:
+        print(f"error: cannot create refactor EEF bundle: {exc}", file=sys.stderr)
+        return 2
+    finally:
+        if executor is not None:
+            executor.close()
     print(path)
     return 0
 
@@ -738,13 +843,34 @@ def main(argv: list[str] | None = None) -> int:
     bundle.add_argument("--out", required=True, help="output .eef path")
     bundle.set_defaults(func=cmd_bundle)
 
+    refactor_bundle = sub.add_parser(
+        "refactor-bundle",
+        help="run a before/after behavior contract and mint signed EEF evidence",
+    )
+    refactor_bundle.add_argument("--base-source", required=True, help="pre-refactor source")
+    refactor_bundle.add_argument("--target-source", required=True, help="post-refactor source")
+    refactor_bundle.add_argument(
+        "--contract", required=True, help="trusted pytest contract source file"
+    )
+    refactor_bundle.add_argument(
+        "--reruns", type=int, default=3, help="deterministic runs per state (2–20)"
+    )
+    refactor_bundle.add_argument(
+        "--timeout", type=int, default=120, help="per-run timeout in seconds (1–120)"
+    )
+    refactor_bundle.add_argument(
+        "--signing-key", required=True, help="file containing at least 32 key bytes"
+    )
+    refactor_bundle.add_argument("--out", required=True, help="output .eef path")
+    refactor_bundle.set_defaults(func=cmd_refactor_bundle)
+
     verify = sub.add_parser("verify", help="verify an EEF archive offline")
     verify.add_argument("bundle", help="EEF archive to verify")
     verify.add_argument("--signing-key", required=True, help="publisher verification key file")
     verify.add_argument(
         "--execute",
         action="store_true",
-        help="rebuild with network disabled and re-run the deterministic flip check",
+        help="rebuild with network disabled and re-run the claim-specific deterministic judge",
     )
     verify.set_defaults(func=cmd_verify)
 
