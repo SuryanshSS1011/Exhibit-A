@@ -1,5 +1,6 @@
 """Model-provider boundaries for untrusted proposal generation."""
 
+from .anthropic import AnthropicProvider
 from .base import (
     Provider,
     ProviderRequest,
@@ -14,6 +15,7 @@ from .ollama import OllamaProvider
 from .openai_compatible import OpenAICompatibleProvider
 
 __all__ = [
+    "AnthropicProvider",
     "CodexCliProvider",
     "OllamaProvider",
     "OpenAICompatibleProvider",

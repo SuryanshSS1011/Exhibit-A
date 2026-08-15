@@ -7,6 +7,7 @@ import pytest
 
 from exhibit_a.cli import _build_engine, main
 from exhibit_a.providers import (
+    AnthropicProvider,
     OllamaProvider,
     OpenAICompatibleProvider,
     ProviderKind,
@@ -73,6 +74,55 @@ def test_config_constructs_openai_compatible_provider_without_storing_secret(
     assert isinstance(provider, OpenAICompatibleProvider)
     assert provider.api_key_env == "HOSTED_MODEL_API_KEY"
     assert config.providers["hosted"].kind is ProviderKind.OPENAI_COMPATIBLE
+
+
+def test_config_constructs_anthropic_provider_with_environment_credential(
+    tmp_path: Path,
+):
+    path = _write_config(
+        tmp_path,
+        {
+            "providers": {
+                "claude": {
+                    "type": "anthropic",
+                    "model": "claude-sonnet-5",
+                    "api_key_env": "EXHIBIT_A_ANTHROPIC_KEY",
+                    "max_tokens": 2048,
+                    "roles": ["proposer"],
+                }
+            },
+            "roles": {"proposer": "claude"},
+        },
+    )
+
+    config = load_provider_config(path)
+    provider = config.provider_for(ProviderRole.PROPOSER)
+
+    assert isinstance(provider, AnthropicProvider)
+    assert provider.api_key_env == "EXHIBIT_A_ANTHROPIC_KEY"
+    assert provider.max_tokens == 2048
+    assert config.providers["claude"].kind is ProviderKind.ANTHROPIC
+
+
+@pytest.mark.parametrize("credential_key", ["api_key", "base_url"])
+def test_config_rejects_anthropic_secret_or_endpoint_override(tmp_path: Path, credential_key: str):
+    path = _write_config(
+        tmp_path,
+        {
+            "providers": {
+                "claude": {
+                    "type": "anthropic",
+                    "model": "claude-sonnet-5",
+                    credential_key: "must-not-be-configurable",
+                    "roles": ["proposer"],
+                }
+            },
+            "roles": {"proposer": "claude"},
+        },
+    )
+
+    with pytest.raises(ValueError, match="unexpected keys"):
+        load_provider_config(path)
 
 
 def test_config_rejects_literal_api_credentials(tmp_path: Path):

@@ -11,6 +11,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any
 
+from .anthropic import AnthropicProvider
 from .base import Provider
 from .codex_cli import CodexCliProvider
 from .ollama import OllamaProvider
@@ -22,6 +23,7 @@ class ProviderRole(StrEnum):
 
 
 class ProviderKind(StrEnum):
+    ANTHROPIC = "anthropic"
     CODEX_CLI = "codex_cli"
     OLLAMA = "ollama"
     OPENAI_COMPATIBLE = "openai_compatible"
@@ -124,6 +126,12 @@ def _parse_provider(name: object, raw: object) -> ProviderSpec:
 
     common = {"type", "model", "roles", "timeout_s"}
     kind_options = {
+        ProviderKind.ANTHROPIC: {
+            "api_key_env",
+            "max_context_bytes",
+            "max_response_bytes",
+            "max_tokens",
+        },
         ProviderKind.CODEX_CLI: {"codex_bin"},
         ProviderKind.OLLAMA: {"base_url", "max_response_bytes", "max_context_bytes"},
         ProviderKind.OPENAI_COMPATIBLE: {
@@ -156,7 +164,7 @@ def _validate_options(name: str, options: dict[str, Any]) -> None:
         or timeout <= 0
     ):
         raise ValueError(f"provider {name!r} timeout_s must be a positive number")
-    for key in ("max_response_bytes", "max_context_bytes"):
+    for key in ("max_context_bytes", "max_response_bytes", "max_tokens"):
         value = options.get(key)
         if value is not None and (
             not isinstance(value, int) or isinstance(value, bool) or value <= 0
@@ -168,6 +176,8 @@ def _validate_options(name: str, options: dict[str, Any]) -> None:
 
 
 def _provider_from_spec(spec: ProviderSpec) -> Provider:
+    if spec.kind is ProviderKind.ANTHROPIC:
+        return AnthropicProvider(model=spec.model, **spec.options)
     if spec.kind is ProviderKind.CODEX_CLI:
         return CodexCliProvider(model=spec.model, **spec.options)
     if spec.kind is ProviderKind.OLLAMA:

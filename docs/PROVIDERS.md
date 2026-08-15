@@ -68,6 +68,16 @@ downstream requirements.
   `unknown_unverified_backend`; an omitted model is `unknown_no_telemetry`.
   Its timeout bounds each socket operation, not the full wall-clock request; callers that
   require a total deadline must supervise the Exhibit A process externally.
+- `AnthropicProvider`: structured JSON through Anthropic's Messages API. The endpoint
+  and API version are fixed in code, remote transport is TLS-only, redirects and ambient
+  proxies are disabled, and request, context, traversal, response, output-token, and
+  socket-operation limits have hard ceilings. It sends no tools and never executes
+  returned content blocks. The API key is read at request time from `api_key_env`, which
+  defaults to `ANTHROPIC_API_KEY`; literal credentials and endpoint overrides are rejected.
+  A returned `model` is recorded as the backend's claim with an unverified exact version;
+  omission is explicit `unknown_no_telemetry`. Anthropic may temporarily cache the JSON
+  schema used for structured output, so schema property names and values must not contain
+  secrets or regulated data.
 
 ## Configuration
 
@@ -106,5 +116,22 @@ the JSON file and name its environment variable instead:
     }
   },
   "roles": {"proposer": "hosted"}
+}
+```
+
+Anthropic uses the same proposer-only role boundary and an environment-named credential:
+
+```json
+{
+  "providers": {
+    "claude": {
+      "type": "anthropic",
+      "model": "claude-sonnet-5",
+      "api_key_env": "ANTHROPIC_API_KEY",
+      "max_tokens": 4096,
+      "roles": ["proposer"]
+    }
+  },
+  "roles": {"proposer": "claude"}
 }
 ```
