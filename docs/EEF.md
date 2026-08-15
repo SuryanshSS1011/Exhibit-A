@@ -83,6 +83,9 @@ python3 -m exhibit_a.cli verify case.eef --signing-key /secure/eef.key --execute
 
 python3 -m exhibit_a.cli passport case.eef \
   --signing-key /secure/eef.key --out case.passport.json
+
+python3 -m exhibit_a.cli passport-html case.passport.json \
+  --signing-key /secure/eef.key --out case.passport.html
 ```
 
 ## Archive layout

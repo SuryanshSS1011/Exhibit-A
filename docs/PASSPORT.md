@@ -3,7 +3,7 @@ layout: default
 title: Public Evidence Passport
 ---
 
-# Public evidence passport
+# Public evidence passports
 
 The public passport is a deterministic, credential-free JSON projection of a verified
 Executable Evidence Format bundle. It supports both `bug_flip` and
@@ -29,9 +29,18 @@ to a SHA-256 commitment after credential stripping; local sources become `local-
 The final encoded passport is capped at 1 MiB and is installed with an atomic replacement
 that cannot truncate a hardlinked EEF or verification key.
 
+The signed JSON can also be rendered as a self-contained HTML chain-of-custody document.
+The renderer verifies the passport MAC first, escapes every displayed value, embeds no
+scripts or external assets, and sets a deny-by-default Content Security Policy. The HTML
+is a view of the sanitized JSON—not a second source of truth—and includes the full signed
+payload in a collapsible machine-record section. Encoded HTML output is capped at 2 MiB.
+
 ```bash
 python3 -m exhibit_a.cli passport case.eef \
   --signing-key /secure/eef.key --out case.passport.json
+
+python3 -m exhibit_a.cli passport-html case.passport.json \
+  --signing-key /secure/eef.key --out case.passport.html
 ```
 
 The HMAC signature proves that the holder of the shared verification key minted the EEF;

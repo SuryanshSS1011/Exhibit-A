@@ -42,6 +42,7 @@ from .intake.git_bisect import bisect_reproduction
 from .intake.git_checkout import checkout_context, checkout_pair, checkout_triplet
 from .models.case import Case, Mode, Verdict, normalize_case_payload
 from .passport import create_passport
+from .passport_html import create_html_passport
 from .providers import ProviderRole, load_provider_config
 from .store.json_store import JsonCaseStore
 from .store.research import ResearchStore
@@ -422,6 +423,33 @@ def cmd_passport(args: argparse.Namespace) -> int:
         path = create_passport(bundle, output, signing_key=key)
     except (OSError, TypeError, ValueError, json.JSONDecodeError, zipfile.BadZipFile) as exc:
         print(f"error: cannot create public passport: {exc}", file=sys.stderr)
+        return 2
+    print(path)
+    return 0
+
+
+def cmd_passport_html(args: argparse.Namespace) -> int:
+    try:
+        passport = Path(args.passport).resolve(strict=True)
+        key_path = Path(args.signing_key).resolve(strict=True)
+        output = Path(args.out).expanduser().absolute()
+        if output in {passport, key_path} or (
+            output.exists()
+            and any(
+                os.path.samestat(output.stat(), protected.stat())
+                for protected in (passport, key_path)
+            )
+        ):
+            raise ValueError(
+                "HTML passport output must not overwrite its JSON passport or verification key"
+            )
+        path = create_html_passport(
+            passport,
+            output,
+            signing_key=key_path.read_bytes(),
+        )
+    except (OSError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        print(f"error: cannot create HTML passport: {exc}", file=sys.stderr)
         return 2
     print(path)
     return 0
@@ -905,6 +933,17 @@ def main(argv: list[str] | None = None) -> int:
     passport.add_argument("--signing-key", required=True, help="publisher verification key file")
     passport.add_argument("--out", required=True, help="output passport JSON path")
     passport.set_defaults(func=cmd_passport)
+
+    passport_html = sub.add_parser(
+        "passport-html",
+        help="render a verified public JSON passport as standalone HTML",
+    )
+    passport_html.add_argument("passport", help="signed public passport JSON")
+    passport_html.add_argument(
+        "--signing-key", required=True, help="publisher verification key file"
+    )
+    passport_html.add_argument("--out", required=True, help="output standalone HTML path")
+    passport_html.set_defaults(func=cmd_passport_html)
 
     observe = sub.add_parser("observe", help="re-run a minted test on a pinned upstream SHA")
     observe.add_argument("case", help="minted Case JSON")
