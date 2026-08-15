@@ -198,7 +198,8 @@ interface supports local and two-SHA git intake, the Prosecutor evidence gate, a
 private Silence Ledger.
 
 Beyond `repro`, the CLI exposes the research surface as opt-in subcommands. These include
-`bundle`, `refactor-bundle`, and `verify` for signed, replayable evidence bundles, `study`
+`bundle`, `refactor-bundle`, and `verify` for signed, replayable evidence bundles,
+`passport` for a credential-free public JSON projection, `study`
 for reproducibility, `self-audit` for the false-conviction rate on innocent refactors, and
 `oracle-gap` for benchmark oracle strength. See the
 [documentation site](https://suryanshss1011.github.io/Exhibit-A/) for each.
@@ -242,6 +243,7 @@ Deep-dives live in [`docs/`](./docs/), also published as a
 
 - [Operations](./docs/OPERATIONS.md)
 - [Executable Evidence Format](./docs/EEF.md)
+- [Public evidence passport](./docs/PASSPORT.md)
 - [Evidence strength](./docs/EVIDENCE_STRENGTH.md)
 - [Mutation testing](./docs/MUTATION_TESTING.md)
 - [Minimization](./docs/MINIMIZATION.md)

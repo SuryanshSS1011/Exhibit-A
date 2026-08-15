@@ -26,6 +26,7 @@ setup instructions, and Codex usage.
 ## Open science and EEF
 
 - [Executable Evidence Format](./EEF.html)
+- [Public evidence passport](./PASSPORT.html)
 - [Private research assets](./RESEARCH_ASSETS.html)
 
 ## Research instruments

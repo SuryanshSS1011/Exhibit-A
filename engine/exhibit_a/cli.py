@@ -11,9 +11,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import tempfile
+import zipfile
 from pathlib import Path
 from typing import Any, Callable
 
@@ -39,6 +41,7 @@ from .hypothesis.property import CodexPropertyGenerator
 from .intake.git_bisect import bisect_reproduction
 from .intake.git_checkout import checkout_context, checkout_pair, checkout_triplet
 from .models.case import Case, Mode, Verdict, normalize_case_payload
+from .passport import create_passport
 from .providers import ProviderRole, load_provider_config
 from .store.json_store import JsonCaseStore
 from .store.research import ResearchStore
@@ -402,6 +405,26 @@ def cmd_verify(args: argparse.Namespace) -> int:
         return 1
     print(json.dumps(result.__dict__, indent=2))
     return 0 if result.execution_verified is not False else 1
+
+
+def cmd_passport(args: argparse.Namespace) -> int:
+    try:
+        bundle = Path(args.bundle).resolve(strict=True)
+        key_path = Path(args.signing_key).resolve(strict=True)
+        output = Path(args.out).expanduser().absolute()
+        if output in {bundle, key_path}:
+            raise ValueError("passport output must not overwrite its bundle or verification key")
+        if output.exists() and any(
+            os.path.samestat(output.stat(), protected.stat()) for protected in (bundle, key_path)
+        ):
+            raise ValueError("passport output must not overwrite its bundle or verification key")
+        key = key_path.read_bytes()
+        path = create_passport(bundle, output, signing_key=key)
+    except (OSError, TypeError, ValueError, json.JSONDecodeError, zipfile.BadZipFile) as exc:
+        print(f"error: cannot create public passport: {exc}", file=sys.stderr)
+        return 2
+    print(path)
+    return 0
 
 
 def cmd_observe(args: argparse.Namespace) -> int:
@@ -873,6 +896,15 @@ def main(argv: list[str] | None = None) -> int:
         help="rebuild with network disabled and re-run the claim-specific deterministic judge",
     )
     verify.set_defaults(func=cmd_verify)
+
+    passport = sub.add_parser(
+        "passport",
+        help="derive a credential-free public JSON passport from a verified EEF",
+    )
+    passport.add_argument("bundle", help="signed EEF archive")
+    passport.add_argument("--signing-key", required=True, help="publisher verification key file")
+    passport.add_argument("--out", required=True, help="output passport JSON path")
+    passport.set_defaults(func=cmd_passport)
 
     observe = sub.add_parser("observe", help="re-run a minted test on a pinned upstream SHA")
     observe.add_argument("case", help="minted Case JSON")

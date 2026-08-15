@@ -45,9 +45,10 @@ checks the signature, tree digests, exact run-to-receipt linkage, and independen
 re-derives the recorded truth. Executable verification then rebuilds and repeats both
 archived states and compares the complete fresh result with the recorded one. A stable
 `FAILED` result can therefore be successfully replay-verified: replay truth means “the
-record is reproducible,” not “the refactor passed.” This is passport-ready machine
-evidence, not yet a public passport; source snapshots, raw execution logs, and opaque
-executor metadata may contain sensitive data and require an explicit publication policy.
+record is reproducible,” not “the refactor passed.” `exhibit-a passport` can now project
+this machine evidence into a credential-free public JSON passport; source snapshots,
+raw execution logs, and opaque executor metadata remain only in the private EEF because
+they may contain sensitive data.
 
 The CLI collector uses the same resource-bounded, network-disabled Docker harness as EEF
 replay rather than the host-local development runner:

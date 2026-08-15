@@ -53,6 +53,20 @@ class VerificationResult:
     execution_verified: bool | None
 
 
+@dataclass(frozen=True)
+class VerifiedClaim:
+    """One fully validated signed claim, without source or raw-log payloads."""
+
+    verification: VerificationResult
+    format_version: str
+    claim_type: str
+    claim: dict[str, Any]
+    manifest_sha256: str
+    signature_algorithm: str
+    signature_value: str
+    archived_states: tuple[str, ...]
+
+
 @dataclass
 class SourceSnapshotBudget:
     """Shared incremental limits for source trees materialized into one EEF."""
@@ -158,6 +172,93 @@ def verify_bundle(
     docker_bin: str = "docker",
 ) -> VerificationResult:
     """Verify all hashes/signature and optionally re-execute via the flip judge."""
+    return _verify_bundle(
+        bundle,
+        signing_key=signing_key,
+        execute=execute,
+        docker_bin=docker_bin,
+    ).verification
+
+
+def read_verified_claim(bundle: str | Path, *, signing_key: bytes) -> VerifiedClaim:
+    """Return the validated claim needed for a public passport without replaying it."""
+    verified = _verify_bundle(bundle, signing_key=signing_key, execute=False, docker_bin="docker")
+    if verified.claim_type == "bug_flip":
+        _validate_public_bug_truth(verified.claim, archived_states=verified.archived_states)
+    return verified
+
+
+def _validate_public_bug_truth(case: dict[str, Any], *, archived_states: tuple[str, ...]) -> None:
+    """Re-derive an admissible bug claim before it can enter a public passport."""
+    evidence = case.get("evidence")
+    truth = case.get("truth")
+    test = case.get("test_file")
+    if not isinstance(evidence, dict) or not isinstance(truth, dict):
+        raise TypeError("EEF public bug claim is missing evidence truth metadata")
+    if not isinstance(test, dict) or not isinstance(test.get("code"), str):
+        raise TypeError("EEF public bug claim is missing its test artifact")
+    runs = evidence.get("runs")
+    if not isinstance(runs, list) or not runs:
+        raise ValueError("EEF public bug claim requires structured execution records")
+
+    outcomes: dict[str, list[ExecOutcome]] = {"target": [], "base": [], "control": []}
+    for record in runs:
+        if not isinstance(record, dict) or record.get("state") not in outcomes:
+            raise ValueError("EEF public bug claim contains an invalid execution record")
+        exit_code = record.get("exit_code")
+        passed = record.get("passed")
+        log = record.get("log")
+        if (
+            not isinstance(exit_code, int)
+            or isinstance(exit_code, bool)
+            or not isinstance(passed, bool)
+            or not isinstance(log, str)
+            or passed != (exit_code == 0)
+        ):
+            raise ValueError("EEF public bug claim contains an inconsistent execution record")
+        outcomes[record["state"]].append(ExecOutcome(exit_code, log, ""))
+
+    reruns = _bounded_int(evidence.get("reruns"), "Case reruns", 1, _MAX_RERUNS)
+    if len(outcomes["target"]) != reruns:
+        raise ValueError("EEF public bug target records do not match its rerun count")
+    if len(outcomes["base"]) > 1 or len(outcomes["control"]) > 1:
+        raise ValueError("EEF public bug claim contains duplicate comparison records")
+    verdict = normalize_verdict(case.get("verdict"))
+    has_base_state = "base" in archived_states
+    has_base_record = bool(outcomes["base"])
+    if verdict is Verdict.VERIFIED and not (has_base_state and has_base_record):
+        raise ValueError("EEF public VERIFIED bug claim requires an archived base state")
+    if verdict is Verdict.PARTIAL and (has_base_state or has_base_record):
+        raise ValueError("EEF public PARTIAL bug claim must not claim a base state")
+    flip = flip_check(
+        target_runs=outcomes["target"],
+        base_run=outcomes["base"][0] if outcomes["base"] else None,
+        control_run=outcomes["control"][0] if outcomes["control"] else None,
+        test_code=test["code"],
+        expected_signature=evidence.get("fail_signature"),
+        allow_reproduced=verdict is Verdict.PARTIAL,
+    )
+    expected_tier = "flip" if verdict is Verdict.VERIFIED else "reproduced"
+    if verdict not in {Verdict.VERIFIED, Verdict.PARTIAL} or not flip.admissible:
+        raise ValueError("EEF public bug claim is not admissible evidence")
+    if flip.tier != expected_tier or evidence.get("deterministic") is not True:
+        raise ValueError("EEF public bug verdict does not match its execution records")
+    expected_truth = {
+        "execution": "COMPLETED",
+        "goal": verdict.value,
+        "release": "NOT_ASSESSED",
+    }
+    if {name: truth.get(name) for name in expected_truth} != expected_truth:
+        raise ValueError("EEF public bug truth does not match its derived verdict")
+
+
+def _verify_bundle(
+    bundle: str | Path,
+    *,
+    signing_key: bytes,
+    execute: bool,
+    docker_bin: str,
+) -> VerifiedClaim:
     with zipfile.ZipFile(bundle) as archive:
         infos = archive.infolist()
         if len(infos) > _MAX_ARCHIVE_ENTRIES:
@@ -273,7 +374,24 @@ def verify_bundle(
         )
     else:
         raise ValueError("EEF claim type and payload are unsupported")
-    return VerificationResult(True, True, execution_verified)
+    claim_name = "case.json" if has_case else "refactor.json"
+    claim = json.loads(blobs[claim_name])
+    if not isinstance(claim, dict):
+        raise TypeError("EEF verified claim payload was not an object")
+    return VerifiedClaim(
+        verification=VerificationResult(True, True, execution_verified),
+        format_version=format_version,
+        claim_type=claim_type,
+        claim=claim,
+        manifest_sha256=hashlib.sha256(blobs["manifest.json"]).hexdigest(),
+        signature_algorithm="hmac-sha256",
+        signature_value=signature_value,
+        archived_states=tuple(
+            state
+            for state in ("base", "target")
+            if any(name.startswith(f"sources/{state}/") for name in blobs)
+        ),
+    )
 
 
 def _reexecute_bug(blobs: dict[str, bytes], *, docker_bin: str) -> bool:

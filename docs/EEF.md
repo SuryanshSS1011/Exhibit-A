@@ -52,6 +52,12 @@ also retain bounded local executor image handles so signed request digests can b
 recomputed; URL-, path-, and userinfo-shaped handles are rejected, but publishers must
 still treat all source and log content as private.
 
+Use `exhibit-a passport` to derive a verified, credential-free public JSON projection
+instead of publishing the private EEF directly. The passport omits source, test/contract
+code, raw logs, local paths, and free-form narratives while retaining the signed manifest
+root, truth separation, state summaries, receipt digests, and model-identity commitments. See
+the [public evidence passport](./PASSPORT.html).
+
 Integrity verification proves that the signed refactor evidence is internally coherent
 and that the archived trees match their signed tree digests. Only `verify --execute`
 establishes that fresh executions of those archived trees reproduce the recorded result;
@@ -74,6 +80,9 @@ python3 -m exhibit_a.cli refactor-bundle \
 
 python3 -m exhibit_a.cli verify case.eef --signing-key /secure/eef.key
 python3 -m exhibit_a.cli verify case.eef --signing-key /secure/eef.key --execute
+
+python3 -m exhibit_a.cli passport case.eef \
+  --signing-key /secure/eef.key --out case.passport.json
 ```
 
 ## Archive layout
