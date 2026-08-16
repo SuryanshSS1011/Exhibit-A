@@ -401,7 +401,13 @@ def cmd_verify(args: argparse.Namespace) -> int:
             signing_key=Path(args.signing_key).read_bytes(),
             execute=args.execute,
         )
-    except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as exc:
+    except (
+        OSError,
+        RuntimeError,
+        ValueError,
+        json.JSONDecodeError,
+        zipfile.BadZipFile,
+    ) as exc:
         print(f"error: EEF verification failed: {exc}", file=sys.stderr)
         return 1
     print(json.dumps(result.__dict__, indent=2))

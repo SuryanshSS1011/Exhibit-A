@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 
 import exhibit_a.eef as eef
+from exhibit_a.cli import main
 from exhibit_a.connectors import LocalTestConnector, LocalTestRequest
 from exhibit_a.eef import create_bundle, verify_bundle
 from exhibit_a.executor.base import ExecOutcome, ExecSpec, Executor, RepoState
@@ -595,3 +596,32 @@ def test_eef_capped_process_discards_output_beyond_limit(monkeypatch: pytest.Mon
     assert result.returncode == 0
     assert len(result.stdout) < 1100
     assert result.stdout.endswith("[EEF output truncated]")
+
+
+def test_verify_cli_reports_a_corrupt_archive_as_a_verification_failure(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+):
+    target = tmp_path / "target"
+    base = tmp_path / "base"
+    target.mkdir()
+    base.mkdir()
+    (target / "inventory.py").write_text("def stock_for(rows, sku): return 1\n")
+    (base / "inventory.py").write_text("def stock_for(rows, sku): return 0\n")
+    bundle = create_bundle(
+        _case(),
+        tmp_path / "case.eef",
+        target_source=target,
+        base_source=base,
+        signing_key=KEY,
+    )
+    key_path = tmp_path / "key"
+    key_path.write_bytes(KEY)
+    corrupted = bytearray(bundle.read_bytes())
+    corrupted[len(corrupted) // 2] ^= 0xFF
+    bundle.write_bytes(bytes(corrupted))
+
+    with pytest.raises(zipfile.BadZipFile):
+        verify_bundle(bundle, signing_key=KEY)
+
+    assert main(["verify", str(bundle), "--signing-key", str(key_path)]) == 1
+    assert "error: EEF verification failed" in capsys.readouterr().err
