@@ -1,0 +1,8 @@
+# Style for Python outside the engine package (examples/, tooling).
+# engine/pyproject.toml keeps its own [tool.ruff] block and takes precedence there;
+# both declare the rule set explicitly so results do not shift with the ruff version.
+line-length = 100
+target-version = "py311"
+
+[lint]
+select = ["E4", "E7", "E9", "F"]

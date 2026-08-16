@@ -24,5 +24,11 @@ packages = ["exhibit_a"]
 line-length = 100
 target-version = "py311"
 
+# Pin the rule set explicitly. Ruff's implicit default expanded in 0.16, which
+# turned a clean tree red without a code change; declaring it keeps lint results
+# tied to this repo's intent rather than the installed ruff version.
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
