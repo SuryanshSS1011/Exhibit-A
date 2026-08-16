@@ -1,3 +1,8 @@
+---
+layout: default
+title: Behavior-preserving refactor claims
+---
+
 # Behavior-preserving refactor claims
 
 Behavior-preserving refactors are Exhibit A's second claim type. The first deterministic

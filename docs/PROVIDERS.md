@@ -1,3 +1,8 @@
+---
+layout: default
+title: Model provider boundary
+---
+
 # Model provider boundary
 
 Providers supply untrusted proposals. They never execute or judge evidence, and the

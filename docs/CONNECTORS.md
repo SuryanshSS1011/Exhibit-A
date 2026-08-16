@@ -1,3 +1,8 @@
+---
+layout: default
+title: Evidence connectors
+---
+
 # Evidence connectors
 
 Connectors are typed, read-only fact collectors. They return raw evidence plus a

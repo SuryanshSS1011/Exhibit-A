@@ -19,6 +19,9 @@ setup instructions, and Codex usage.
 ## Evidence engine
 
 - [Operational contract](./OPERATIONS.html)
+- [Model provider boundary](./PROVIDERS.html)
+- [Evidence connectors](./CONNECTORS.html)
+- [Behavior-preserving refactor claims](./BEHAVIOR_REFACTOR.html)
 - [Mutation-testing foundation](./MUTATION_TESTING.html)
 - [Verified evidence minimization](./MINIMIZATION.html)
 - [Evidence strength scalar](./EVIDENCE_STRENGTH.html)
