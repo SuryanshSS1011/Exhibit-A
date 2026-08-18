@@ -473,13 +473,15 @@ def render_html_passport(passport: dict[str, Any]) -> str:
 def _bug_details(subject: dict[str, Any]) -> str:
     proposals = subject.get("proposal_runs", [])
     sources = subject.get("evidence_sources", [])
+    revisions = subject.get("revisions")
     return f"""<section class="evidence" aria-labelledby="evidence-title">
       <div class="section-heading">
         <p class="eyebrow">Observed evidence</p>
         <h2 id="evidence-title">Deterministic fail-to-pass</h2>
       </div>
       <dl class="ledger">
-        {_fact("Target reruns", subject.get("reruns"))}
+        {_revision_facts(revisions if isinstance(revisions, dict) else {})}
+        {_fact("Failing-state reruns", subject.get("reruns"))}
         {_fact("Deterministic", subject.get("deterministic"))}
         {_fact("Test commitment", subject.get("test_sha256"), mono=True)}
         {_fact("Proposal records", len(proposals))}
@@ -487,6 +489,24 @@ def _bug_details(subject: dict[str, Any]) -> str:
       </dl>
       {_proposal_table(proposals)}
     </section>"""
+
+
+def _revision_facts(revisions: dict[str, Any]) -> str:
+    """Render the tested revisions by meaning rather than by field name.
+
+    A Case stores the state the test fails on as ``base_commit`` and the state it passes
+    on as ``target_commit``. That inversion is invisible to someone reading a standalone
+    passport, so label the rows by what they assert instead.
+    """
+    labelled = (
+        ("base_commit", "Failing revision"),
+        ("target_commit", "Passing revision"),
+        ("culprit_commit", "Culprit revision"),
+        ("culprit_parent_commit", "Culprit parent"),
+    )
+    return "".join(
+        _fact(label, revisions[key], mono=True) for key, label in labelled if revisions.get(key)
+    )
 
 
 def _refactor_details(subject: dict[str, Any]) -> str:

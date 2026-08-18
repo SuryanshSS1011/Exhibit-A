@@ -398,6 +398,27 @@ def test_html_passport_is_deterministic_standalone_and_credential_free(tmp_path:
     assert "VERIFIED" in rendered
 
 
+def test_html_passport_labels_revisions_by_the_state_they_assert(tmp_path: Path):
+    failing = "3c3ec8996383750423f6f32d398850cd7af889e5"
+    passing = "1f9473f8d6940935ec45a41cb518d9038e0bea0e"
+
+    def add_revisions(case, _blobs):
+        # A Case stores the failing state as base_commit and the passing state as
+        # target_commit; the rendered passport must not leak that inversion to a reader.
+        case["base_commit"] = failing
+        case["target_commit"] = passing
+
+    bundle = _resign_bug_bundle(_bug_bundle(tmp_path), tmp_path / "revised.eef", add_revisions)
+    passport = create_passport(bundle, tmp_path / "revised.json", signing_key=KEY)
+    rendered = create_html_passport(
+        passport, tmp_path / "revised.html", signing_key=KEY
+    ).read_text()
+
+    assert f'<dt>Failing revision</dt><dd class="mono">{failing}</dd>' in rendered
+    assert f'<dt>Passing revision</dt><dd class="mono">{passing}</dd>' in rendered
+    assert "<dt>Target reruns</dt>" not in rendered
+
+
 def test_refactor_html_passport_renders_both_verified_states(tmp_path: Path):
     bundle = _refactor_bundle(tmp_path)
     passport = create_passport(bundle, tmp_path / "refactor.json", signing_key=KEY)
