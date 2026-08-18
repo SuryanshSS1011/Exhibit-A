@@ -204,6 +204,16 @@ for reproducibility, `self-audit` for the false-conviction rate on innocent refa
 `oracle-gap` for benchmark oracle strength. See the
 [documentation site](https://suryanshss1011.github.io/Exhibit-A/) for each.
 
+### Dogfooded on Exhibit A's own history
+
+The checked-in [timeout-verdict example](./examples/dogfood/timeout_false_verified/README.md)
+pins a real historical defect: before `1f9473f`, timed-out target executions could be
+admitted as evidence. Its injected regression test fails three times on the buggy snapshot
+and passes on the fixed snapshot, then the current deterministic judge mints the published
+[JSON passport](./examples/dogfood/timeout_false_verified/timeout_false_verified.passport.json)
+and standalone [HTML passport](./examples/dogfood/timeout_false_verified/timeout_false_verified.passport.html).
+The private source-bearing EEF is intentionally not published.
+
 ## How Codex and GPT-5.6 were used
 
 Codex with **GPT-5.6 Sol** is both the thing this was built with and a first-class

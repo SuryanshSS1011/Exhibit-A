@@ -52,3 +52,11 @@ creation is offline and does not execute archived code.
 
 The private EEF remains the full-fidelity replay artifact. The JSON passport is the small,
 reviewable public summary linked back to that archive through `manifest_sha256`.
+
+## Historical dogfood example
+
+The repository publishes a JSON and HTML passport for its own real
+[timeout-verdict bug](https://github.com/SuryanshSS1011/Exhibit-A/tree/main/examples/dogfood/timeout_false_verified).
+The generator pins the buggy and fixed commits, injects the historical regression test,
+executes the fail-to-pass boundary, and keeps the private EEF temporary. Its deliberately
+public demo HMAC key supports reproducibility only and makes no publisher-identity claim.

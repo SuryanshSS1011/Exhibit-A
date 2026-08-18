@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+  <title>Exhibit A — Bug flip passport</title>
+  <style>
+:root{--paper:#f7f8fb;--ink:#171b25;--muted:#5d6678;--line:#cbd2df;--blue:#1748c7;--blue-soft:#e7edff;--white:#fff;--ok:#1748c7;--shadow:0 18px 50px rgba(24,35,62,.08)}
+*{box-sizing:border-box}html{background:#e8ebf1;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}body{margin:0;padding:40px 20px}main{width:min(1040px,100%);margin:auto;background:var(--paper);border:1px solid #bfc7d5;box-shadow:var(--shadow)}.masthead{display:grid;grid-template-columns:1fr auto;gap:40px;padding:52px 56px 44px;border-bottom:1px solid var(--line)}.eyebrow{margin:0 0 12px;color:var(--blue);font:700 11px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase}h1,h2{margin:0;font-family:Georgia,"Times New Roman",serif;font-weight:500}h1{font-size:clamp(42px,7vw,78px);line-height:.95;letter-spacing:-.045em;max-width:680px}h2{font-size:30px;letter-spacing:-.025em}.dek{max-width:580px;margin:22px 0 0;color:var(--muted);font-size:17px;line-height:1.6}.seal{width:148px;height:148px;border:2px solid var(--blue);border-radius:50%;display:grid;place-content:center;text-align:center;transform:rotate(4deg);background:var(--blue-soft);box-shadow:inset 0 0 0 7px var(--paper),inset 0 0 0 8px var(--blue)}.seal span{font:700 10px/1 ui-monospace,monospace;letter-spacing:.15em;text-transform:uppercase}.seal strong{display:block;margin-top:8px;color:var(--blue);font:800 16px/1.1 ui-monospace,monospace}.chain{position:relative;display:grid;grid-template-columns:minmax(0,1.5fr) 1fr;gap:40px;padding:34px 56px;background:var(--ink);color:var(--white)}.chain-line{position:absolute;left:0;top:0;bottom:0;width:7px;background:var(--blue)}.chain code{display:block;overflow-wrap:anywhere;color:#d9e2ff;font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace}.chain-facts{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:0}.chain-facts div{border-left:1px solid #4b5362;padding-left:12px}.chain-facts dt{color:#99a4b8;font-size:11px;line-height:1.3}.chain-facts dd{margin:6px 0 0;font:700 12px/1.2 ui-monospace,monospace}.truth,.evidence,.raw{padding:48px 56px;border-bottom:1px solid var(--line)}.section-heading{display:flex;align-items:end;justify-content:space-between;gap:30px;margin-bottom:28px}.section-heading .eyebrow{margin:0}.truth-grid,.state-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line)}.truth-grid article,.state-grid article{min-width:0;padding:24px;background:var(--white)}.truth-grid span,.state-grid span{color:var(--muted);font-size:12px}.truth-grid strong,.state-grid strong{display:block;margin:14px 0 10px;color:var(--blue);font:800 18px/1.2 ui-monospace,monospace;overflow-wrap:anywhere}.truth-grid p,.state-grid p{margin:0;color:var(--muted);font-size:13px;line-height:1.45}.state-grid{grid-template-columns:repeat(2,1fr);margin-bottom:24px}.ledger{display:grid;grid-template-columns:repeat(2,1fr);margin:0;border-top:1px solid var(--line)}.ledger div{display:grid;grid-template-columns:150px minmax(0,1fr);gap:18px;padding:15px 0;border-bottom:1px solid var(--line)}.ledger div:nth-child(odd){padding-right:24px}.ledger div:nth-child(even){padding-left:24px;border-left:1px solid var(--line)}.ledger dt{color:var(--muted);font-size:12px}.ledger dd{margin:0;font-size:13px;font-weight:700;overflow-wrap:anywhere}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px!important}.table-wrap{margin-top:28px;overflow-x:auto}table{width:100%;border-collapse:collapse;background:var(--white);font-size:12px}caption{text-align:left;padding:0 0 10px;font-weight:700}th,td{padding:12px 14px;border:1px solid var(--line);text-align:left;vertical-align:top}th{color:var(--muted);font-size:10px;letter-spacing:.08em;text-transform:uppercase}td code{font-size:10px;overflow-wrap:anywhere}.raw details{border:1px solid var(--line);background:var(--white)}.raw summary{cursor:pointer;padding:16px 18px;font-weight:700}.raw summary:focus-visible{outline:3px solid var(--blue);outline-offset:3px}.raw pre{max-height:480px;margin:0;padding:18px;border-top:1px solid var(--line);overflow:auto;background:#111722;color:#dbe4f5;font:11px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace}footer{display:flex;justify-content:space-between;gap:20px;padding:22px 56px;color:var(--muted);font:10px/1.4 ui-monospace,monospace;text-transform:uppercase;letter-spacing:.08em}
+@media(max-width:760px){body{padding:0}main{border:0}.masthead{grid-template-columns:1fr;padding:36px 24px}.seal{width:118px;height:118px}.chain{grid-template-columns:1fr;padding:28px 24px}.chain-facts{grid-template-columns:1fr}.truth,.evidence,.raw{padding:36px 24px}.section-heading{display:block}.section-heading .eyebrow{margin-bottom:10px}.truth-grid,.state-grid,.ledger{grid-template-columns:1fr}.ledger div,.ledger div:nth-child(odd),.ledger div:nth-child(even){padding:14px 0;border-left:0}.ledger div{grid-template-columns:125px minmax(0,1fr)}footer{display:grid;padding:20px 24px}}
+@media print{html{background:white}body{padding:0}main{border:0;box-shadow:none}.raw{break-before:page}.raw details{display:block}.raw summary{display:none}.raw pre{max-height:none}.seal{box-shadow:inset 0 0 0 7px white,inset 0 0 0 8px var(--blue)}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+  <main>
+    <header class="masthead">
+      <div>
+        <p class="eyebrow">Exhibit A / public evidence passport</p>
+        <h1>Bug flip</h1>
+        <p class="dek">A credential-free record derived from signed, execution-grounded evidence.</p>
+      </div>
+      <div class="seal" aria-label="Verdict: VERIFIED">
+        <span>Verdict</span><strong>VERIFIED</strong>
+      </div>
+    </header>
+
+    <section class="chain" aria-labelledby="chain-title">
+      <div class="chain-line" aria-hidden="true"></div>
+      <div class="chain-copy">
+        <p class="eyebrow" id="chain-title">Chain of custody</p>
+        <code>f4cdc44a08ead4287eaaeba6800474795ce946e40440dd1a6ccfe931737dc291</code>
+      </div>
+      <dl class="chain-facts">
+        <div><dt>Integrity</dt><dd>Verified</dd></div>
+        <div><dt>Publisher MAC</dt><dd>Verified</dd></div>
+        <div><dt>Execution replay</dt><dd>Not replayed</dd></div>
+      </dl>
+    </section>
+
+    <section class="truth" aria-labelledby="truth-title">
+      <div class="section-heading">
+        <p class="eyebrow">Independent conclusions</p>
+        <h2 id="truth-title">Three truths, kept separate</h2>
+      </div>
+      <div class="truth-grid">
+        <article><span>Execution</span><strong>COMPLETED</strong><p>Did the evidence process finish?</p></article>
+        <article><span>Goal</span><strong>VERIFIED</strong><p>Did the checked claim hold?</p></article>
+        <article><span>Release</span><strong>NOT_ASSESSED</strong><p>Was shipping safety assessed?</p></article>
+      </div>
+    </section>
+
+    <section class="evidence" aria-labelledby="evidence-title">
+      <div class="section-heading">
+        <p class="eyebrow">Observed evidence</p>
+        <h2 id="evidence-title">Deterministic fail-to-pass</h2>
+      </div>
+      <dl class="ledger">
+        <div><dt>Target reruns</dt><dd>3</dd></div>
+        <div><dt>Deterministic</dt><dd>Yes</dd></div>
+        <div><dt>Test commitment</dt><dd class="mono">ba42f99844b63e898b43857657d56383d16dc21d2916188c8d0473a222ff94ec</dd></div>
+        <div><dt>Proposal records</dt><dd>0</dd></div>
+        <div><dt>Evidence sources</dt><dd>0</dd></div>
+      </dl>
+      
+    </section>
+
+    <section class="raw" aria-labelledby="raw-title">
+      <div class="section-heading">
+        <p class="eyebrow">Machine record</p>
+        <h2 id="raw-title">Signed JSON payload</h2>
+      </div>
+      <details>
+        <summary>Inspect the complete sanitized passport</summary>
+        <pre>{
+  &quot;claim_type&quot;: &quot;bug_flip&quot;,
+  &quot;passport_signature&quot;: {
+    &quot;algorithm&quot;: &quot;hmac-sha256&quot;,
+    &quot;meaning&quot;: &quot;shared-key authenticity; publisher identity is not established&quot;,
+    &quot;value&quot;: &quot;3ee5b2956222aaaae220b4940542c9519ad0afa8f89d37ab59af54de8b272b71&quot;
+  },
+  &quot;privacy&quot;: {
+    &quot;credential_free&quot;: true,
+    &quot;omits&quot;: [
+      &quot;source snapshots&quot;,
+      &quot;test and contract source&quot;,
+      &quot;raw execution logs&quot;,
+      &quot;repository-local paths&quot;,
+      &quot;free-form claim and model narratives&quot;
+    ]
+  },
+  &quot;schema_version&quot;: &quot;exhibit-a-passport/v1&quot;,
+  &quot;subject&quot;: {
+    &quot;case_id_sha256&quot;: &quot;dfb6b14a278a13deebc1310afaa13656f47eb4a520da861f7ad8ede98751d434&quot;,
+    &quot;deterministic&quot;: true,
+    &quot;evidence_sources&quot;: [],
+    &quot;evidence_sources_omitted&quot;: 0,
+    &quot;proposal_runs&quot;: [],
+    &quot;proposal_runs_omitted&quot;: 0,
+    &quot;reruns&quot;: 3,
+    &quot;revisions&quot;: {
+      &quot;base_commit&quot;: &quot;3c3ec8996383750423f6f32d398850cd7af889e5&quot;,
+      &quot;target_commit&quot;: &quot;1f9473f8d6940935ec45a41cb518d9038e0bea0e&quot;
+    },
+    &quot;test_sha256&quot;: &quot;ba42f99844b63e898b43857657d56383d16dc21d2916188c8d0473a222ff94ec&quot;,
+    &quot;truth&quot;: {
+      &quot;execution&quot;: &quot;COMPLETED&quot;,
+      &quot;goal&quot;: &quot;VERIFIED&quot;,
+      &quot;release&quot;: &quot;NOT_ASSESSED&quot;
+    },
+    &quot;verdict&quot;: &quot;VERIFIED&quot;
+  },
+  &quot;verification&quot;: {
+    &quot;eef_format&quot;: &quot;eef/v2&quot;,
+    &quot;execution_replayed&quot;: null,
+    &quot;integrity_verified&quot;: true,
+    &quot;manifest_sha256&quot;: &quot;f4cdc44a08ead4287eaaeba6800474795ce946e40440dd1a6ccfe931737dc291&quot;,
+    &quot;publisher_signature_verified&quot;: true,
+    &quot;signature&quot;: {
+      &quot;algorithm&quot;: &quot;hmac-sha256&quot;,
+      &quot;meaning&quot;: &quot;shared-key authenticity; publisher identity is not established&quot;,
+      &quot;value&quot;: &quot;aa505b5a39fbadcbd721eed563bd65bb2906cae99ebbf179eeadb909aa3bde61&quot;
+    }
+  }
+}</pre>
+      </details>
+    </section>
+
+    <footer>
+      <span>exhibit-a-passport/v1</span>
+      <span>No source, logs, credentials, or executable code embedded</span>
+    </footer>
+  </main>
+</body>
+</html>

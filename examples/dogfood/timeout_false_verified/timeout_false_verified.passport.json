@@ -1,0 +1,51 @@
+{
+  "claim_type": "bug_flip",
+  "passport_signature": {
+    "algorithm": "hmac-sha256",
+    "meaning": "shared-key authenticity; publisher identity is not established",
+    "value": "3ee5b2956222aaaae220b4940542c9519ad0afa8f89d37ab59af54de8b272b71"
+  },
+  "privacy": {
+    "credential_free": true,
+    "omits": [
+      "source snapshots",
+      "test and contract source",
+      "raw execution logs",
+      "repository-local paths",
+      "free-form claim and model narratives"
+    ]
+  },
+  "schema_version": "exhibit-a-passport/v1",
+  "subject": {
+    "case_id_sha256": "dfb6b14a278a13deebc1310afaa13656f47eb4a520da861f7ad8ede98751d434",
+    "deterministic": true,
+    "evidence_sources": [],
+    "evidence_sources_omitted": 0,
+    "proposal_runs": [],
+    "proposal_runs_omitted": 0,
+    "reruns": 3,
+    "revisions": {
+      "base_commit": "3c3ec8996383750423f6f32d398850cd7af889e5",
+      "target_commit": "1f9473f8d6940935ec45a41cb518d9038e0bea0e"
+    },
+    "test_sha256": "ba42f99844b63e898b43857657d56383d16dc21d2916188c8d0473a222ff94ec",
+    "truth": {
+      "execution": "COMPLETED",
+      "goal": "VERIFIED",
+      "release": "NOT_ASSESSED"
+    },
+    "verdict": "VERIFIED"
+  },
+  "verification": {
+    "eef_format": "eef/v2",
+    "execution_replayed": null,
+    "integrity_verified": true,
+    "manifest_sha256": "f4cdc44a08ead4287eaaeba6800474795ce946e40440dd1a6ccfe931737dc291",
+    "publisher_signature_verified": true,
+    "signature": {
+      "algorithm": "hmac-sha256",
+      "meaning": "shared-key authenticity; publisher identity is not established",
+      "value": "aa505b5a39fbadcbd721eed563bd65bb2906cae99ebbf179eeadb909aa3bde61"
+    }
+  }
+}
