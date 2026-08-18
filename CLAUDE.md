@@ -14,7 +14,7 @@ Both gates must pass before reporting done — CI runs exactly these.
 # Engine (Python 3.11+; CI uses 3.12)
 cd engine
 pip install -e ".[dev]"
-python3 -m pytest -q            # 363 tests, ~2 min
+python3 -m pytest -q            # ~2 min
 ruff check .
 ruff format --check .
 
