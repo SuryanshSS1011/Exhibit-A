@@ -160,7 +160,9 @@ def _bug_bundle(tmp_path: Path) -> Path:
     )
 
 
-def _refactor_bundle(tmp_path: Path) -> Path:
+def _refactor_bundle(
+    tmp_path: Path, *, base_commit: str | None = None, target_commit: str | None = None
+) -> Path:
     base = tmp_path / "refactor-base"
     target = tmp_path / "refactor-target"
     base.mkdir()
@@ -173,9 +175,10 @@ def _refactor_bundle(tmp_path: Path) -> Path:
         RepoState(
             str(base),
             "base",
+            commit=base_commit,
             source=f"https://user:secret@example.com/hooks/{PATH_SECRET}?token=x",
         ),
-        RepoState(str(target), "target", source=str(target)),
+        RepoState(str(target), "target", commit=target_commit, source=str(target)),
         contract,
         reruns=2,
     )
@@ -417,6 +420,37 @@ def test_html_passport_labels_revisions_by_the_state_they_assert(tmp_path: Path)
     assert f'<dt>Failing revision</dt><dd class="mono">{failing}</dd>' in rendered
     assert f'<dt>Passing revision</dt><dd class="mono">{passing}</dd>' in rendered
     assert "<dt>Target reruns</dt>" not in rendered
+
+
+def test_refactor_passport_records_and_labels_the_tested_revisions(tmp_path: Path):
+    before = "3c3ec8996383750423f6f32d398850cd7af889e5"
+    after = "1f9473f8d6940935ec45a41cb518d9038e0bea0e"
+
+    bundle = _refactor_bundle(tmp_path, base_commit=before, target_commit=after)
+    passport = create_passport(bundle, tmp_path / "refactor.json", signing_key=KEY)
+    payload = json.loads(passport.read_text())
+
+    assert payload["subject"]["revisions"] == {"base_commit": before, "target_commit": after}
+
+    rendered = create_html_passport(
+        passport, tmp_path / "refactor.html", signing_key=KEY
+    ).read_text()
+    assert f'<dt>Pre-refactor revision</dt><dd class="mono">{before}</dd>' in rendered
+    assert f'<dt>Post-refactor revision</dt><dd class="mono">{after}</dd>' in rendered
+    # The revisions are the only place these SHAs may appear; no source or path leaks.
+    assert SECRET not in rendered
+    assert PATH_SECRET not in rendered
+
+
+def test_refactor_passport_rejects_evidence_that_mixes_source_revisions():
+    description = "Executed the configured test against the base code state"
+    sources = [
+        {"description": description, "source_revision": "a" * 40},
+        {"description": description, "source_revision": "b" * 40},
+    ]
+
+    with pytest.raises(ValueError, match="mixes source revisions"):
+        passport_module._refactor_revisions(sources)
 
 
 def test_refactor_html_passport_renders_both_verified_states(tmp_path: Path):

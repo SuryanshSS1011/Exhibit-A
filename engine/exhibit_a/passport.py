@@ -220,6 +220,7 @@ def _refactor_subject(evidence: dict[str, Any]) -> dict[str, Any]:
         },
         "evidence_sources": [_evidence_source(item) for item in sources[:_MAX_EVIDENCE_SOURCES]],
         "evidence_sources_omitted": max(0, len(sources) - _MAX_EVIDENCE_SOURCES),
+        "revisions": _refactor_revisions(sources),
     }
 
 
@@ -298,6 +299,32 @@ def _revisions(case: dict[str, Any]) -> dict[str, str]:
         value = case.get(name)
         if isinstance(value, str) and re.fullmatch(r"[0-9a-fA-F]{7,64}", value):
             revisions[name] = value.lower()
+    return revisions
+
+
+def _refactor_revisions(sources: list[Any]) -> dict[str, str]:
+    """Derive the tested revisions from the per-state connector receipts.
+
+    A refactor Case carries no commit fields of its own; the only credential-free record
+    of what was executed is each receipt's ``source_revision``. Reruns of one state must
+    agree — a disagreement means the archive mixes revisions and must not be flattened
+    into a single claim about that state.
+    """
+    revisions: dict[str, str] = {}
+    for state in ("base", "target"):
+        description = f"Executed the configured test against the {state} code state"
+        observed = {
+            item["source_revision"]
+            for item in sources
+            if isinstance(item, dict)
+            and item.get("description") == description
+            and isinstance(item.get("source_revision"), str)
+        }
+        if len(observed) > 1:
+            raise ValueError(f"refactor passport {state} evidence mixes source revisions")
+        for value in observed:
+            if re.fullmatch(r"[0-9a-fA-F]{7,64}", value):
+                revisions[f"{state}_commit"] = value.lower()
     return revisions
 
 

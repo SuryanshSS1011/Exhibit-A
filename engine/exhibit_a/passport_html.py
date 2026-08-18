@@ -176,14 +176,21 @@ def _validate_bug_subject(subject: dict[str, Any]) -> None:
         raise ValueError("bug passport evidence sources are invalid")
     if not all(_valid_evidence_source(item) for item in sources):
         raise ValueError("bug passport evidence sources are invalid")
-    if not isinstance(revisions, dict) or not all(
-        name in {"base_commit", "target_commit", "culprit_commit", "culprit_parent_commit"}
+    if not _valid_revisions(
+        revisions,
+        {"base_commit", "target_commit", "culprit_commit", "culprit_parent_commit"},
+    ):
+        raise ValueError("bug passport revisions are invalid")
+
+
+def _valid_revisions(revisions: object, allowed: set[str]) -> bool:
+    return isinstance(revisions, dict) and all(
+        name in allowed
         and isinstance(value, str)
         and 7 <= len(value) <= 64
         and all(character in "0123456789abcdef" for character in value)
         for name, value in revisions.items()
-    ):
-        raise ValueError("bug passport revisions are invalid")
+    )
 
 
 def _validate_refactor_subject(subject: dict[str, Any]) -> None:
@@ -197,9 +204,12 @@ def _validate_refactor_subject(subject: dict[str, Any]) -> None:
         "states",
         "evidence_sources",
         "evidence_sources_omitted",
+        "revisions",
     }
     if set(subject) != expected or subject.get("verdict") not in _VERDICTS:
         raise ValueError("refactor passport subject is invalid")
+    if not _valid_revisions(subject.get("revisions"), {"base_commit", "target_commit"}):
+        raise ValueError("refactor passport revisions are invalid")
     if (
         not isinstance(subject.get("evidence_schema"), str)
         or not isinstance(subject.get("deterministic"), bool)
@@ -480,7 +490,7 @@ def _bug_details(subject: dict[str, Any]) -> str:
         <h2 id="evidence-title">Deterministic fail-to-pass</h2>
       </div>
       <dl class="ledger">
-        {_revision_facts(revisions if isinstance(revisions, dict) else {})}
+        {_revision_facts(revisions if isinstance(revisions, dict) else {}, _BUG_REVISION_LABELS)}
         {_fact("Failing-state reruns", subject.get("reruns"))}
         {_fact("Deterministic", subject.get("deterministic"))}
         {_fact("Test commitment", subject.get("test_sha256"), mono=True)}
@@ -491,19 +501,23 @@ def _bug_details(subject: dict[str, Any]) -> str:
     </section>"""
 
 
-def _revision_facts(revisions: dict[str, Any]) -> str:
-    """Render the tested revisions by meaning rather than by field name.
+# A bug Case stores the state the test fails on as `base_commit` and the state it passes
+# on as `target_commit`; a refactor reuses those same two keys for its pre- and
+# post-refactor states. Neither convention is visible to someone reading a standalone
+# passport, so each claim type labels the rows by what they assert.
+_BUG_REVISION_LABELS = (
+    ("base_commit", "Failing revision"),
+    ("target_commit", "Passing revision"),
+    ("culprit_commit", "Culprit revision"),
+    ("culprit_parent_commit", "Culprit parent"),
+)
+_REFACTOR_REVISION_LABELS = (
+    ("base_commit", "Pre-refactor revision"),
+    ("target_commit", "Post-refactor revision"),
+)
 
-    A Case stores the state the test fails on as ``base_commit`` and the state it passes
-    on as ``target_commit``. That inversion is invisible to someone reading a standalone
-    passport, so label the rows by what they assert instead.
-    """
-    labelled = (
-        ("base_commit", "Failing revision"),
-        ("target_commit", "Passing revision"),
-        ("culprit_commit", "Culprit revision"),
-        ("culprit_parent_commit", "Culprit parent"),
-    )
+
+def _revision_facts(revisions: dict[str, Any], labelled: tuple[tuple[str, str], ...]) -> str:
     return "".join(
         _fact(label, revisions[key], mono=True) for key, label in labelled if revisions.get(key)
     )
@@ -511,6 +525,7 @@ def _revision_facts(revisions: dict[str, Any]) -> str:
 
 def _refactor_details(subject: dict[str, Any]) -> str:
     states = subject.get("states", {})
+    revisions = subject.get("revisions")
     return f"""<section class="evidence" aria-labelledby="evidence-title">
       <div class="section-heading">
         <p class="eyebrow">Observed evidence</p>
@@ -521,6 +536,7 @@ def _refactor_details(subject: dict[str, Any]) -> str:
         {_state_card("Target", states.get("target", {}))}
       </div>
       <dl class="ledger">
+        {_revision_facts(revisions if isinstance(revisions, dict) else {}, _REFACTOR_REVISION_LABELS)}
         {_fact("Reruns per state", subject.get("reruns_per_state"))}
         {_fact("Deterministic", subject.get("deterministic"))}
         {_fact("Contract commitment", subject.get("contract_sha256"), mono=True)}
