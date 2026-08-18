@@ -39,6 +39,26 @@ network and `ambient_host` credential access despite the connector's local-only 
 V1 supports standard SHA-1 repositories with UTF-8 paths; other object formats, linked
 worktrees, and non-UTF-8 path bytes fail closed rather than being normalized.
 
+The CI status adapter is the first remote evidence source. It reads GitHub check runs for
+one commit over an outbound HTTPS GET and nothing else: no write scope, no re-run trigger,
+no artifact download. Plain HTTP is refused unless the host is a numeric loopback address,
+so a self-hosted forge can be pointed at locally without silently downgrading a real one.
+Ambient proxies and redirects are disabled, the response is size-bounded and the check
+count capped, and both are rejected rather than truncated so a partial read can never look
+complete. Credentials come only from a named environment variable, are validated for
+control characters, and never reach the payload, the receipt, or an error message; a
+connector configured without one truthfully reports `credential_access: none`. Because the
+read happens in the engine process rather than a subprocess or container, its receipt
+reports `isolation: in_process`.
+
+The adapter reports what the forge said and stops there. It records each run's name,
+status, conclusion, and timestamps verbatim, rejecting vocabulary it does not recognize
+instead of coercing it onto a known outcome, and it never aggregates those runs into a
+"CI passed" claim — that inference belongs to a judge, not a collector. Check runs are
+sorted by name so the evidence digest does not depend on the order the forge happened to
+return. Unlike Git metadata, CI status is mutable: a re-run changes it, so its receipt
+reports `point_in_time` freshness and carries the latest completion timestamp it observed.
+
 Test-execution receipts are stored in `Case.evidence_sources` and therefore covered by the
 existing EEF hash manifest and signature. The Git adapter returns its typed payload and the
 same receipt shape for callers to persist when they opt into that source. Local filesystem

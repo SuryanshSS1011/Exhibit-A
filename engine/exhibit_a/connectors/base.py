@@ -16,6 +16,7 @@ PayloadT = TypeVar("PayloadT", covariant=True)
 class EvidenceKind(str, Enum):
     TEST_EXECUTION = "test_execution"
     GIT_METADATA = "git_metadata"
+    CI_STATUS = "ci_status"
 
 
 class Freshness(str, Enum):
@@ -36,7 +37,7 @@ class ConnectorSecurity:
         allowed = {
             "source_access": {"read_only", "disposable_copy", "unknown"},
             "network_access": {"disabled", "host_unrestricted", "unknown"},
-            "isolation": {"container", "host_subprocess", "unknown"},
+            "isolation": {"container", "host_subprocess", "in_process", "unknown"},
             "credential_access": {"none", "ambient_host", "unknown"},
         }
         for field_name, values in allowed.items():

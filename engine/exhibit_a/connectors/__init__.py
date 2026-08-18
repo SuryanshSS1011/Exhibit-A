@@ -11,6 +11,7 @@ from .base import (
     credential_free_source,
     hash_payload,
 )
+from .ci_status import CICheckRun, CIStatus, CIStatusConnector, CIStatusRequest
 from .git import GitChange, GitMetadata, GitMetadataConnector, GitMetadataRequest
 from .local_test import (
     LocalTestConnector,
@@ -20,6 +21,10 @@ from .local_test import (
 )
 
 __all__ = [
+    "CICheckRun",
+    "CIStatus",
+    "CIStatusConnector",
+    "CIStatusRequest",
     "Connector",
     "ConnectorDescriptor",
     "ConnectorOutput",
