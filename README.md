@@ -157,7 +157,7 @@ fixtures/                       tiny buggy/fixed repo pairs for offline runs
 ```bash
 cd engine
 pip install -e ".[dev]"          # or: pip install pytest ruff
-python3 -m pytest -q             # 132 tests, proves the flip check and verdicts end to end
+python3 -m pytest -q             # proves the flip check and verdicts end to end
 ```
 
 ### Web UI
@@ -240,8 +240,8 @@ execution is allowed to speak.
 
 ## Status
 
-This is a working, verified system. There are **132 engine tests** plus a typed web test
-suite, all green in CI, which runs engine lint, format, and tests alongside the web build.
+This is a working, verified system. The engine and typed web test suites are green in CI,
+which runs engine lint, format, and tests alongside the web build.
 The deterministic verdict core, Docker sandboxing, two-SHA git intake, git-bisect culprit
 attribution, mutation scoring, evidence minimization, and a full research-instrumentation
 layer are implemented and tested.
