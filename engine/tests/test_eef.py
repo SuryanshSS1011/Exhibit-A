@@ -114,6 +114,9 @@ def test_eef_is_byte_deterministic_and_verifies_offline(tmp_path: Path):
     )
 
     assert first.read_bytes() == second.read_bytes()
+    assert hashlib.sha256(first.read_bytes()).hexdigest() == (
+        "4c3783633aeec85b933e7f5ad0b45c54863cc13d3d2a037708596f1765e23e75"
+    )
     result = verify_bundle(first, signing_key=KEY)
     assert result.integrity_verified
     assert result.signature_verified

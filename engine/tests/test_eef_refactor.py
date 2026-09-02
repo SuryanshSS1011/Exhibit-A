@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import json
 import zipfile
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -103,15 +104,35 @@ def _mutate_json(blobs: dict[str, bytes], name: str, mutate) -> None:
     blobs[name] = eef._canonical(value) + b"\n"
 
 
+def _stable_evidence(evidence):
+    evidence_ids = [f"{index:032x}" for index in range(1, len(evidence.runs) + 1)]
+    return replace(
+        evidence,
+        runs=tuple(
+            replace(run, evidence_id=evidence_ids[index]) for index, run in enumerate(evidence.runs)
+        ),
+        evidence_sources=tuple(
+            replace(
+                source,
+                evidence_id=evidence_ids[index],
+                observed_at="2026-09-01T12:00:00+00:00",
+            )
+            for index, source in enumerate(evidence.evidence_sources)
+        ),
+    )
+
+
 def test_refactor_eef_is_deterministic_and_integrity_verifies_without_execution(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ):
     base, target = _sources(tmp_path)
-    evidence_object = collect_refactor_evidence(
-        StateExecutor(),
-        RepoState(str(base), "base", commit="a" * 40, source="https://example.com/repo"),
-        RepoState(str(target), "target", commit="b" * 40, source="https://example.com/repo"),
-        CONTRACT,
+    evidence_object = _stable_evidence(
+        collect_refactor_evidence(
+            StateExecutor(),
+            RepoState(str(base), "base", commit="a" * 40, source="https://example.com/repo"),
+            RepoState(str(target), "target", commit="b" * 40, source="https://example.com/repo"),
+            CONTRACT,
+        )
     )
     first = create_refactor_bundle(
         evidence_object,
@@ -134,6 +155,9 @@ def test_refactor_eef_is_deterministic_and_integrity_verifies_without_execution(
     with zipfile.ZipFile(first) as archive:
         blobs = {name: archive.read(name) for name in archive.namelist()}
     assert first.read_bytes() == second.read_bytes()
+    assert hashlib.sha256(first.read_bytes()).hexdigest() == (
+        "39f70cacb408ce7a9aa2c52ccbf93457208c1d56378d2348ae397daf9fb76f0e"
+    )
     monkeypatch.setattr(
         eef_refactor, "_build_state", lambda *args: pytest.fail("unexpected execution")
     )

@@ -174,12 +174,25 @@ def test_rejects_unsafe_api_bases(api_base: str):
         connector.collect(CIStatusRequest(REPOSITORY, REVISION))
 
 
-def test_allows_plain_http_only_for_numeric_loopback():
-    connector = _connector(_payload(), api_base="http://127.0.0.1:8080")
+@pytest.mark.parametrize(
+    ("api_base", "expected_source"),
+    [
+        (
+            "http://127.0.0.1:8080",
+            "http://127.0.0.1:8080/repos/SuryanshSS1011/Exhibit-A",
+        ),
+        (
+            "http://[::1]:8080",
+            "http://[::1]:8080/repos/SuryanshSS1011/Exhibit-A",
+        ),
+    ],
+)
+def test_allows_plain_http_only_for_numeric_loopback(api_base: str, expected_source: str):
+    connector = _connector(_payload(), api_base=api_base)
 
     output = connector.collect(CIStatusRequest(REPOSITORY, REVISION))
 
-    assert output.provenance.source == "http://127.0.0.1:8080/repos/SuryanshSS1011/Exhibit-A"
+    assert output.provenance.source == expected_source
 
 
 @pytest.mark.parametrize(

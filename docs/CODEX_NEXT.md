@@ -61,16 +61,18 @@ exercise remote advisory receipts without first introducing a database lifecycle
   turn failed claim evidence into `VERIFIED`.
   Verify: `cd engine && python3 -m pytest -q tests/test_release_policy.py tests/test_ci_status_connector.py`
 
-- [ ] **2. Archive remote connector receipts in EEF**
+- [x] **2. Archive remote connector receipts in EEF**
   Source refs: `connectors/base.py`, `eef.py`, `eef_refactor.py`, `docs/EEF.md`.
   What to build: Define a bounded connector-receipt section for EEF v3 containing the
   normalized payload, source commitment, collection time, freshness semantics, request
   digest, and response digest. Remote evidence must be snapshotted at collection time;
   offline integrity verification must not call the network. Preserve read support for EEF
   v1 and v2.
-  Acceptance: Any receipt mutation, omission, request mismatch, or cross-claim receipt
-  substitution fails closed; mutable CI evidence is visibly timestamped; old fixtures
-  continue to verify byte-for-byte.
+  Acceptance: Any unsigned mutation, omission, request mismatch, source-origin mismatch,
+  or cross-claim receipt substitution fails closed; structurally invalid evidence remains
+  invalid even if re-signed. Mutable CI evidence is visibly timestamped; a trusted HMAC
+  holder can still author different coherent evidence, and the docs must say so. Historical
+  v2 output remains byte-identical and v1/v2 fixtures continue to verify.
   Verify: `cd engine && python3 -m pytest -q tests/test_eef.py tests/test_eef_refactor.py tests/test_connectors.py`
 
 - [ ] **3. Add a release-evidence CLI and public projection**
@@ -107,16 +109,16 @@ v3 compatibility. Do not begin signature work while receipt semantics are still 
   SLSA provenance, and the Sigstore bundle format.
   What to build: Threat-model shared-secret HMAC, offline public-key verification,
   key rotation/revocation, multiple signatures, keyless identity, transparency logs, and
-  air-gapped use. Choose a minimal EEF v3 envelope. The default recommendation is a DSSE
+  air-gapped use. Choose a minimal EEF v4 envelope. The default recommendation is a DSSE
   in-toto statement with an offline public-key verifier; Sigstore bundles should be an
   optional distribution profile rather than a mandatory online dependency.
   Acceptance: The ADR states exactly what identity is and is not proven, how a verifier
-  obtains trusted key material, the algorithm-agility policy, and how v1/v2 HMAC bundles
-  remain readable without being mislabeled as public identity claims.
+  obtains trusted key material, the algorithm-agility policy, and how v1/v2/v3 HMAC
+  bundles remain readable without being mislabeled as public identity claims.
   Verify: schema examples validate, signature test vectors are checked independently, and
   a skeptical security review signs off before implementation.
 
-- [ ] **6. Implement EEF v3 public-key signatures**
+- [ ] **6. Implement EEF v4 public-key signatures**
   Source refs: the accepted ADR, `eef.py`, `passport.py`, and existing HMAC tamper tests.
   What to build: Implement signing and verification behind a small cryptographic backend,
   with domain separation and strict key/algorithm parsing. Add public key ID and rotation
@@ -124,8 +126,8 @@ v3 compatibility. Do not begin signature work while receipt semantics are still 
   optional signing extra and document its maintenance cost; do not hand-roll Ed25519.
   Acceptance: Verification requires only the artifact and trusted public key material;
   publishing a demo verification key no longer enables forgery; malformed keys,
-  signatures, algorithms, and downgrade attempts fail closed; v1/v2 compatibility tests
-  remain green.
+  signatures, algorithms, and downgrade attempts fail closed; v1/v2/v3 HMAC compatibility
+  tests remain green.
   Verify: official algorithm test vectors, round trips, mutation/tamper matrices, cross-
   process verification, and the full engine suite.
 

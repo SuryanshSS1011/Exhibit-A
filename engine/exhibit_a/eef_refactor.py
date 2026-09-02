@@ -8,13 +8,15 @@ import json
 import math
 import tempfile
 import uuid
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path, PurePosixPath
 from typing import Any
 
 from .connectors import (
+    CIStatus,
+    ConnectorOutput,
     ConnectorSecurity,
     LocalTestRequest,
     credential_free_source,
@@ -22,6 +24,8 @@ from .connectors import (
     local_test_digests,
 )
 from .eef import (
+    FORMAT_VERSION,
+    RECEIPT_FORMAT_VERSION,
     _MAX_RERUNS,
     _OUTPUT_LIMIT_BYTES,
     _RUN_TIMEOUT_S,
@@ -32,10 +36,18 @@ from .eef import (
     _dockerfile,
     _is_sha256,
     _remove_image,
+    _receipt_metadata,
+    _receipt_metadata_keys,
     _run_state,
     _safe_pytest_argv,
     _safe_relative,
     _write_bundle,
+)
+from .eef_receipts import (
+    RECEIPT_ENTRY,
+    ReceiptBinding,
+    build_receipt_archive,
+    claim_binding,
 )
 from .executor.base import ExecOutcome, ExecSpec, Executor, RepoState
 from .models.case import ExecutionTruth, GoalTruth, ReleaseTruth, Verdict
@@ -202,8 +214,9 @@ def create_refactor_bundle(
     target_source: str | Path,
     signing_key: bytes,
     output_limit_bytes: int = _OUTPUT_LIMIT_BYTES,
+    connector_outputs: Sequence[ConnectorOutput[CIStatus]] = (),
 ) -> Path:
-    """Serialize typed refactor evidence and both source states into EEF v2."""
+    """Serialize typed refactor evidence and both source states into EEF."""
     if len(signing_key) < 32:
         raise ValueError("EEF signing key must contain at least 32 bytes")
     if type(evidence) is not RefactorEvidence:
@@ -219,9 +232,8 @@ def create_refactor_bundle(
     )
     test_path = PurePosixPath(CONTRACT_PATH)
     argv = list(validated.argv)
-    payloads = {
-        "refactor.json": _canonical(data) + b"\n",
-    }
+    claim_content = _canonical(data) + b"\n"
+    payloads = {"refactor.json": claim_content}
     _add_source(payloads, Path(base_source), "base", test_path, evidence.contract_code)
     _add_source(payloads, Path(target_source), "target", test_path, evidence.contract_code)
     reproduce = {
@@ -237,15 +249,27 @@ def create_refactor_bundle(
     }
     payloads["reproduce.json"] = _canonical(reproduce) + b"\n"
     payloads["Dockerfile"] = _dockerfile(argv).encode()
+    format_version = FORMAT_VERSION
+    receipt_archive = None
+    if connector_outputs:
+        receipt_archive = build_receipt_archive(
+            connector_outputs,
+            refactor_receipt_binding(claim_content),
+        )
+        payloads[RECEIPT_ENTRY] = receipt_archive.content
+        format_version = RECEIPT_FORMAT_VERSION
+    receipt_metadata = receipt_archive.manifest_metadata if receipt_archive else {}
     result = data["result"]
     return _write_bundle(
         payloads,
         output,
         signing_key,
+        format_version=format_version,
         manifest_metadata={
             "claim_type": CLAIM_TYPE,
             "evidence_schema": EVIDENCE_SCHEMA,
             "contract_sha256": evidence.contract_sha256,
+            **receipt_metadata,
         },
         predicate={
             "claim_type": CLAIM_TYPE,
@@ -256,12 +280,17 @@ def create_refactor_bundle(
             "goal": result["goal"],
             "release": result["release"],
             "deterministic": result["deterministic"],
+            **receipt_metadata,
         },
     )
 
 
 def validate_refactor_bundle(
-    blobs: dict[str, bytes], manifest: dict[str, Any], statement: dict[str, Any]
+    blobs: dict[str, bytes],
+    manifest: dict[str, Any],
+    statement: dict[str, Any],
+    *,
+    format_version: str = FORMAT_VERSION,
 ) -> ValidatedRefactorBundle:
     """Validate signed refactor evidence and re-derive its recorded truth."""
     try:
@@ -319,36 +348,41 @@ def validate_refactor_bundle(
     if blobs.get("Dockerfile") != _dockerfile(argv).encode():
         raise ValueError("refactor EEF Dockerfile does not match the trusted replay harness")
     fixed = {"refactor.json", "reproduce.json", "Dockerfile", "manifest.json", "attestation.json"}
+    if format_version == RECEIPT_FORMAT_VERSION:
+        fixed.add(RECEIPT_ENTRY)
     for name in blobs:
         if name in fixed or name.startswith(("sources/base/", "sources/target/")):
             continue
         raise ValueError(f"refactor EEF contains an unsupported claim entry: {name}")
     predicate = statement.get("predicate")
     result = evidence["result"]
+    expected_manifest_keys = {
+        "format",
+        "claim_type",
+        "evidence_schema",
+        "contract_sha256",
+        "entries",
+    }
+    expected_predicate = {
+        "claim_type": CLAIM_TYPE,
+        "evidence_schema": EVIDENCE_SCHEMA,
+        "contract_sha256": evidence["contract_sha256"],
+        "verdict": result["verdict"],
+        "execution": result["execution"],
+        "goal": result["goal"],
+        "release": result["release"],
+        "deterministic": result["deterministic"],
+    }
+    if format_version == RECEIPT_FORMAT_VERSION:
+        expected_manifest_keys.update(_receipt_metadata_keys())
+        expected_predicate.update(_receipt_metadata(manifest))
     if (
-        set(manifest)
-        != {
-            "format",
-            "claim_type",
-            "evidence_schema",
-            "contract_sha256",
-            "entries",
-        }
+        set(manifest) != expected_manifest_keys
         or manifest.get("claim_type") != CLAIM_TYPE
         or manifest.get("evidence_schema") != EVIDENCE_SCHEMA
         or manifest.get("contract_sha256") != evidence["contract_sha256"]
         or not isinstance(predicate, dict)
-        or predicate
-        != {
-            "claim_type": CLAIM_TYPE,
-            "evidence_schema": EVIDENCE_SCHEMA,
-            "contract_sha256": evidence["contract_sha256"],
-            "verdict": result["verdict"],
-            "execution": result["execution"],
-            "goal": result["goal"],
-            "release": result["release"],
-            "deterministic": result["deterministic"],
-        }
+        or predicate != expected_predicate
     ):
         raise ValueError("refactor EEF signed claim metadata is inconsistent")
     return ValidatedRefactorBundle(
@@ -359,6 +393,53 @@ def validate_refactor_bundle(
         timeout_s=validated.timeout_s,
         output_limit_bytes=output_limit_bytes,
         argv=validated.argv,
+    )
+
+
+def refactor_receipt_binding(content: bytes | None) -> ReceiptBinding:
+    """Bind remote receipts to the exact refactor claim and its target revision."""
+    if not isinstance(content, bytes):
+        raise ValueError("refactor EEF receipt claim binding is unavailable")
+    try:
+        evidence = json.loads(content)
+    except (UnicodeDecodeError, json.JSONDecodeError, RecursionError) as exc:
+        raise ValueError("refactor EEF receipt claim binding is invalid") from exc
+    if not isinstance(evidence, dict):
+        raise ValueError("refactor EEF receipt claim binding is invalid")
+    runs = evidence.get("runs")
+    sources = evidence.get("evidence_sources")
+    if not isinstance(runs, list) or not isinstance(sources, list):
+        raise ValueError("refactor EEF receipt target provenance is invalid")
+    target_ids: set[str] = set()
+    for run in runs:
+        if isinstance(run, dict) and run.get("state") == "target":
+            evidence_id = run.get("evidence_id")
+            if not isinstance(evidence_id, str):
+                raise ValueError("refactor EEF receipt target provenance is invalid")
+            target_ids.add(evidence_id)
+    target_sources = []
+    for source in sources:
+        if not isinstance(source, dict):
+            continue
+        evidence_id = source.get("evidence_id")
+        if not isinstance(evidence_id, str):
+            raise ValueError("refactor EEF receipt target provenance is invalid")
+        if evidence_id not in target_ids:
+            continue
+        revision = source.get("source_revision")
+        repository = source.get("source")
+        if not isinstance(revision, str) or not isinstance(repository, str):
+            raise ValueError("refactor EEF receipt target provenance is invalid")
+        target_sources.append((revision, repository))
+    revisions = {revision for revision, _ in target_sources}
+    repositories = {repository for _, repository in target_sources}
+    if len(revisions) != 1 or len(repositories) != 1:
+        raise ValueError("refactor EEF receipt target provenance is ambiguous")
+    return claim_binding(
+        claim_type=CLAIM_TYPE,
+        claim_content=content,
+        repository_source=repositories.pop(),
+        revision=revisions.pop(),
     )
 
 

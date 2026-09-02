@@ -126,6 +126,8 @@ def credential_free_source(source: str | None) -> str:
     if parts.scheme not in {"http", "https"} or not parts.hostname:
         return "local-checkout"
     hostname = parts.hostname
+    if ":" in hostname:
+        hostname = f"[{hostname}]"
     try:
         if parts.port is not None:
             hostname = f"{hostname}:{parts.port}"

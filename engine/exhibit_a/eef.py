@@ -14,7 +14,7 @@ import threading
 import unicodedata
 import uuid
 import zipfile
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any
@@ -22,13 +22,25 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from .verdict.refactor_runner import RefactorEvidence
 
+from .connectors.base import ConnectorOutput
+from .connectors.ci_status import CIStatus
+from .eef_receipts import (
+    RECEIPT_ENTRY,
+    ReceiptArchive,
+    build_receipt_archive,
+    claim_binding,
+    validate_receipt_archive,
+    validate_receipt_metadata,
+)
 from .executor.base import ExecOutcome
 from .models.case import Verdict, normalize_case_payload, normalize_verdict
 from .verdict.flip_check import flip_check
 
 FORMAT_VERSION = "eef/v2"
+RECEIPT_FORMAT_VERSION = "eef/v3"
 STATEMENT_TYPE = "https://in-toto.io/Statement/v1"
 PREDICATE_TYPE = "https://exhibit-a.dev/eef/v2"
+RECEIPT_PREDICATE_TYPE = "https://exhibit-a.dev/eef/v3"
 _LEGACY_FORMAT_VERSION = "eef/v1"
 _LEGACY_PREDICATE_TYPE = "https://exhibit-a.dev/eef/v1"
 _ZIP_TIME = (1980, 1, 1, 0, 0, 0)
@@ -65,6 +77,7 @@ class VerifiedClaim:
     signature_algorithm: str
     signature_value: str
     archived_states: tuple[str, ...]
+    connector_receipts: tuple[dict[str, Any], ...] = ()
 
 
 @dataclass
@@ -92,6 +105,7 @@ def create_bundle(
     target_source: str | Path,
     base_source: str | Path | None,
     signing_key: bytes,
+    connector_outputs: Sequence[ConnectorOutput[CIStatus]] = (),
 ) -> Path:
     """Serialize a Case plus source snapshots into a deterministic signed archive."""
     if len(signing_key) < 32:
@@ -108,8 +122,9 @@ def create_bundle(
     if not isinstance(evidence, Mapping):
         raise ValueError("EEF Case evidence is invalid")
     reruns = _bounded_int(evidence.get("reruns", 1), "reruns", 1, _MAX_RERUNS)
+    case_content = _canonical(case) + b"\n"
     payloads: dict[str, bytes] = {
-        "case.json": _canonical(case) + b"\n",
+        "case.json": case_content,
         "reproduce.json": _canonical(
             {
                 "command_argv": run_argv,
@@ -128,16 +143,37 @@ def create_bundle(
     payloads["logs/existing_suite_log.txt"] = str(case.get("existing_suite_log", "")).encode()
     payloads["Dockerfile"] = _dockerfile(run_argv).encode()
 
+    format_version = FORMAT_VERSION
+    receipt_archive = None
+    if connector_outputs:
+        binding = claim_binding(
+            claim_type="bug_flip",
+            claim_content=case_content,
+            repository_source=case.get("repo"),
+            revision=case.get("target_commit"),
+        )
+        receipt_archive = build_receipt_archive(connector_outputs, binding)
+        payloads[RECEIPT_ENTRY] = receipt_archive.content
+        format_version = RECEIPT_FORMAT_VERSION
+
+    receipt_metadata = receipt_archive.manifest_metadata if receipt_archive else {}
+
     return _write_bundle(
         payloads,
         output,
         signing_key,
-        manifest_metadata={"claim_type": "bug_flip", "case_id": case.get("id")},
+        format_version=format_version,
+        manifest_metadata={
+            "claim_type": "bug_flip",
+            "case_id": case.get("id"),
+            **receipt_metadata,
+        },
         predicate={
             "claim_type": "bug_flip",
             "case_id": case.get("id"),
             "verdict": case.get("verdict"),
             "created_at": case.get("created_at"),
+            **receipt_metadata,
         },
     )
 
@@ -150,6 +186,7 @@ def create_refactor_bundle(
     target_source: str | Path,
     signing_key: bytes,
     output_limit_bytes: int = _OUTPUT_LIMIT_BYTES,
+    connector_outputs: Sequence[ConnectorOutput[CIStatus]] = (),
 ) -> Path:
     """Serialize behavior-refactor evidence through its claim-specific EEF adapter."""
     from .eef_refactor import create_refactor_bundle as create
@@ -161,6 +198,7 @@ def create_refactor_bundle(
         target_source=target_source,
         signing_key=signing_key,
         output_limit_bytes=output_limit_bytes,
+        connector_outputs=connector_outputs,
     )
 
 
@@ -282,6 +320,7 @@ def _verify_bundle(
         raise ValueError(f"EEF is missing required entry: {exc.args[0]}") from exc
     if not isinstance(manifest, dict) or manifest.get("format") not in {
         FORMAT_VERSION,
+        RECEIPT_FORMAT_VERSION,
         _LEGACY_FORMAT_VERSION,
     }:
         raise ValueError("EEF manifest format is unsupported")
@@ -320,8 +359,7 @@ def _verify_bundle(
     if (
         not isinstance(statement, dict)
         or statement.get("_type") != STATEMENT_TYPE
-        or statement.get("predicateType")
-        != (PREDICATE_TYPE if format_version == FORMAT_VERSION else _LEGACY_PREDICATE_TYPE)
+        or statement.get("predicateType") != _predicate_type(format_version)
         or not isinstance(signature, dict)
         or signature.get("algorithm") != "hmac-sha256"
     ):
@@ -350,25 +388,39 @@ def _verify_bundle(
     predicate = statement.get("predicate")
     if not isinstance(predicate, dict):
         raise ValueError("EEF attestation predicate is invalid")
-    claim_type = manifest.get("claim_type") if format_version == FORMAT_VERSION else "bug_flip"
-    if format_version == FORMAT_VERSION and predicate.get("claim_type") != claim_type:
+    claim_type = (
+        manifest.get("claim_type") if format_version != _LEGACY_FORMAT_VERSION else "bug_flip"
+    )
+    if format_version != _LEGACY_FORMAT_VERSION and predicate.get("claim_type") != claim_type:
         raise ValueError("EEF signed claim type is inconsistent")
     has_case = "case.json" in entries
     has_refactor = "refactor.json" in entries
     if has_case == has_refactor:
         raise ValueError("EEF must contain exactly one claim payload")
+    receipt_archive = _validated_receipt_archive(
+        blobs,
+        manifest,
+        predicate,
+        format_version=format_version,
+        claim_type=claim_type,
+    )
     if claim_type == "bug_flip" and has_case:
         _validate_bug_bundle(
             blobs,
             manifest,
             statement,
-            legacy=format_version == _LEGACY_FORMAT_VERSION,
+            format_version=format_version,
         )
         execution_verified = _reexecute_bug(blobs, docker_bin=docker_bin) if execute else None
     elif claim_type == "behavior_preserving_refactor" and has_refactor:
         from .eef_refactor import reexecute_refactor, validate_refactor_bundle
 
-        validated = validate_refactor_bundle(blobs, manifest, statement)
+        validated = validate_refactor_bundle(
+            blobs,
+            manifest,
+            statement,
+            format_version=format_version,
+        )
         execution_verified = (
             reexecute_refactor(blobs, validated, docker_bin=docker_bin) if execute else None
         )
@@ -391,6 +443,7 @@ def _verify_bundle(
             for state in ("base", "target")
             if any(name.startswith(f"sources/{state}/") for name in blobs)
         ),
+        connector_receipts=receipt_archive.receipts if receipt_archive else (),
     )
 
 
@@ -456,7 +509,7 @@ def _validate_bug_bundle(
     manifest: dict[str, Any],
     statement: dict[str, Any],
     *,
-    legacy: bool = False,
+    format_version: str,
 ) -> None:
     try:
         case = json.loads(blobs["case.json"])
@@ -521,9 +574,12 @@ def _validate_bug_bundle(
         "verdict": case_verdict.value,
         "created_at": case.get("created_at"),
     }
-    if not legacy:
+    if format_version != _LEGACY_FORMAT_VERSION:
         expected_manifest_keys.add("claim_type")
         expected_predicate["claim_type"] = "bug_flip"
+    if format_version == RECEIPT_FORMAT_VERSION:
+        expected_manifest_keys.update(_receipt_metadata_keys())
+        expected_predicate.update(_receipt_metadata(manifest))
     if (
         set(manifest) != expected_manifest_keys
         or not isinstance(predicate, dict)
@@ -544,6 +600,8 @@ def _validate_bug_bundle(
         "manifest.json",
         "attestation.json",
     }
+    if format_version == RECEIPT_FORMAT_VERSION:
+        fixed_entries.add(RECEIPT_ENTRY)
     for name in blobs:
         if name in fixed_entries or name.startswith(("sources/base/", "sources/target/")):
             continue
@@ -917,13 +975,16 @@ def _write_bundle(
     output: str | Path,
     signing_key: bytes,
     *,
+    format_version: str = FORMAT_VERSION,
     manifest_metadata: Mapping[str, Any],
     predicate: Mapping[str, Any],
 ) -> Path:
     if len(signing_key) < 32:
         raise ValueError("EEF signing key must contain at least 32 bytes")
+    if format_version not in {FORMAT_VERSION, RECEIPT_FORMAT_VERSION}:
+        raise ValueError("EEF output format is unsupported")
     manifest = {
-        "format": FORMAT_VERSION,
+        "format": format_version,
         **manifest_metadata,
         "entries": {
             name: {"sha256": hashlib.sha256(content).hexdigest(), "size": len(content)}
@@ -939,7 +1000,7 @@ def _write_bundle(
                 "digest": {"sha256": hashlib.sha256(manifest_bytes).hexdigest()},
             }
         ],
-        "predicateType": PREDICATE_TYPE,
+        "predicateType": _predicate_type(format_version),
         "predicate": dict(predicate),
     }
     attestation = {
@@ -962,6 +1023,62 @@ def _write_bundle(
             info.external_attr = 0o100644 << 16
             archive.writestr(info, content)
     return destination
+
+
+def _validated_receipt_archive(
+    blobs: dict[str, bytes],
+    manifest: Mapping[str, Any],
+    predicate: Mapping[str, Any],
+    *,
+    format_version: str,
+    claim_type: object,
+) -> ReceiptArchive | None:
+    if format_version != RECEIPT_FORMAT_VERSION:
+        if RECEIPT_ENTRY in blobs:
+            raise ValueError("legacy EEF contains an unsupported connector receipt section")
+        return None
+    if claim_type == "bug_flip":
+        claim_name = "case.json"
+        try:
+            claim = json.loads(blobs[claim_name])
+        except (KeyError, UnicodeDecodeError, json.JSONDecodeError, RecursionError) as exc:
+            raise ValueError("EEF connector receipt claim binding is unavailable") from exc
+        if not isinstance(claim, dict):
+            raise ValueError("EEF connector receipt claim binding is unavailable")
+        binding = claim_binding(
+            claim_type="bug_flip",
+            claim_content=blobs[claim_name],
+            repository_source=claim.get("repo"),
+            revision=claim.get("target_commit"),
+        )
+    elif claim_type == "behavior_preserving_refactor":
+        from .eef_refactor import refactor_receipt_binding
+
+        binding = refactor_receipt_binding(blobs.get("refactor.json"))
+    else:
+        raise ValueError("EEF connector receipt claim type is unsupported")
+    content = blobs.get(RECEIPT_ENTRY)
+    if content is None:
+        raise ValueError("EEF v3 is missing its connector receipt section")
+    archive = validate_receipt_archive(content, binding)
+    validate_receipt_metadata(manifest, predicate, archive)
+    return archive
+
+
+def _receipt_metadata_keys() -> set[str]:
+    return {"receipt_schema", "receipt_count", "receipt_root_sha256"}
+
+
+def _receipt_metadata(manifest: Mapping[str, Any]) -> dict[str, Any]:
+    return {name: manifest.get(name) for name in _receipt_metadata_keys()}
+
+
+def _predicate_type(format_version: str) -> str:
+    return {
+        _LEGACY_FORMAT_VERSION: _LEGACY_PREDICATE_TYPE,
+        FORMAT_VERSION: PREDICATE_TYPE,
+        RECEIPT_FORMAT_VERSION: RECEIPT_PREDICATE_TYPE,
+    }.get(format_version, "")
 
 
 def _open_directory_no_follow(path: Path) -> int:

@@ -3,14 +3,16 @@ layout: default
 title: Executable Evidence Format
 ---
 
-# Executable Evidence Format (EEF) v2
+# Executable Evidence Format (EEF)
 
 EEF is Exhibit A's deterministic archive format for transporting signed evidence without
 asking the recipient to trust a screenshot, model summary, or hosted service. A
 bundle contains one claim payload, source snapshots, the exact pytest contract and argv,
 a Dockerfile, content manifest, and an in-toto Statement-shaped attestation. EEF v2
-supports bug-flip Cases and behavior-preserving refactor evidence. The verifier remains
-backward-compatible with signed `eef/v1` bug bundles.
+supports bug-flip Cases and behavior-preserving refactor evidence. EEF v3 adds claim-bound
+remote connector receipts without changing either deterministic claim judge. Minting
+remains byte-compatible v2 when no remote receipt is supplied; the verifier reads signed
+v1, v2, and v3 archives.
 
 ## Guarantees
 
@@ -21,6 +23,18 @@ backward-compatible with signed `eef/v1` bug bundles.
 - `verify` also validates claim-specific structure. For refactor evidence it revalidates
   every run/receipt digest and linkage and re-derives the complete recorded truth from the
   signed outcomes. This detects internally inconsistent evidence without executing code.
+- V3 stores normalized point-in-time CI payloads and their complete provenance receipts in
+  `connector_receipts.json`. The canonical section is capped at 1 MiB and 32 receipts, each
+  with at most 250 checks. Every receipt is bound to the SHA-256 of the exact claim payload,
+  repository identity, full target revision, normalized request and response, source
+  commitment, observation/update times, freshness basis, and request/response/content
+  digests. Verification recomputes all three normalized digests entirely offline. The raw
+  forge response is deliberately omitted, so `artifact_sha256` remains a signed commitment
+  to the collected bytes rather than an independently rehashable body. Omission, duplicate
+  evidence IDs, source-origin disagreement, digest disagreement, noncanonical encoding, or
+  receipt substitution across claims fails closed. Structurally invalid evidence remains
+  invalid even when re-signed, but a trusted HMAC holder can author a different coherent
+  receipt; EEF does not independently authenticate the forge response.
 - `verify --execute` builds with Docker networking disabled. Bug bundles submit fresh raw
   outcomes to the unchanged `flip_check`. Refactor bundles repeat both archived states and
   compare the newly derived complete result with the recorded result. Replay can therefore
@@ -52,11 +66,13 @@ also retain bounded local executor image handles so signed request digests can b
 recomputed; URL-, path-, and userinfo-shaped handles are rejected, but publishers must
 still treat all source and log content as private.
 
-Use `exhibit-a passport` to derive a verified, credential-free public JSON projection
-instead of publishing the private EEF directly. The passport omits source, test/contract
-code, raw logs, local paths, and free-form narratives while retaining the signed manifest
-root, truth separation, state summaries, receipt digests, and model-identity commitments. See
-the [public evidence passport](./PASSPORT.html).
+Use `exhibit-a passport` to derive a verified, credential-free public JSON projection from
+v1/v2 bundles instead of publishing the private EEF directly. The current passport omits
+source, test/contract code, raw logs, local paths, and free-form narratives while retaining
+the signed manifest root, truth separation, state summaries, local execution-receipt digests,
+and model-identity commitments. Remote v3 receipts remain private and are not yet accepted by
+the HTML renderer; the release-evidence CLI and allowlisted JSON/HTML projection are roadmap
+item 3. See the [public evidence passport](./PASSPORT.html).
 
 Integrity verification proves that the signed refactor evidence is internally coherent
 and that the archived trees match their signed tree digests. Only `verify --execute`
@@ -94,6 +110,7 @@ python3 -m exhibit_a.cli passport-html case.passport.json \
 attestation.json       in-toto Statement + HMAC signature
 case.json              canonical bug-flip Case (exactly one claim payload)
 refactor.json          canonical refactor evidence (alternative claim payload)
+connector_receipts.json  optional v3 normalized remote facts and provenance
 manifest.json          SHA-256 and byte size of every signed payload
 reproduce.json         claim-specific argv, budgets, tree digests, and expectations
 Dockerfile             no-network replay environment

@@ -85,6 +85,22 @@ existing EEF hash manifest and signature. The Git adapter returns its typed payl
 same receipt shape for callers to persist when they opt into that source. Local filesystem
 paths and URL credentials are not included in public provenance.
 
+EEF v3 can additionally archive remote CI payloads alongside their receipts. The canonical,
+size-bounded section is committed in both the manifest and attestation predicate, and each
+entry is bound to the exact claim hash, canonical repository origin and identity, and full
+target revision. The verifier recomputes the digest of the normalized request, normalized
+response, and their content link without contacting the forge. Connector-specific source
+rules bind the current GitHub adapter to the repository's expected API origin and path; a
+future adapter must add its own fail-closed rule. The raw response is deliberately omitted;
+its artifact digest is a signed commitment to the collected bytes, not a body an offline
+reader can independently rehash. V1 and v2 archives remain readable and expose an empty
+remote-receipt collection; minting without remote evidence remains byte-compatible v2.
+
+The EEF signature protects these receipts from parties that do not hold the shared HMAC key.
+It does not stop a trusted key holder from authoring a different internally coherent receipt,
+and it does not independently authenticate GitHub's response. Public-key signer identity and
+upstream provenance are separate roadmap decisions.
+
 Connectors are trusted evidence collectors, but they have no verdict authority. Before
 raw test output reaches the deterministic judge, the engine validates the connector's
 payload type, descriptor-bound metadata, and request/response hash.

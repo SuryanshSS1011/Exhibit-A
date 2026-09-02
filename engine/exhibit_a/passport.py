@@ -115,6 +115,8 @@ def passport_from_verified_claim(verified: VerifiedClaim) -> dict[str, Any]:
     """Project a validated private claim into the allowlisted public schema."""
     if not verified.verification.integrity_verified or not verified.verification.signature_verified:
         raise ValueError("passport requires an integrity- and signature-verified EEF claim")
+    if verified.format_version not in {"eef/v1", "eef/v2"} or verified.connector_receipts:
+        raise ValueError("public passports do not yet support EEF connector receipts")
     if not _SHA256.fullmatch(verified.manifest_sha256):
         raise ValueError("verified EEF manifest digest is invalid")
     if verified.claim_type == "bug_flip":
