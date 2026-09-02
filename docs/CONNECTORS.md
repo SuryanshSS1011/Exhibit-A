@@ -59,6 +59,27 @@ sorted by name so the evidence digest does not depend on the order the forge hap
 return. Unlike Git metadata, CI status is mutable: a re-run changes it, so its receipt
 reports `point_in_time` freshness and carries the latest completion timestamp it observed.
 
+## Deterministic release policy
+
+`release-policy/v1` is the first consumer of normalized CI facts. A policy names one or
+more exact, case-sensitive required checks and an evidence age from one second through
+31 days. Its pure evaluator receives a normalized status payload, its provenance receipt,
+the policy, and an explicit timezone-aware evaluation instant; it performs no I/O and
+reads no ambient clock.
+
+No supplied evidence yields `NOT_ASSESSED`. Supplied but partial, stale, future-dated,
+digest-mismatched, duplicated, missing, pending, neutral, skipped, or unrecognized evidence
+yields `UNCERTAIN`. A fresh required check with a failure, cancellation, timeout, action
+requirement, or startup failure yields `UNSAFE`. `SAFE` requires every named check to have
+one fresh `completed`/`success` observation. Non-required checks are ignored, so the policy
+does not silently expand when a repository adds a new job.
+
+This vocabulary is deliberately bounded: `SAFE` means only that the pinned revision
+satisfied the named CI policy at the recorded evaluation instant. It is not a claim of
+program correctness. The evaluator returns release truth and a reason but has no access to
+the claim verdict, execution truth, or goal truth. A green forge response therefore cannot
+admit failed or uncertain claim evidence.
+
 Test-execution receipts are stored in `Case.evidence_sources` and therefore covered by the
 existing EEF hash manifest and signature. The Git adapter returns its typed payload and the
 same receipt shape for callers to persist when they opt into that source. Local filesystem

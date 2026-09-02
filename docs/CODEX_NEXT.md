@@ -47,7 +47,7 @@ exercise remote advisory receipts without first introducing a database lifecycle
 
 ## Milestone 1 — Turn CI facts into bounded release truth
 
-- [ ] **1. Specify a deterministic release-policy contract**
+- [x] **1. Specify a deterministic release-policy contract**
   Source refs: `models/case.py`, `connectors/ci_status.py`, `verdict/refactor_check.py`,
   `docs/CONNECTORS.md`.
   What to build: Add a versioned, provider-neutral policy input and pure evaluator for a
@@ -55,9 +55,10 @@ exercise remote advisory receipts without first introducing a database lifecycle
   failure, missing required checks, duplicate names, stale observations, and unknown
   backend states. The evaluator may set `release_truth`; it must never rewrite execution
   truth, goal truth, or the claim verdict.
-  Acceptance: The same normalized receipt and policy always produce the same result;
-  unknown or incomplete facts become `NOT_ASSESSED`/`UNCERTAIN`, never success; tests prove
-  that a green CI response cannot turn failed claim evidence into `VERIFIED`.
+  Acceptance: The same normalized receipt, policy, and explicit evaluation instant always
+  produce the same result; unknown or incomplete facts become
+  `NOT_ASSESSED`/`UNCERTAIN`, never success; tests prove that a green CI response cannot
+  turn failed claim evidence into `VERIFIED`.
   Verify: `cd engine && python3 -m pytest -q tests/test_release_policy.py tests/test_ci_status_connector.py`
 
 - [ ] **2. Archive remote connector receipts in EEF**
