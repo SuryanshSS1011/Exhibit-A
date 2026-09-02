@@ -531,7 +531,7 @@ def _release_details(value: object) -> str:
         {_fact("Response commitment", provenance.get("response_sha256"), mono=True)}
       </dl>
       {_release_table(checks if isinstance(checks, list) else [])}
-      <p class="scope-note">SAFE means only that this immutable revision satisfied the named CI policy at the recorded instant. It is not a claim of program correctness.</p>
+      <p class="scope-note">SAFE means only that this immutable revision satisfied the named CI policy at the recorded instant. It neither proves program correctness nor changes the independently derived claim verdict above.</p>
     </section>"""
 
 
@@ -552,6 +552,8 @@ def _bug_details(subject: dict[str, Any]) -> str:
     proposals = subject.get("proposal_runs", [])
     sources = subject.get("evidence_sources", [])
     revisions = subject.get("revisions")
+    proposal_table = _proposal_table(proposals)
+    proposal_block = f"\n      {proposal_table}" if proposal_table else ""
     return f"""<section class="evidence" aria-labelledby="evidence-title">
       <div class="section-heading">
         <p class="eyebrow">Observed evidence</p>
@@ -564,8 +566,7 @@ def _bug_details(subject: dict[str, Any]) -> str:
         {_fact("Test commitment", subject.get("test_sha256"), mono=True)}
         {_fact("Proposal records", len(proposals))}
         {_fact("Evidence sources", len(sources))}
-      </dl>
-      {_proposal_table(proposals)}
+      </dl>{proposal_block}
     </section>"""
 
 

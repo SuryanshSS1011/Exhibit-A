@@ -1,0 +1,72 @@
+{
+  "payload": {
+    "checks": [
+      {
+        "completed_at": "2026-08-18T22:46:40Z",
+        "conclusion": "success",
+        "name": "build",
+        "started_at": "2026-08-18T22:46:18Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-08-18T22:46:53Z",
+        "conclusion": "success",
+        "name": "deploy",
+        "started_at": "2026-08-18T22:46:44Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-08-18T22:47:35Z",
+        "conclusion": "success",
+        "name": "engine",
+        "started_at": "2026-08-18T22:46:18Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-08-18T22:46:47Z",
+        "conclusion": "success",
+        "name": "report-build-status",
+        "started_at": "2026-08-18T22:46:43Z",
+        "status": "completed"
+      },
+      {
+        "completed_at": "2026-08-18T22:46:48Z",
+        "conclusion": "success",
+        "name": "web",
+        "started_at": "2026-08-18T22:46:18Z",
+        "status": "completed"
+      }
+    ],
+    "reported_total": 5,
+    "repository": "SuryanshSS1011/Exhibit-A",
+    "revision": "de669e7e09aa5694911fe524ab30253f75a6b5cc"
+  },
+  "payload_schema": "ci-status/v1",
+  "provenance": {
+    "artifact_sha256": "13292dab0b4b85efbd2a8403abf0e3fd15baf783671196e27fd19aa4ac381f29",
+    "capability": "ci_status",
+    "connector_id": "github_ci_status",
+    "connector_version": "1",
+    "content_sha256": "3338979716581972f8654eefb1762e0dedce0ca1280464635c2b065fdd536d02",
+    "description": "Read read-only CI check-run status for one commit",
+    "evidence_id": "56584c646d83426984b2c6ef9f5d214f",
+    "freshness": "point_in_time",
+    "observed_at": "2026-09-02T21:07:18.553485+00:00",
+    "request_sha256": "68561e0a423611d4933cd330daf3400a403476e540a827a4e94eebbb70162f9c",
+    "response_sha256": "ddbc3d9394af9bd84bfde659f42f886c641520645978b3980ae9afedc6e8f96a",
+    "security": {
+      "credential_access": "none",
+      "isolation": "in_process",
+      "network_access": "host_unrestricted",
+      "source_access": "read_only"
+    },
+    "source": "https://api.github.com/repos/SuryanshSS1011/Exhibit-A",
+    "source_revision": "de669e7e09aa5694911fe524ab30253f75a6b5cc",
+    "source_updated_at": "2026-08-18T22:47:35Z"
+  },
+  "request": {
+    "repository": "SuryanshSS1011/Exhibit-A",
+    "revision": "de669e7e09aa5694911fe524ab30253f75a6b5cc",
+    "source": "https://api.github.com/repos/SuryanshSS1011/Exhibit-A"
+  }
+}

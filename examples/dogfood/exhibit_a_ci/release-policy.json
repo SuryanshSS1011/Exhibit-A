@@ -1,0 +1,9 @@
+{
+  "max_age_s": 2678400,
+  "name": "exhibit-a-required-ci",
+  "required_checks": [
+    "engine",
+    "web"
+  ],
+  "schema_version": "release-policy/v1"
+}

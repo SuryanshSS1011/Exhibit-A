@@ -88,7 +88,7 @@ exercise remote advisory receipts without first introducing a database lifecycle
   Verify: focused CLI/passport tests, then inspect both generated passport fixtures and
   run `git diff --check`.
 
-- [ ] **4. Dogfood release truth on Exhibit A's own CI**
+- [x] **4. Dogfood release truth on Exhibit A's own CI**
   Source refs: `.github/workflows/ci.yml`, `examples/dogfood/`, `docs/CONNECTORS.md`.
   What to build: Pin one public Exhibit A commit with known completed checks, capture its
   normalized receipt, and publish deterministic JSON/HTML examples. The checked fixture

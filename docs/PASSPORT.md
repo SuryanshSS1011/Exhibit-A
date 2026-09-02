@@ -107,3 +107,11 @@ The repository publishes a JSON and HTML passport for its own real
 The generator pins the buggy and fixed commits, injects the historical regression test,
 executes the fail-to-pass boundary, and keeps the private EEF temporary. Its deliberately
 public demo HMAC key supports reproducibility only and makes no publisher-identity claim.
+
+The repository also publishes a v2 [CI release-truth
+example](https://github.com/SuryanshSS1011/Exhibit-A/tree/main/examples/dogfood/exhibit_a_ci).
+It pins a normalized observation for public revision `de669e7`, re-derives the named
+`engine`/`web` policy entirely offline, and byte-compares both public artifacts. The page
+shows `VERIFIED` for the independently replayed timeout-bug claim and `SAFE` for the CI
+policy at collection time. `SAFE` neither proves program correctness nor strengthens that
+claim verdict.

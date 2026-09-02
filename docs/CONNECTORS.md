@@ -96,6 +96,22 @@ and read-only source semantics. Future HTTP adapters must supply and document th
 network, credential, redirect, size, and source-origin controls rather than assuming the
 Codex CLI subprocess sandbox applies to them.
 
+## Exhibit A CI dogfood
+
+The checked-in [`exhibit_a_ci`](../examples/dogfood/exhibit_a_ci/README.md) example pins
+public revision `de669e7e09aa5694911fe524ab30253f75a6b5cc` and the exact normalized receipt
+collected for it. GitHub reported five completed successful checks; the local policy names
+only `engine` and `web`. The full-fidelity fixture retains all five names so completeness
+can be verified, while the public passport exposes the two allowed names plus an omitted
+count of three.
+
+The generator never contacts GitHub. It treats the checked receipt as immutable historical
+input, evaluates it at its recorded collection instant, and byte-compares the regenerated
+JSON and HTML. This keeps routine verification independent of GitHub availability and of
+later check reruns. Its `SAFE` value means only “the two required checks satisfied this
+policy at collection time”; it neither asserts code correctness nor changes the separately
+derived `VERIFIED` timeout-bug verdict.
+
 Test-execution receipts are stored in `Case.evidence_sources` and therefore covered by the
 existing EEF hash manifest and signature. The Git adapter returns its typed payload and the
 same receipt shape for callers to persist when they opt into that source. Local filesystem

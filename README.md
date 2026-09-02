@@ -215,6 +215,14 @@ and passes on the fixed snapshot, then the current deterministic judge mints the
 and standalone [HTML passport](./examples/dogfood/timeout_false_verified/timeout_false_verified.passport.html).
 The private source-bearing EEF is intentionally not published.
 
+The checked-in [CI release-truth example](./examples/dogfood/exhibit_a_ci/README.md)
+adds a frozen, normalized GitHub observation for a public Exhibit A commit. Its v2
+[JSON passport](./examples/dogfood/exhibit_a_ci/exhibit_a_ci.passport.json) and standalone
+[HTML passport](./examples/dogfood/exhibit_a_ci/exhibit_a_ci.passport.html) keep the
+independent `VERIFIED` bug verdict separate from the bounded `SAFE` result: the latter says
+only that the named `engine` and `web` checks passed at collection time, not that the code
+was correct.
+
 ## How Codex and GPT-5.6 were used
 
 Codex with **GPT-5.6 Sol** is both the thing this was built with and a first-class

@@ -12,6 +12,10 @@
 @media(max-width:760px){body{padding:0}main{border:0}.masthead{grid-template-columns:1fr;padding:36px 24px}.seal{width:118px;height:118px}.chain{grid-template-columns:1fr;padding:28px 24px}.chain-facts{grid-template-columns:1fr}.truth,.evidence,.raw{padding:36px 24px}.section-heading{display:block}.section-heading .eyebrow{margin-bottom:10px}.truth-grid,.state-grid,.ledger{grid-template-columns:1fr}.ledger div,.ledger div:nth-child(odd),.ledger div:nth-child(even){padding:14px 0;border-left:0}.ledger div{grid-template-columns:125px minmax(0,1fr)}footer{display:grid;padding:20px 24px}}
 @media print{html{background:white}body{padding:0}main{border:0;box-shadow:none}.raw{break-before:page}.raw details{display:block}.raw summary{display:none}.raw pre{max-height:none}.seal{box-shadow:inset 0 0 0 7px white,inset 0 0 0 8px var(--blue)}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+
+
+.release{padding:48px 56px;border-bottom:1px solid var(--line);background:#eef2ff}.release-callout{display:grid;grid-template-columns:160px 150px minmax(0,1fr);gap:22px;align-items:center;margin-bottom:28px;padding:22px 24px;border:1px solid #b8c6ef;background:var(--white)}.release-callout span{color:var(--muted);font-size:12px}.release-callout strong{color:var(--blue);font:800 22px/1 ui-monospace,monospace}.release-callout p,.scope-note{margin:0;color:var(--muted);font-size:13px;line-height:1.5}.scope-note{margin-top:22px;max-width:760px}.release table{min-width:620px}
+@media(max-width:760px){.release{padding:36px 24px}.release-callout{grid-template-columns:1fr;gap:10px}}
 </style>
 </head>
 <body>
@@ -31,7 +35,7 @@
       <div class="chain-line" aria-hidden="true"></div>
       <div class="chain-copy">
         <p class="eyebrow" id="chain-title">Chain of custody</p>
-        <code>f4cdc44a08ead4287eaaeba6800474795ce946e40440dd1a6ccfe931737dc291</code>
+        <code>98a4d395dc1167c6639bf6852b35f8a4219d83d821dffc05b1af68427c0f5366</code>
       </div>
       <dl class="chain-facts">
         <div><dt>Integrity</dt><dd>Verified</dd></div>
@@ -48,8 +52,32 @@
       <div class="truth-grid">
         <article><span>Execution</span><strong>COMPLETED</strong><p>Did the evidence process finish?</p></article>
         <article><span>Goal</span><strong>VERIFIED</strong><p>Did the checked claim hold?</p></article>
-        <article><span>Release</span><strong>NOT_ASSESSED</strong><p>Was shipping safety assessed?</p></article>
+        <article><span>Release</span><strong>SAFE</strong><p>Was shipping safety assessed?</p></article>
       </div>
+    </section>
+
+    <section class="release" aria-labelledby="release-title">
+      <div class="section-heading">
+        <p class="eyebrow">Release policy observation</p>
+        <h2 id="release-title">Named checks at a pinned instant</h2>
+      </div>
+      <div class="release-callout">
+        <span>Derived release truth</span>
+        <strong>SAFE</strong>
+        <p>all required CI checks completed successfully: engine, web</p>
+      </div>
+      <dl class="ledger">
+        <div><dt>Policy</dt><dd>exhibit-a-required-ci</dd></div>
+        <div><dt>Maximum age</dt><dd>2678400 seconds</dd></div>
+        <div><dt>Evaluated at</dt><dd class="mono">2026-09-02T21:07:18.553485+00:00</dd></div>
+        <div><dt>Observed at</dt><dd class="mono">2026-09-02T21:07:18.553485+00:00</dd></div>
+        <div><dt>Checks collected</dt><dd>5</dd></div>
+        <div><dt>Check names omitted</dt><dd>3</dd></div>
+        <div><dt>Policy commitment</dt><dd class="mono">01870cefce693754e92000db8c2bd8d5db5f6a7222ca4b5a6e007ce60fbfa833</dd></div>
+        <div><dt>Response commitment</dt><dd class="mono">ddbc3d9394af9bd84bfde659f42f886c641520645978b3980ae9afedc6e8f96a</dd></div>
+      </dl>
+      <div class="table-wrap"><table><caption>Policy-required checks</caption><thead><tr><th>Check</th><th>Status</th><th>Conclusion</th><th>Completed</th></tr></thead><tbody><tr><td>engine</td><td>completed</td><td>success</td><td><code>2026-08-18T22:47:35Z</code></td></tr><tr><td>web</td><td>completed</td><td>success</td><td><code>2026-08-18T22:46:48Z</code></td></tr></tbody></table></div>
+      <p class="scope-note">SAFE means only that this immutable revision satisfied the named CI policy at the recorded instant. It neither proves program correctness nor changes the independently derived claim verdict above.</p>
     </section>
 
     <section class="evidence" aria-labelledby="evidence-title">
@@ -58,7 +86,7 @@
         <h2 id="evidence-title">Deterministic fail-to-pass</h2>
       </div>
       <dl class="ledger">
-        <div><dt>Failing revision</dt><dd class="mono">3c3ec8996383750423f6f32d398850cd7af889e5</dd></div><div><dt>Passing revision</dt><dd class="mono">1f9473f8d6940935ec45a41cb518d9038e0bea0e</dd></div>
+        <div><dt>Failing revision</dt><dd class="mono">3c3ec8996383750423f6f32d398850cd7af889e5</dd></div><div><dt>Passing revision</dt><dd class="mono">de669e7e09aa5694911fe524ab30253f75a6b5cc</dd></div>
         <div><dt>Failing-state reruns</dt><dd>3</dd></div>
         <div><dt>Deterministic</dt><dd>Yes</dd></div>
         <div><dt>Test commitment</dt><dd class="mono">ba42f99844b63e898b43857657d56383d16dc21d2916188c8d0473a222ff94ec</dd></div>
@@ -79,7 +107,7 @@
   &quot;passport_signature&quot;: {
     &quot;algorithm&quot;: &quot;hmac-sha256&quot;,
     &quot;meaning&quot;: &quot;shared-key authenticity; publisher identity is not established&quot;,
-    &quot;value&quot;: &quot;3ee5b2956222aaaae220b4940542c9519ad0afa8f89d37ab59af54de8b272b71&quot;
+    &quot;value&quot;: &quot;6474c4b22c2a7c41d90cbbcd638c744e80820ebcdfc54883de6a13fbecb3fe3b&quot;
   },
   &quot;privacy&quot;: {
     &quot;credential_free&quot;: true,
@@ -88,12 +116,63 @@
       &quot;test and contract source&quot;,
       &quot;raw execution logs&quot;,
       &quot;repository-local paths&quot;,
-      &quot;free-form claim and model narratives&quot;
+      &quot;free-form claim and model narratives&quot;,
+      &quot;raw remote responses&quot;,
+      &quot;remote source and connector identities&quot;
     ]
   },
-  &quot;schema_version&quot;: &quot;exhibit-a-passport/v1&quot;,
+  &quot;release_evidence&quot;: {
+    &quot;checks&quot;: [
+      {
+        &quot;completed_at&quot;: &quot;2026-08-18T22:47:35Z&quot;,
+        &quot;conclusion&quot;: &quot;success&quot;,
+        &quot;name&quot;: &quot;engine&quot;,
+        &quot;started_at&quot;: &quot;2026-08-18T22:46:18Z&quot;,
+        &quot;status&quot;: &quot;completed&quot;
+      },
+      {
+        &quot;completed_at&quot;: &quot;2026-08-18T22:46:48Z&quot;,
+        &quot;conclusion&quot;: &quot;success&quot;,
+        &quot;name&quot;: &quot;web&quot;,
+        &quot;started_at&quot;: &quot;2026-08-18T22:46:18Z&quot;,
+        &quot;status&quot;: &quot;completed&quot;
+      }
+    ],
+    &quot;collection&quot;: {
+      &quot;all_check_names_unique&quot;: true,
+      &quot;collected_count&quot;: 5,
+      &quot;omitted_check_count&quot;: 3,
+      &quot;reported_total&quot;: 5
+    },
+    &quot;freshness&quot;: {
+      &quot;basis&quot;: &quot;point_in_time&quot;,
+      &quot;evaluated_at&quot;: &quot;2026-09-02T21:07:18.553485+00:00&quot;,
+      &quot;observed_at&quot;: &quot;2026-09-02T21:07:18.553485+00:00&quot;,
+      &quot;source_updated_at&quot;: &quot;2026-08-18T22:47:35Z&quot;
+    },
+    &quot;policy&quot;: {
+      &quot;max_age_s&quot;: 2678400,
+      &quot;name&quot;: &quot;exhibit-a-required-ci&quot;,
+      &quot;required_checks&quot;: [
+        &quot;engine&quot;,
+        &quot;web&quot;
+      ],
+      &quot;schema_version&quot;: &quot;release-policy/v1&quot;,
+      &quot;sha256&quot;: &quot;01870cefce693754e92000db8c2bd8d5db5f6a7222ca4b5a6e007ce60fbfa833&quot;
+    },
+    &quot;provenance&quot;: {
+      &quot;artifact_sha256&quot;: &quot;13292dab0b4b85efbd2a8403abf0e3fd15baf783671196e27fd19aa4ac381f29&quot;,
+      &quot;content_sha256&quot;: &quot;3338979716581972f8654eefb1762e0dedce0ca1280464635c2b065fdd536d02&quot;,
+      &quot;request_sha256&quot;: &quot;68561e0a423611d4933cd330daf3400a403476e540a827a4e94eebbb70162f9c&quot;,
+      &quot;response_sha256&quot;: &quot;ddbc3d9394af9bd84bfde659f42f886c641520645978b3980ae9afedc6e8f96a&quot;
+    },
+    &quot;reason&quot;: &quot;all required CI checks completed successfully: engine, web&quot;,
+    &quot;release&quot;: &quot;SAFE&quot;,
+    &quot;schema_version&quot;: &quot;release-evidence/v1&quot;
+  },
+  &quot;schema_version&quot;: &quot;exhibit-a-passport/v2&quot;,
   &quot;subject&quot;: {
-    &quot;case_id_sha256&quot;: &quot;dfb6b14a278a13deebc1310afaa13656f47eb4a520da861f7ad8ede98751d434&quot;,
+    &quot;case_id_sha256&quot;: &quot;bc7f1dccac29761cb0cf834cc44186f15814fef9f511c464e5c664abb47091f3&quot;,
     &quot;deterministic&quot;: true,
     &quot;evidence_sources&quot;: [],
     &quot;evidence_sources_omitted&quot;: 0,
@@ -102,26 +181,26 @@
     &quot;reruns&quot;: 3,
     &quot;revisions&quot;: {
       &quot;base_commit&quot;: &quot;3c3ec8996383750423f6f32d398850cd7af889e5&quot;,
-      &quot;target_commit&quot;: &quot;1f9473f8d6940935ec45a41cb518d9038e0bea0e&quot;
+      &quot;target_commit&quot;: &quot;de669e7e09aa5694911fe524ab30253f75a6b5cc&quot;
     },
     &quot;test_sha256&quot;: &quot;ba42f99844b63e898b43857657d56383d16dc21d2916188c8d0473a222ff94ec&quot;,
     &quot;truth&quot;: {
       &quot;execution&quot;: &quot;COMPLETED&quot;,
       &quot;goal&quot;: &quot;VERIFIED&quot;,
-      &quot;release&quot;: &quot;NOT_ASSESSED&quot;
+      &quot;release&quot;: &quot;SAFE&quot;
     },
     &quot;verdict&quot;: &quot;VERIFIED&quot;
   },
   &quot;verification&quot;: {
-    &quot;eef_format&quot;: &quot;eef/v2&quot;,
+    &quot;eef_format&quot;: &quot;eef/v3&quot;,
     &quot;execution_replayed&quot;: null,
     &quot;integrity_verified&quot;: true,
-    &quot;manifest_sha256&quot;: &quot;f4cdc44a08ead4287eaaeba6800474795ce946e40440dd1a6ccfe931737dc291&quot;,
+    &quot;manifest_sha256&quot;: &quot;98a4d395dc1167c6639bf6852b35f8a4219d83d821dffc05b1af68427c0f5366&quot;,
     &quot;publisher_signature_verified&quot;: true,
     &quot;signature&quot;: {
       &quot;algorithm&quot;: &quot;hmac-sha256&quot;,
       &quot;meaning&quot;: &quot;shared-key authenticity; publisher identity is not established&quot;,
-      &quot;value&quot;: &quot;aa505b5a39fbadcbd721eed563bd65bb2906cae99ebbf179eeadb909aa3bde61&quot;
+      &quot;value&quot;: &quot;54cec0a5226d77eee64353acdc35a7713a960ee65abcebc527855a7502032b38&quot;
     }
   }
 }</pre>
@@ -129,7 +208,7 @@
     </section>
 
     <footer>
-      <span>exhibit-a-passport/v1</span>
+      <span>exhibit-a-passport/v2</span>
       <span>No source, logs, credentials, or executable code embedded</span>
     </footer>
   </main>
