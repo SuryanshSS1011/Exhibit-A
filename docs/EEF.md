@@ -35,6 +35,12 @@ v1, v2, and v3 archives.
   receipt substitution across claims fails closed. Structurally invalid evidence remains
   invalid even when re-signed, but a trusted HMAC holder can author a different coherent
   receipt; EEF does not independently authenticate the forge response.
+- For bug claims carrying `release_evidence/v1`, offline verification also requires exactly
+  one archived CI receipt and re-runs the named `release-policy/v1` at the signed explicit
+  evaluation instant. The Case record contains the policy, receipt evidence ID, and time,
+  but not a duplicate result. The verifier compares its derived release truth and reason
+  with the signed truth fields. An assessed claim without its receipt, or a changed
+  policy/truth/receipt combination, fails closed even when validly re-signed.
 - `verify --execute` builds with Docker networking disabled. Bug bundles submit fresh raw
   outcomes to the unchanged `flip_check`. Refactor bundles repeat both archived states and
   compare the newly derived complete result with the recorded result. Replay can therefore
@@ -67,12 +73,13 @@ recomputed; URL-, path-, and userinfo-shaped handles are rejected, but publisher
 still treat all source and log content as private.
 
 Use `exhibit-a passport` to derive a verified, credential-free public JSON projection from
-v1/v2 bundles instead of publishing the private EEF directly. The current passport omits
+v1/v2 bundles instead of publishing the private EEF directly. Passport v2 also accepts an
+assessed EEF v3 bug claim created by `release-evidence`. The public projections omit
 source, test/contract code, raw logs, local paths, and free-form narratives while retaining
 the signed manifest root, truth separation, state summaries, local execution-receipt digests,
-and model-identity commitments. Remote v3 receipts remain private and are not yet accepted by
-the HTML renderer; the release-evidence CLI and allowlisted JSON/HTML projection are roadmap
-item 3. See the [public evidence passport](./PASSPORT.html).
+and model-identity commitments. Remote v3 receipts remain private; passport v2 exposes only
+the named policy, allowlisted required checks, timing/count summaries, digest commitments,
+and re-derived release truth. See the [public evidence passport](./PASSPORT.html).
 
 Integrity verification proves that the signed refactor evidence is internally coherent
 and that the archived trees match their signed tree digests. Only `verify --execute`
@@ -102,6 +109,15 @@ python3 -m exhibit_a.cli passport case.eef \
 
 python3 -m exhibit_a.cli passport-html case.passport.json \
   --signing-key /secure/eef.key --out case.passport.html
+
+# Collect one pinned CI observation and stage EEF v3 plus passport v2 outputs.
+python3 -m exhibit_a.cli release-evidence case.json \
+  --target-source /path/to/target --base-source /path/to/base \
+  --repository owner/name --revision 0123456789abcdef0123456789abcdef01234567 \
+  --policy release-policy.json --evaluated-at 2026-09-02T12:00:00+00:00 \
+  --token-env EXHIBIT_A_GITHUB_TOKEN --signing-key /secure/eef.key \
+  --eef-out release.eef --passport-json-out release.passport.json \
+  --passport-html-out release.passport.html
 ```
 
 ## Archive layout

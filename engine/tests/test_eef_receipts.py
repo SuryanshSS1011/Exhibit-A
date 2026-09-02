@@ -42,6 +42,7 @@ from exhibit_a.models.case import (
 )
 from exhibit_a.models.case import TestArtifact as CaseTestArtifact
 from exhibit_a.passport import create_passport
+from exhibit_a.release_evidence import create_release_record, parse_policy_document
 from exhibit_a.verdict.refactor_runner import collect_refactor_evidence
 
 KEY = b"eef-v3-receipt-publisher-key-32-bytes"
@@ -254,6 +255,33 @@ def _replace_request_digest(document: dict) -> None:
     )
 
 
+def _release_case() -> tuple[dict, ConnectorOutput[CIStatus]]:
+    output = _output()
+    record, assessment = create_release_record(
+        output,
+        parse_policy_document(
+            {
+                "schema_version": "release-policy/v1",
+                "name": "required-ci",
+                "required_checks": ["engine", "web"],
+                "max_age_s": 3600,
+            }
+        ),
+        evaluated_at=OBSERVED + timedelta(minutes=5),
+    )
+    case = _case("release-evidence")
+    case["truth"]["release"] = assessment.release.value
+    case["truth"]["release_reason"] = assessment.reason
+    case["release_evidence"] = record
+    return case, output
+
+
+def _rebind_receipts_to_case(blobs: dict[str, bytes]) -> None:
+    document = json.loads(blobs[RECEIPT_ENTRY])
+    document["claim_binding"]["claim_sha256"] = hashlib.sha256(blobs["case.json"]).hexdigest()
+    blobs[RECEIPT_ENTRY] = eef._canonical(document) + b"\n"
+
+
 def test_v3_receipts_are_deterministic_claim_bound_and_offline(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ):
@@ -288,7 +316,7 @@ def test_v3_receipts_are_deterministic_claim_bound_and_offline(
     assert verified.format_version == "eef/v3"
     assert len(verified.connector_receipts) == 1
     assert verified.connector_receipts[0]["provenance"]["observed_at"] == OBSERVED.isoformat()
-    with pytest.raises(ValueError, match="do not yet support EEF connector receipts"):
+    with pytest.raises(ValueError, match="requires assessed release evidence"):
         create_passport(first, tmp_path / "unsupported.passport.json", signing_key=KEY)
 
 
@@ -306,6 +334,73 @@ def test_v2_verification_exposes_no_remote_receipts(tmp_path: Path):
 
     assert verified.format_version == "eef/v2"
     assert verified.connector_receipts == ()
+
+
+def test_v3_rederives_release_truth_from_the_archived_receipt(tmp_path: Path):
+    base, target = _sources(tmp_path)
+    case, output = _release_case()
+    bundle = create_bundle(
+        case,
+        tmp_path / "release.eef",
+        target_source=target,
+        base_source=base,
+        signing_key=KEY,
+        connector_outputs=(output,),
+    )
+
+    verified = read_verified_claim(bundle, signing_key=KEY)
+
+    assert verified.claim["truth"]["release"] == "SAFE"
+    assert verify_bundle(bundle, signing_key=KEY).signature_verified
+
+
+@pytest.mark.parametrize("field", ["release", "release_reason"])
+def test_v3_rejects_validly_resigned_release_truth_tampering(tmp_path: Path, field: str):
+    base, target = _sources(tmp_path / "source")
+    case, output = _release_case()
+    bundle = create_bundle(
+        case,
+        tmp_path / "source" / "release.eef",
+        target_source=target,
+        base_source=base,
+        signing_key=KEY,
+        connector_outputs=(output,),
+    )
+
+    def mutate(blobs: dict[str, bytes]) -> None:
+        claim = json.loads(blobs["case.json"])
+        claim["truth"][field] = "UNSAFE" if field == "release" else "forged reason"
+        blobs["case.json"] = eef._canonical(claim) + b"\n"
+        _rebind_receipts_to_case(blobs)
+
+    tampered = _resign_bundle(bundle, tmp_path / f"tampered-{field}.eef", mutate)
+
+    with pytest.raises(ValueError, match="truth does not match"):
+        verify_bundle(tampered, signing_key=KEY)
+
+
+def test_v3_rejects_validly_resigned_release_policy_tampering(tmp_path: Path):
+    base, target = _sources(tmp_path / "source")
+    case, output = _release_case()
+    bundle = create_bundle(
+        case,
+        tmp_path / "source" / "release.eef",
+        target_source=target,
+        base_source=base,
+        signing_key=KEY,
+        connector_outputs=(output,),
+    )
+
+    def mutate(blobs: dict[str, bytes]) -> None:
+        claim = json.loads(blobs["case.json"])
+        claim["release_evidence"]["policy"]["required_checks"] = ["missing"]
+        blobs["case.json"] = eef._canonical(claim) + b"\n"
+        _rebind_receipts_to_case(blobs)
+
+    tampered = _resign_bundle(bundle, tmp_path / "tampered-policy.eef", mutate)
+
+    with pytest.raises(ValueError, match="truth does not match"):
+        verify_bundle(tampered, signing_key=KEY)
 
 
 @pytest.mark.parametrize(

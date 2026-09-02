@@ -138,6 +138,9 @@ def test_eef_verifier_preserves_legacy_v1_bug_bundle_compatibility(tmp_path: Pat
     )
 
     def make_legacy(blobs: dict[str, bytes]) -> None:
+        case = json.loads(blobs["case.json"])
+        case.pop("truth")
+        blobs["case.json"] = eef._canonical(case) + b"\n"
         manifest = json.loads(blobs["manifest.json"])
         manifest["format"] = "eef/v1"
         manifest.pop("claim_type")

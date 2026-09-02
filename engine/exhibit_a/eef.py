@@ -34,6 +34,7 @@ from .eef_receipts import (
 )
 from .executor.base import ExecOutcome
 from .models.case import Verdict, normalize_case_payload, normalize_verdict
+from .release_evidence import validate_release_evidence
 from .verdict.flip_check import flip_check
 
 FORMAT_VERSION = "eef/v2"
@@ -156,6 +157,11 @@ def create_bundle(
         payloads[RECEIPT_ENTRY] = receipt_archive.content
         format_version = RECEIPT_FORMAT_VERSION
 
+    validate_release_evidence(
+        case,
+        receipt_archive.receipts if receipt_archive else (),
+    )
+
     receipt_metadata = receipt_archive.manifest_metadata if receipt_archive else {}
 
     return _write_bundle(
@@ -222,11 +228,20 @@ def read_verified_claim(bundle: str | Path, *, signing_key: bytes) -> VerifiedCl
     """Return the validated claim needed for a public passport without replaying it."""
     verified = _verify_bundle(bundle, signing_key=signing_key, execute=False, docker_bin="docker")
     if verified.claim_type == "bug_flip":
-        _validate_public_bug_truth(verified.claim, archived_states=verified.archived_states)
+        _validate_public_bug_truth(
+            verified.claim,
+            archived_states=verified.archived_states,
+            connector_receipts=verified.connector_receipts,
+        )
     return verified
 
 
-def _validate_public_bug_truth(case: dict[str, Any], *, archived_states: tuple[str, ...]) -> None:
+def _validate_public_bug_truth(
+    case: dict[str, Any],
+    *,
+    archived_states: tuple[str, ...],
+    connector_receipts: tuple[dict[str, Any], ...],
+) -> None:
     """Re-derive an admissible bug claim before it can enter a public passport."""
     evidence = case.get("evidence")
     truth = case.get("truth")
@@ -281,10 +296,15 @@ def _validate_public_bug_truth(case: dict[str, Any], *, archived_states: tuple[s
         raise ValueError("EEF public bug claim is not admissible evidence")
     if flip.tier != expected_tier or evidence.get("deterministic") is not True:
         raise ValueError("EEF public bug verdict does not match its execution records")
+    release_evidence = validate_release_evidence(case, connector_receipts)
     expected_truth = {
         "execution": "COMPLETED",
         "goal": verdict.value,
-        "release": "NOT_ASSESSED",
+        "release": (
+            release_evidence.assessment.release.value
+            if release_evidence is not None
+            else "NOT_ASSESSED"
+        ),
     }
     if {name: truth.get(name) for name in expected_truth} != expected_truth:
         raise ValueError("EEF public bug truth does not match its derived verdict")
@@ -430,6 +450,11 @@ def _verify_bundle(
     claim = json.loads(blobs[claim_name])
     if not isinstance(claim, dict):
         raise TypeError("EEF verified claim payload was not an object")
+    if claim_type == "bug_flip" and format_version == RECEIPT_FORMAT_VERSION:
+        validate_release_evidence(
+            claim,
+            receipt_archive.receipts if receipt_archive else (),
+        )
     return VerifiedClaim(
         verification=VerificationResult(True, True, execution_verified),
         format_version=format_version,

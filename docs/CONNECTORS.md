@@ -80,6 +80,22 @@ program correctness. The evaluator returns release truth and a reason but has no
 the claim verdict, execution truth, or goal truth. A green forge response therefore cannot
 admit failed or uncertain claim evidence.
 
+The `release-evidence` command is the end-to-end consumer. It requires an exact remote
+`owner/name`, a full lowercase target SHA matching the Case, a strict named policy, and an
+explicit evaluation timestamp. The credential argument is an environment-variable name,
+never a token. Configuration, path, origin, policy, key, and credential presence are
+validated before the single collection call. The resulting Case stores a result-free
+policy/receipt/evaluation record beside release truth; offline EEF verification reads the
+archived receipt and re-runs the pure policy evaluator, rejecting a changed policy, reason,
+receipt, or release label even when the archive has been coherently re-signed.
+
+Hosted API connectors do not inherit process sandboxing from CLI-shaped providers. The
+GitHub adapter therefore states its narrower posture explicitly: direct in-process HTTPS,
+ambient-host credential access, no redirects or proxies, bounded response/check counts,
+and read-only source semantics. Future HTTP adapters must supply and document their own
+network, credential, redirect, size, and source-origin controls rather than assuming the
+Codex CLI subprocess sandbox applies to them.
+
 Test-execution receipts are stored in `Case.evidence_sources` and therefore covered by the
 existing EEF hash manifest and signature. The Git adapter returns its typed payload and the
 same receipt shape for callers to persist when they opt into that source. Local filesystem

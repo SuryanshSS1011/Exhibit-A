@@ -199,8 +199,9 @@ private Silence Ledger.
 
 Beyond `repro`, the CLI exposes the research surface as opt-in subcommands. These include
 `bundle`, `refactor-bundle`, and `verify` for signed, replayable evidence bundles,
-`passport` and `passport-html` for credential-free public trust artifacts, `study`
-for reproducibility, `self-audit` for the false-conviction rate on innocent refactors, and
+`passport` and `passport-html` for credential-free public trust artifacts,
+`release-evidence` for a pinned CI-policy EEF plus JSON/HTML passport, `study` for
+reproducibility, `self-audit` for the false-conviction rate on innocent refactors, and
 `oracle-gap` for benchmark oracle strength. See the
 [documentation site](https://suryanshss1011.github.io/Exhibit-A/) for each.
 

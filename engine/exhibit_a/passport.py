@@ -8,19 +8,24 @@ import json
 import os
 import re
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from .connectors import credential_free_source
 from .eef import VerifiedClaim, read_verified_claim
+from .release_evidence import public_release_projection, validate_release_evidence
 
 PASSPORT_SCHEMA = "exhibit-a-passport/v1"
+RELEASE_PASSPORT_SCHEMA = "exhibit-a-passport/v2"
 _PASSPORT_MAC_DOMAIN = b"exhibit-a-passport/v1\0"
+_RELEASE_PASSPORT_MAC_DOMAIN = b"exhibit-a-passport/v2\0"
 _SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 _UNKNOWN_IDENTITIES = {"unknown_no_telemetry", "unknown_unverified_backend"}
 _MAX_PROPOSAL_RUNS = 100
 _MAX_EVIDENCE_SOURCES = 1000
 _MAX_PASSPORT_BYTES = 1024 * 1024
+_MAX_RELEASE_REASON_CHARS = 64 * 1024
 _VERDICTS = {"VERIFIED", "PARTIAL", "FAILED", "UNCERTAIN"}
 _EXECUTION = {"NOT_RUN", "COMPLETED", "FAILED"}
 _RELEASE = {"NOT_ASSESSED", "SAFE", "UNSAFE", "UNCERTAIN"}
@@ -43,11 +48,12 @@ def create_passport(
         raise ValueError("passport output must not overwrite its EEF bundle")
     verified = read_verified_claim(bundle_path, signing_key=signing_key)
     passport = passport_from_verified_claim(verified)
+    mac_domain = _passport_mac_domain(passport["schema_version"])
     passport["passport_signature"] = {
         "algorithm": "hmac-sha256",
         "value": hmac.new(
             signing_key,
-            _PASSPORT_MAC_DOMAIN + _canonical(passport),
+            mac_domain + _canonical(passport),
             hashlib.sha256,
         ).hexdigest(),
         "meaning": "shared-key authenticity; publisher identity is not established",
@@ -74,25 +80,7 @@ def verify_passport(passport: dict[str, Any], *, signing_key: bytes) -> bool:
         raise ValueError("passport verification key must contain at least 32 bytes")
     if not isinstance(passport, dict):
         raise TypeError("passport must be a JSON object")
-    if (
-        set(passport)
-        != {
-            "schema_version",
-            "claim_type",
-            "subject",
-            "verification",
-            "privacy",
-            "passport_signature",
-        }
-        or passport.get("schema_version") != PASSPORT_SCHEMA
-    ):
-        raise ValueError("passport document shape is invalid")
-    if passport.get("claim_type") not in {"bug_flip", "behavior_preserving_refactor"}:
-        raise ValueError("passport claim type is invalid")
-    if not all(
-        isinstance(passport.get(name), dict) for name in ("subject", "verification", "privacy")
-    ):
-        raise ValueError("passport document sections are invalid")
+    mac_domain = _validate_passport_document(passport)
     signature = passport.get("passport_signature")
     if not isinstance(signature, dict) or set(signature) != {"algorithm", "value", "meaning"}:
         raise ValueError("passport signature is invalid")
@@ -105,7 +93,7 @@ def verify_passport(passport: dict[str, Any], *, signing_key: bytes) -> bool:
     del unsigned["passport_signature"]
     expected = hmac.new(
         signing_key,
-        _PASSPORT_MAC_DOMAIN + _canonical(unsigned),
+        mac_domain + _canonical(unsigned),
         hashlib.sha256,
     ).hexdigest()
     return hmac.compare_digest(value, expected)
@@ -115,18 +103,37 @@ def passport_from_verified_claim(verified: VerifiedClaim) -> dict[str, Any]:
     """Project a validated private claim into the allowlisted public schema."""
     if not verified.verification.integrity_verified or not verified.verification.signature_verified:
         raise ValueError("passport requires an integrity- and signature-verified EEF claim")
-    if verified.format_version not in {"eef/v1", "eef/v2"} or verified.connector_receipts:
-        raise ValueError("public passports do not yet support EEF connector receipts")
     if not _SHA256.fullmatch(verified.manifest_sha256):
         raise ValueError("verified EEF manifest digest is invalid")
+    release_projection = None
+    if verified.format_version in {"eef/v1", "eef/v2"}:
+        if verified.connector_receipts:
+            raise ValueError("legacy public passports cannot contain connector receipts")
+        schema_version = PASSPORT_SCHEMA
+    elif verified.format_version == "eef/v3":
+        if verified.claim_type != "bug_flip":
+            raise ValueError("release passports currently require a bug-flip claim")
+        if verified.verification.execution_verified is not None:
+            raise ValueError("release passport projection requires offline verification")
+        validated_release = validate_release_evidence(
+            verified.claim,
+            verified.connector_receipts,
+        )
+        if validated_release is None:
+            raise ValueError("EEF v3 public passport requires assessed release evidence")
+        release_projection = public_release_projection(validated_release)
+        schema_version = RELEASE_PASSPORT_SCHEMA
+    else:
+        raise ValueError(f"unsupported passport EEF format: {verified.format_version!r}")
+
     if verified.claim_type == "bug_flip":
         subject = _bug_subject(verified.claim)
     elif verified.claim_type == "behavior_preserving_refactor":
         subject = _refactor_subject(verified.claim)
     else:
         raise ValueError(f"unsupported passport claim type: {verified.claim_type!r}")
-    return {
-        "schema_version": PASSPORT_SCHEMA,
+    passport = {
+        "schema_version": schema_version,
         "claim_type": verified.claim_type,
         "subject": subject,
         "verification": {
@@ -152,6 +159,531 @@ def passport_from_verified_claim(verified: VerifiedClaim) -> dict[str, Any]:
             ],
         },
     }
+    if release_projection is not None:
+        passport["release_evidence"] = release_projection
+        passport["privacy"]["omits"].extend(
+            [
+                "raw remote responses",
+                "remote source and connector identities",
+            ]
+        )
+    return passport
+
+
+def _passport_mac_domain(schema_version: object) -> bytes:
+    if schema_version == PASSPORT_SCHEMA:
+        return _PASSPORT_MAC_DOMAIN
+    if schema_version == RELEASE_PASSPORT_SCHEMA:
+        return _RELEASE_PASSPORT_MAC_DOMAIN
+    raise ValueError("passport schema version is unsupported")
+
+
+def _validate_passport_document(passport: dict[str, Any]) -> bytes:
+    schema_version = passport.get("schema_version")
+    legacy_keys = {
+        "schema_version",
+        "claim_type",
+        "subject",
+        "verification",
+        "privacy",
+        "passport_signature",
+    }
+    if schema_version == PASSPORT_SCHEMA:
+        if set(passport) != legacy_keys:
+            raise ValueError("passport document shape is invalid")
+        if passport.get("claim_type") not in {"bug_flip", "behavior_preserving_refactor"}:
+            raise ValueError("passport claim type is invalid")
+    elif schema_version == RELEASE_PASSPORT_SCHEMA:
+        if set(passport) != legacy_keys | {"release_evidence"}:
+            raise ValueError("passport document shape is invalid")
+        if passport.get("claim_type") != "bug_flip":
+            raise ValueError("release passport claim type is invalid")
+        _validate_release_passport(passport)
+    else:
+        raise ValueError("passport document shape is invalid")
+    if not all(
+        isinstance(passport.get(name), dict) for name in ("subject", "verification", "privacy")
+    ):
+        raise ValueError("passport document sections are invalid")
+    return _passport_mac_domain(schema_version)
+
+
+def _validate_release_passport(passport: dict[str, Any]) -> None:
+    subject = passport.get("subject")
+    verification = passport.get("verification")
+    privacy = passport.get("privacy")
+    release = passport.get("release_evidence")
+    if not all(isinstance(value, dict) for value in (subject, verification, privacy, release)):
+        raise ValueError("release passport sections are invalid")
+    if (
+        set(verification)
+        != {
+            "eef_format",
+            "integrity_verified",
+            "publisher_signature_verified",
+            "execution_replayed",
+            "manifest_sha256",
+            "signature",
+        }
+        or verification.get("eef_format") != "eef/v3"
+        or verification.get("integrity_verified") is not True
+        or verification.get("publisher_signature_verified") is not True
+        or verification.get("execution_replayed") is not None
+        or not _SHA256.fullmatch(str(verification.get("manifest_sha256", "")))
+    ):
+        raise ValueError("release passport verification section is invalid")
+    eef_signature = verification.get("signature")
+    if (
+        not isinstance(eef_signature, dict)
+        or set(eef_signature) != {"algorithm", "value", "meaning"}
+        or eef_signature.get("algorithm") != "hmac-sha256"
+        or not _SHA256.fullmatch(str(eef_signature.get("value", "")))
+        or not isinstance(eef_signature.get("meaning"), str)
+    ):
+        raise ValueError("release passport EEF signature is invalid")
+    required_omissions = {
+        "raw remote responses",
+        "remote source and connector identities",
+    }
+    if (
+        set(privacy) != {"credential_free", "omits"}
+        or privacy.get("credential_free") is not True
+        or not isinstance(privacy.get("omits"), list)
+        or not all(isinstance(item, str) for item in privacy["omits"])
+        or not required_omissions.issubset(privacy["omits"])
+    ):
+        raise ValueError("release passport privacy section is invalid")
+    truth = subject.get("truth")
+    verdict = subject.get("verdict")
+    _validate_release_bug_subject(subject)
+    if (
+        not isinstance(truth, dict)
+        or set(truth) != {"execution", "goal", "release"}
+        or verdict not in {"VERIFIED", "PARTIAL"}
+        or truth.get("execution") != "COMPLETED"
+        or truth.get("goal") != verdict
+    ):
+        raise ValueError("release passport claim truth is invalid")
+    _validate_public_release_evidence(release, truth.get("release"))
+
+
+def _validate_release_bug_subject(subject: dict[str, Any]) -> None:
+    if set(subject) != {
+        "case_id_sha256",
+        "verdict",
+        "truth",
+        "deterministic",
+        "reruns",
+        "test_sha256",
+        "proposal_runs",
+        "proposal_runs_omitted",
+        "evidence_sources",
+        "evidence_sources_omitted",
+        "revisions",
+    }:
+        raise ValueError("release passport subject shape is invalid")
+    if (
+        not _SHA256.fullmatch(str(subject.get("case_id_sha256", "")))
+        or not _SHA256.fullmatch(str(subject.get("test_sha256", "")))
+        or subject.get("deterministic") is not True
+        or not _passport_int(subject.get("reruns"), minimum=1, maximum=20)
+        or not _passport_int(subject.get("proposal_runs_omitted"))
+        or not _passport_int(subject.get("evidence_sources_omitted"))
+    ):
+        raise ValueError("release passport subject evidence is invalid")
+    proposals = subject.get("proposal_runs")
+    sources = subject.get("evidence_sources")
+    revisions = subject.get("revisions")
+    if (
+        not isinstance(proposals, list)
+        or len(proposals) > _MAX_PROPOSAL_RUNS
+        or not all(_valid_public_proposal(item) for item in proposals)
+        or not isinstance(sources, list)
+        or len(sources) > _MAX_EVIDENCE_SOURCES
+        or not all(_valid_public_evidence_source(item) for item in sources)
+        or not isinstance(revisions, dict)
+        or not all(
+            name in {"base_commit", "target_commit", "culprit_commit", "culprit_parent_commit"}
+            and isinstance(revision, str)
+            and re.fullmatch(r"[0-9a-f]{7,64}", revision)
+            for name, revision in revisions.items()
+        )
+    ):
+        raise ValueError("release passport subject evidence is invalid")
+
+
+def _valid_public_proposal(value: object) -> bool:
+    if not isinstance(value, dict) or set(value) != {
+        "operation",
+        "provider",
+        "requested_model",
+        "confirmed_model",
+        "confirmed_version",
+        "output_sha256",
+        "input_tokens",
+        "output_tokens",
+        "total_tokens",
+        "tool_call_count",
+    }:
+        return False
+    return (
+        value.get("operation") in {"propose", "refine"}
+        and all(
+            _public_identity(value.get(name))
+            for name in ("provider", "requested_model", "confirmed_model", "confirmed_version")
+        )
+        and _SHA256.fullmatch(str(value.get("output_sha256", ""))) is not None
+        and all(
+            item is None or _passport_int(item, maximum=10**12)
+            for item in (
+                value.get("input_tokens"),
+                value.get("output_tokens"),
+                value.get("total_tokens"),
+            )
+        )
+        and _passport_int(value.get("tool_call_count"), maximum=10**9)
+    )
+
+
+def _valid_public_evidence_source(value: object) -> bool:
+    if not isinstance(value, dict) or set(value) != {
+        "evidence_id",
+        "connector_id",
+        "connector_version",
+        "capability",
+        "source",
+        "request_sha256",
+        "response_sha256",
+        "artifact_sha256",
+        "content_sha256",
+    }:
+        return False
+    return (
+        all(
+            _public_identity(value.get(name))
+            for name in ("evidence_id", "connector_id", "connector_version", "capability")
+        )
+        and (value.get("source") == "local-checkout" or _public_identity(value.get("source")))
+        and all(
+            _SHA256.fullmatch(str(value.get(name, ""))) is not None
+            for name in (
+                "request_sha256",
+                "response_sha256",
+                "artifact_sha256",
+                "content_sha256",
+            )
+        )
+    )
+
+
+def _public_identity(value: object) -> bool:
+    return value in _UNKNOWN_IDENTITIES or (
+        isinstance(value, str)
+        and value.startswith("sha256:")
+        and _SHA256.fullmatch(value.removeprefix("sha256:")) is not None
+    )
+
+
+def _passport_int(value: object, *, minimum: int = 0, maximum: int = 1000) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and minimum <= value <= maximum
+
+
+def _validate_public_release_evidence(value: dict[str, Any], subject_release: object) -> None:
+    if (
+        set(value)
+        != {
+            "schema_version",
+            "policy",
+            "checks",
+            "collection",
+            "freshness",
+            "provenance",
+            "release",
+            "reason",
+        }
+        or value.get("schema_version") != "release-evidence/v1"
+    ):
+        raise ValueError("release passport evidence shape is invalid")
+    policy = value.get("policy")
+    checks = value.get("checks")
+    collection = value.get("collection")
+    freshness = value.get("freshness")
+    provenance = value.get("provenance")
+    if not isinstance(policy, dict) or set(policy) != {
+        "schema_version",
+        "name",
+        "required_checks",
+        "max_age_s",
+        "sha256",
+    }:
+        raise ValueError("release passport policy is invalid")
+    required_checks = policy.get("required_checks")
+    max_age_s = policy.get("max_age_s")
+    if (
+        policy.get("schema_version") != "release-policy/v1"
+        or not isinstance(policy.get("name"), str)
+        or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", policy["name"])
+        or not isinstance(required_checks, list)
+        or not 1 <= len(required_checks) <= 128
+        or len(set(required_checks)) != len(required_checks)
+        or not all(
+            isinstance(name, str) and name.strip() == name and 1 <= len(name) <= 256
+            for name in required_checks
+        )
+        or not isinstance(max_age_s, int)
+        or isinstance(max_age_s, bool)
+        or not 1 <= max_age_s <= 31 * 24 * 60 * 60
+    ):
+        raise ValueError("release passport policy is invalid")
+    policy_without_digest = {
+        name: policy[name] for name in ("schema_version", "name", "required_checks", "max_age_s")
+    }
+    if policy.get("sha256") != hashlib.sha256(_canonical(policy_without_digest)).hexdigest():
+        raise ValueError("release passport policy digest is invalid")
+    if not isinstance(checks, list) or len(checks) > 250:
+        raise ValueError("release passport checks are invalid")
+    projected_names = []
+    for check in checks:
+        if not isinstance(check, dict) or set(check) != {
+            "name",
+            "status",
+            "conclusion",
+            "started_at",
+            "completed_at",
+        }:
+            raise ValueError("release passport check is invalid")
+        name = check.get("name")
+        status = check.get("status")
+        conclusion = check.get("conclusion")
+        if (
+            name not in required_checks
+            or not isinstance(status, str)
+            or not 1 <= len(status) <= 64
+            or conclusion is not None
+            and (not isinstance(conclusion, str) or len(conclusion) > 64)
+        ):
+            raise ValueError("release passport check is invalid")
+        for timestamp in (check.get("started_at"), check.get("completed_at")):
+            if timestamp is not None:
+                _passport_timestamp(timestamp, canonical=False)
+        projected_names.append(name)
+    if not isinstance(collection, dict) or set(collection) != {
+        "reported_total",
+        "collected_count",
+        "omitted_check_count",
+        "all_check_names_unique",
+    }:
+        raise ValueError("release passport collection summary is invalid")
+    reported_total = collection.get("reported_total")
+    collected_count = collection.get("collected_count")
+    omitted_check_count = collection.get("omitted_check_count")
+    if (
+        not isinstance(reported_total, int)
+        or isinstance(reported_total, bool)
+        or reported_total < 0
+        or not isinstance(collected_count, int)
+        or isinstance(collected_count, bool)
+        or not len(checks) <= collected_count <= 250
+        or not isinstance(omitted_check_count, int)
+        or isinstance(omitted_check_count, bool)
+        or omitted_check_count != collected_count - len(checks)
+        or not isinstance(collection.get("all_check_names_unique"), bool)
+    ):
+        raise ValueError("release passport collection summary is invalid")
+    if not isinstance(freshness, dict) or set(freshness) != {
+        "basis",
+        "observed_at",
+        "source_updated_at",
+        "evaluated_at",
+    }:
+        raise ValueError("release passport freshness is invalid")
+    if freshness.get("basis") != "point_in_time":
+        raise ValueError("release passport freshness is invalid")
+    observed_at = _passport_timestamp(freshness.get("observed_at"), canonical=True)
+    evaluated_at = _passport_timestamp(freshness.get("evaluated_at"), canonical=True)
+    if freshness.get("source_updated_at") is not None:
+        _passport_timestamp(freshness["source_updated_at"], canonical=False)
+    if (
+        not isinstance(provenance, dict)
+        or set(provenance)
+        != {
+            "request_sha256",
+            "response_sha256",
+            "artifact_sha256",
+            "content_sha256",
+        }
+        or not all(_SHA256.fullmatch(str(digest)) for digest in provenance.values())
+    ):
+        raise ValueError("release passport provenance is invalid")
+    release = value.get("release")
+    reason = value.get("reason")
+    if (
+        release not in {"SAFE", "UNSAFE", "UNCERTAIN"}
+        or release != subject_release
+        or not isinstance(reason, str)
+        or not reason
+        or len(reason) > _MAX_RELEASE_REASON_CHARS
+    ):
+        raise ValueError("release passport truth is inconsistent")
+    derived_release, derived_reason = _derive_public_release_truth(
+        checks=checks,
+        required_checks=required_checks,
+        collection=collection,
+        observed_at=observed_at,
+        evaluated_at=evaluated_at,
+        max_age_s=max_age_s,
+    )
+    if release != derived_release or reason != derived_reason:
+        raise ValueError("release passport public reason is inconsistent")
+    names_complete = len(projected_names) == len(required_checks) and set(projected_names) == set(
+        required_checks
+    )
+    names_unique = len(projected_names) == len(set(projected_names))
+    if release in {"SAFE", "UNSAFE"} and (
+        not names_complete
+        or not names_unique
+        or reported_total != collected_count
+        or collection["all_check_names_unique"] is not True
+        or not 0 <= (evaluated_at - observed_at).total_seconds() <= max_age_s
+    ):
+        raise ValueError("release passport truth is inconsistent")
+    if release == "SAFE" and not all(
+        check["status"] == "completed"
+        and check["conclusion"] == "success"
+        and _completion_is_fresh(check, observed_at, evaluated_at, max_age_s)
+        for check in checks
+    ):
+        raise ValueError("release passport SAFE truth is inconsistent")
+    failure_conclusions = {
+        "failure",
+        "cancelled",
+        "timed_out",
+        "action_required",
+        "startup_failure",
+    }
+    if release == "UNSAFE" and not any(
+        check["status"] == "completed"
+        and check["conclusion"] in failure_conclusions
+        and _completion_is_fresh(check, observed_at, evaluated_at, max_age_s)
+        for check in checks
+    ):
+        raise ValueError("release passport UNSAFE truth is inconsistent")
+
+
+def _derive_public_release_truth(
+    *,
+    checks: list[dict[str, Any]],
+    required_checks: list[str],
+    collection: dict[str, Any],
+    observed_at: datetime,
+    evaluated_at: datetime,
+    max_age_s: int,
+) -> tuple[str, str]:
+    observation_age = (evaluated_at - observed_at).total_seconds()
+    if observation_age < 0:
+        return "UNCERTAIN", "CI observation time is in the future"
+    if observation_age > max_age_s:
+        return "UNCERTAIN", "CI status observation is older than the policy allows"
+    if collection["reported_total"] != collection["collected_count"]:
+        return "UNCERTAIN", "CI status observation is incomplete"
+    if collection["all_check_names_unique"] is not True:
+        return "UNCERTAIN", "CI status contains duplicate check names"
+
+    indexed = {check["name"]: check for check in checks}
+    missing = [name for name in required_checks if name not in indexed]
+    if missing:
+        return "UNCERTAIN", f"required CI checks are missing: {', '.join(missing)}"
+
+    failures = []
+    indeterminate = []
+    failure_conclusions = {
+        "failure",
+        "cancelled",
+        "timed_out",
+        "action_required",
+        "startup_failure",
+    }
+    for name in required_checks:
+        check = indexed[name]
+        timing_issue = _public_completion_issue(
+            check,
+            observed_at=observed_at,
+            evaluated_at=evaluated_at,
+            max_age_s=max_age_s,
+        )
+        if timing_issue is not None:
+            indeterminate.append(f"{name} ({timing_issue})")
+        elif check["status"] != "completed":
+            indeterminate.append(f"{name} ({check['status']})")
+        elif check["conclusion"] == "success":
+            continue
+        elif check["conclusion"] in failure_conclusions:
+            failures.append(f"{name} ({check['conclusion']})")
+        else:
+            indeterminate.append(f"{name} ({check['conclusion'] or 'no conclusion'})")
+    if failures:
+        return "UNSAFE", f"required CI checks failed: {', '.join(failures)}"
+    if indeterminate:
+        return (
+            "UNCERTAIN",
+            f"required CI checks are not conclusively successful: {', '.join(indeterminate)}",
+        )
+    return (
+        "SAFE",
+        f"all required CI checks completed successfully: {', '.join(required_checks)}",
+    )
+
+
+def _public_completion_issue(
+    check: dict[str, Any],
+    *,
+    observed_at: datetime,
+    evaluated_at: datetime,
+    max_age_s: int,
+) -> str | None:
+    if check["status"] != "completed":
+        return None
+    completed_at = check.get("completed_at")
+    if completed_at is None:
+        return "invalid completion time"
+    completed = _passport_timestamp(completed_at, canonical=False)
+    if completed > observed_at or completed > evaluated_at:
+        return "completion time is in the future"
+    if (evaluated_at - completed).total_seconds() > max_age_s:
+        return "completion is stale"
+    return None
+
+
+def _completion_is_fresh(
+    check: dict[str, Any],
+    observed_at: datetime,
+    evaluated_at: datetime,
+    max_age_s: int,
+) -> bool:
+    completed_at = check.get("completed_at")
+    if completed_at is None:
+        return False
+    completed = _passport_timestamp(completed_at, canonical=False)
+    return (
+        completed <= observed_at
+        and completed <= evaluated_at
+        and (evaluated_at - completed).total_seconds() <= max_age_s
+    )
+
+
+def _passport_timestamp(value: object, *, canonical: bool) -> datetime:
+    if not isinstance(value, str) or not value or len(value) > 64:
+        raise ValueError("release passport timestamp is invalid")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ValueError("release passport timestamp is invalid") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ValueError("release passport timestamp must be timezone-aware")
+    parsed = parsed.astimezone(timezone.utc)
+    if canonical and value != parsed.isoformat():
+        raise ValueError("release passport timestamp must use canonical UTC form")
+    return parsed
 
 
 def _bug_subject(case: dict[str, Any]) -> dict[str, Any]:

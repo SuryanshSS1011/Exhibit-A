@@ -12,13 +12,17 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
 import zipfile
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
+from urllib.parse import urlsplit, urlunsplit
 
+from .connectors import CIStatusConnector, CIStatusRequest
 from .eef import (
     SourceSnapshotBudget,
     create_bundle,
@@ -31,6 +35,7 @@ from .eef_refactor import (
     REFACTOR_OUTPUT_LIMIT_BYTES,
     RefactorReplayExecutor,
 )
+from .eef_receipts import repository_coordinates
 from .engine import EngineConfig, EvidenceEngine, candidate_policy_reason
 from .executor.base import ExecSpec, RepoState
 from .executor.instrumented import RecordingExecutor, summarize_environment_attempts
@@ -40,10 +45,11 @@ from .hypothesis.generator import Candidate, Claim, CodexGenerator, Feedback, St
 from .hypothesis.property import CodexPropertyGenerator
 from .intake.git_bisect import bisect_reproduction
 from .intake.git_checkout import checkout_context, checkout_pair, checkout_triplet
-from .models.case import Case, Mode, Verdict, normalize_case_payload
+from .models.case import Case, Mode, ReleaseTruth, Verdict, normalize_case_payload
 from .passport import create_passport
 from .passport_html import create_html_passport
 from .providers import ProviderRole, load_provider_config
+from .release_evidence import create_release_record, parse_policy_document
 from .store.json_store import JsonCaseStore
 from .store.research import ResearchStore
 from .store.suite_gap import SuiteGapStore
@@ -392,6 +398,223 @@ def cmd_refactor_bundle(args: argparse.Namespace) -> int:
             executor.close()
     print(path)
     return 0
+
+
+_FULL_RELEASE_SHA = re.compile(r"[0-9a-f]{40}")
+
+
+def cmd_release_evidence(args: argparse.Namespace) -> int:
+    """Collect one pinned CI observation and mint private and public evidence artifacts."""
+    try:
+        case_path = Path(args.case).resolve(strict=True)
+        policy_path = Path(args.policy).resolve(strict=True)
+        key_path = Path(args.signing_key).resolve(strict=True)
+        target_source = Path(args.target_source).resolve(strict=True)
+        base_source = (
+            Path(args.base_source).resolve(strict=True) if args.base_source is not None else None
+        )
+        if not all(path.is_file() for path in (case_path, policy_path, key_path)):
+            raise ValueError("release-evidence Case, policy, and signing key must be files")
+        if not target_source.is_dir() or (base_source is not None and not base_source.is_dir()):
+            raise ValueError("release-evidence sources must be directories")
+
+        outputs = tuple(
+            Path(value).expanduser().resolve()
+            for value in (args.eef_out, args.passport_out, args.html_out)
+        )
+        _validate_release_output_paths(
+            outputs,
+            inputs=(case_path, policy_path, key_path),
+            sources=tuple(source for source in (target_source, base_source) if source is not None),
+        )
+
+        case = json.loads(case_path.read_text())
+        if not isinstance(case, dict):
+            raise TypeError("release-evidence Case JSON must contain an object")
+        repository_origin, repository = repository_coordinates(case.get("repo"))
+        if args.repository != repository:
+            raise ValueError("--repository does not match the Case repository")
+        if not _FULL_RELEASE_SHA.fullmatch(args.revision):
+            raise ValueError("--revision must be a full lowercase SHA-1")
+        if case.get("target_commit") != args.revision:
+            raise ValueError("--revision does not match the Case target commit")
+        _validate_release_api_base(repository_origin, args.api_base)
+
+        truth = case.get("truth")
+        if not isinstance(truth, dict):
+            raise ValueError("release-evidence Case is missing truth separation")
+        if case.get("release_evidence") is not None or truth.get("release") != "NOT_ASSESSED":
+            raise ValueError("release-evidence Case already contains a release assessment")
+
+        named_policy = parse_policy_document(json.loads(policy_path.read_text()))
+        evaluated_at = _release_evaluation_time(args.evaluated_at)
+        key = key_path.read_bytes()
+        if len(key) < 32:
+            raise ValueError("EEF signing key must contain at least 32 bytes")
+        connector_options = {"token_env": args.token_env}
+        if args.api_base is not None:
+            connector_options["api_base"] = args.api_base
+        connector = CIStatusConnector(**connector_options)
+        if not os.environ.get(args.token_env):
+            raise ValueError(f"CI status credential environment {args.token_env!r} is not set")
+
+        for destination in outputs:
+            destination.parent.mkdir(parents=True, exist_ok=True)
+        with (
+            tempfile.TemporaryDirectory(
+                prefix=".exhibit-a-release-eef-", dir=outputs[0].parent
+            ) as eef_tmp,
+            tempfile.TemporaryDirectory(
+                prefix=".exhibit-a-release-json-", dir=outputs[1].parent
+            ) as json_tmp,
+            tempfile.TemporaryDirectory(
+                prefix=".exhibit-a-release-html-", dir=outputs[2].parent
+            ) as html_tmp,
+        ):
+            snapshot_root = Path(eef_tmp) / "snapshots"
+            snapshot_budget = SourceSnapshotBudget()
+            target_snapshot = materialize_source_snapshot(
+                target_source,
+                snapshot_root / "target",
+                budget=snapshot_budget,
+            )
+            base_snapshot = (
+                materialize_source_snapshot(
+                    base_source,
+                    snapshot_root / "base",
+                    budget=snapshot_budget,
+                )
+                if base_source is not None
+                else None
+            )
+            create_bundle(
+                case,
+                Path(eef_tmp) / "preflight.eef",
+                target_source=target_snapshot,
+                base_source=base_snapshot,
+                signing_key=key,
+            )
+
+            collected = connector.collect(CIStatusRequest(args.repository, args.revision))
+            record, assessment = create_release_record(
+                collected,
+                named_policy,
+                evaluated_at=evaluated_at,
+            )
+            claim = json.loads(json.dumps(case))
+            claim["truth"]["release"] = assessment.release.value
+            claim["truth"]["release_reason"] = assessment.reason
+            claim["release_evidence"] = record
+
+            private_eef = create_bundle(
+                claim,
+                Path(eef_tmp) / "release.eef",
+                target_source=target_snapshot,
+                base_source=base_snapshot,
+                signing_key=key,
+                connector_outputs=(collected,),
+            )
+            public_json = create_passport(
+                private_eef,
+                Path(json_tmp) / "release.passport.json",
+                signing_key=key,
+            )
+            public_html = create_html_passport(
+                public_json,
+                Path(html_tmp) / "release.passport.html",
+                signing_key=key,
+            )
+            _install_release_outputs((private_eef, public_json, public_html), outputs)
+    except (
+        OSError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+        json.JSONDecodeError,
+        zipfile.BadZipFile,
+    ) as exc:
+        print(f"error: cannot create release evidence: {exc}", file=sys.stderr)
+        return 2
+
+    print(
+        json.dumps(
+            {
+                "release": assessment.release.value,
+                "eef": str(outputs[0]),
+                "passport_json": str(outputs[1]),
+                "passport_html": str(outputs[2]),
+            },
+            sort_keys=True,
+        )
+    )
+    return 0 if assessment.release is ReleaseTruth.SAFE else 1
+
+
+def _validate_release_output_paths(
+    outputs: tuple[Path, ...],
+    *,
+    inputs: tuple[Path, ...],
+    sources: tuple[Path, ...],
+) -> None:
+    if len(outputs) != 3 or len(set(outputs)) != 3:
+        raise ValueError("release-evidence outputs must be three distinct paths")
+    if any(output.exists() for output in outputs):
+        raise ValueError("release-evidence outputs must not already exist")
+    if any(output in inputs for output in outputs):
+        raise ValueError("release-evidence output must not overwrite an input")
+    if any(output.is_relative_to(source) for output in outputs for source in sources):
+        raise ValueError("release-evidence outputs cannot be inside a source tree")
+    if any(key.is_relative_to(source) for key in inputs[-1:] for source in sources):
+        raise ValueError("EEF signing key cannot be inside a source tree")
+
+
+def _install_release_outputs(sources: tuple[Path, ...], destinations: tuple[Path, ...]) -> None:
+    """Publish a staged set without overwriting a raced destination or leaving a partial set."""
+    installed: list[tuple[Path, os.stat_result]] = []
+    try:
+        for source, destination in zip(sources, destinations, strict=True):
+            source_stat = source.stat(follow_symlinks=False)
+            os.link(source, destination, follow_symlinks=False)
+            installed.append((destination, source_stat))
+    except BaseException:
+        for destination, source_stat in reversed(installed):
+            try:
+                destination_stat = destination.stat(follow_symlinks=False)
+                if os.path.samestat(destination_stat, source_stat):
+                    destination.unlink()
+            except OSError:
+                pass
+        raise
+
+
+def _validate_release_api_base(repository_origin: str, api_base: str | None) -> None:
+    if api_base is None:
+        if repository_origin != "https://github.com":
+            raise ValueError("non-GitHub repositories require an explicit matching --api-base")
+        return
+    parsed = urlsplit(api_base)
+    if parsed.username or parsed.password or parsed.query or parsed.fragment:
+        raise ValueError("--api-base contains credentials, query, or fragment")
+    api_origin, _ = repository_coordinates(
+        urlunsplit((parsed.scheme, parsed.netloc, "/owner/name", "", ""))
+    )
+    expected = (
+        "https://api.github.com" if repository_origin == "https://github.com" else repository_origin
+    )
+    if api_origin != expected:
+        raise ValueError("--api-base does not match the Case repository origin")
+    if repository_origin == "https://github.com" and parsed.path.rstrip("/"):
+        raise ValueError("public GitHub --api-base must not contain a path")
+
+
+def _release_evaluation_time(value: str) -> datetime:
+    try:
+        evaluated_at = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except (AttributeError, ValueError) as exc:
+        raise ValueError("--evaluated-at must be an RFC 3339 timestamp") from exc
+    if evaluated_at.tzinfo is None or evaluated_at.utcoffset() is None:
+        raise ValueError("--evaluated-at must include a timezone")
+    return evaluated_at
 
 
 def cmd_verify(args: argparse.Namespace) -> int:
@@ -920,6 +1143,54 @@ def main(argv: list[str] | None = None) -> int:
     )
     refactor_bundle.add_argument("--out", required=True, help="output .eef path")
     refactor_bundle.set_defaults(func=cmd_refactor_bundle)
+
+    release_evidence = sub.add_parser(
+        "release-evidence",
+        help="collect pinned CI status and mint EEF plus public release passports",
+    )
+    release_evidence.add_argument("case", help="Case JSON whose target revision is assessed")
+    release_evidence.add_argument("--target-source", required=True, help="target source snapshot")
+    release_evidence.add_argument("--base-source", help="base source snapshot for a full flip")
+    release_evidence.add_argument(
+        "--repository", required=True, help="expected remote repository as owner/name"
+    )
+    release_evidence.add_argument(
+        "--revision", required=True, help="expected full lowercase target commit SHA-1"
+    )
+    release_evidence.add_argument(
+        "--policy", required=True, help="strict named release-policy/v1 JSON file"
+    )
+    release_evidence.add_argument(
+        "--evaluated-at",
+        required=True,
+        help="explicit RFC 3339 evaluation instant",
+    )
+    release_evidence.add_argument(
+        "--token-env",
+        required=True,
+        help="name of the environment variable containing the read-only GitHub token",
+    )
+    release_evidence.add_argument(
+        "--api-base",
+        help="GitHub API base; required for a matching non-github.com origin",
+    )
+    release_evidence.add_argument(
+        "--signing-key", required=True, help="file containing at least 32 key bytes"
+    )
+    release_evidence.add_argument("--eef-out", required=True, help="private EEF v3 output")
+    release_evidence.add_argument(
+        "--passport-json-out",
+        dest="passport_out",
+        required=True,
+        help="public passport v2 JSON output",
+    )
+    release_evidence.add_argument(
+        "--passport-html-out",
+        dest="html_out",
+        required=True,
+        help="standalone public passport HTML output",
+    )
+    release_evidence.set_defaults(func=cmd_release_evidence)
 
     verify = sub.add_parser("verify", help="verify an EEF archive offline")
     verify.add_argument("bundle", help="EEF archive to verify")

@@ -118,7 +118,7 @@ def claim_binding(
         raise ValueError("EEF remote receipts require a repository source URL")
     if not isinstance(revision, str):
         raise ValueError("EEF remote receipts require a target revision")
-    repository_origin, repository = _repository_coordinates(repository_source)
+    repository_origin, repository = repository_coordinates(repository_source)
     return ReceiptBinding(
         claim_type=claim_type,
         claim_sha256=hashlib.sha256(claim_content).hexdigest(),
@@ -354,8 +354,9 @@ def _validate_provenance(
         raise ValueError("EEF connector receipt was not collected read-only")
 
 
-def _repository_coordinates(source: str) -> tuple[str, str]:
-    if not _safe_remote_url(source):
+def repository_coordinates(source: object) -> tuple[str, str]:
+    """Return the canonical origin and owner/name identity for a remote repository."""
+    if not isinstance(source, str) or not _safe_remote_url(source):
         raise ValueError("EEF remote receipts require a safe repository source URL")
     parsed = urlsplit(source)
     parts = [part for part in parsed.path.split("/") if part]

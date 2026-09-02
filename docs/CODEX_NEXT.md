@@ -75,7 +75,7 @@ exercise remote advisory receipts without first introducing a database lifecycle
   v2 output remains byte-identical and v1/v2 fixtures continue to verify.
   Verify: `cd engine && python3 -m pytest -q tests/test_eef.py tests/test_eef_refactor.py tests/test_connectors.py`
 
-- [ ] **3. Add a release-evidence CLI and public projection**
+- [x] **3. Add a release-evidence CLI and public projection**
   Source refs: `cli.py`, `passport.py`, `passport_html.py`, `docs/PASSPORT.md`.
   What to build: Add one explicit CLI workflow that collects CI status for an immutable
   SHA, evaluates a named local policy, archives the receipt, and projects the result into

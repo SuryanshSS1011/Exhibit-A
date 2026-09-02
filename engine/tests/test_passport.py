@@ -5,6 +5,8 @@ import hmac
 import json
 import os
 import zipfile
+from dataclasses import asdict, replace
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -13,6 +15,16 @@ from exhibit_a import eef
 from exhibit_a import passport as passport_module
 from exhibit_a import passport_html as passport_html_module
 from exhibit_a.cli import main
+from exhibit_a.connectors import (
+    CICheckRun,
+    CIStatus,
+    ConnectorOutput,
+    ConnectorSecurity,
+    EvidenceKind,
+    EvidenceProvenance,
+    Freshness,
+    hash_payload,
+)
 from exhibit_a.eef import create_bundle, create_refactor_bundle, read_verified_claim
 from exhibit_a.executor.base import ExecOutcome, ExecSpec, Executor, RepoState
 from exhibit_a.models.case import (
@@ -29,17 +41,21 @@ from exhibit_a.models.case import (
 from exhibit_a.models.case import TestArtifact as CaseTestArtifact
 from exhibit_a.passport import (
     PASSPORT_SCHEMA,
+    RELEASE_PASSPORT_SCHEMA,
     create_passport,
     passport_from_verified_claim,
     verify_passport,
 )
 from exhibit_a.passport_html import create_html_passport, render_html_passport
+from exhibit_a.release_evidence import create_release_record, parse_policy_document
 from exhibit_a.verdict.refactor_runner import collect_refactor_evidence
 
 KEY = b"public-passport-test-key-at-least-32-bytes"
 SECRET = "TOP_SECRET_SHOULD_NOT_APPEAR"
 PLAIN_SECRET = "sk-proj-PlainCredential123"
 PATH_SECRET = "ghp_PathCredential789"
+RELEASE_REVISION = "1f9473f8d6940935ec45a41cb518d9038e0bea0e"
+RELEASE_OBSERVED = datetime(2026, 9, 1, 12, 0, tzinfo=timezone.utc)
 
 
 class PassingExecutor(Executor):
@@ -93,6 +109,128 @@ def _resign_passport(payload: dict) -> None:
         b"exhibit-a-passport/v1\0" + eef._canonical(unsigned),
         hashlib.sha256,
     ).hexdigest()
+
+
+def _resign_release_passport(payload: dict, *, legacy_domain: bool = False) -> None:
+    unsigned = dict(payload)
+    del unsigned["passport_signature"]
+    domain = b"exhibit-a-passport/v1\0" if legacy_domain else b"exhibit-a-passport/v2\0"
+    payload["passport_signature"]["value"] = hmac.new(
+        KEY,
+        domain + eef._canonical(unsigned),
+        hashlib.sha256,
+    ).hexdigest()
+
+
+def _release_output(*, duplicate_optional: bool = False) -> ConnectorOutput[CIStatus]:
+    checks = (
+        CICheckRun(
+            "engine",
+            "completed",
+            "success",
+            (RELEASE_OBSERVED - timedelta(minutes=3)).isoformat(),
+            (RELEASE_OBSERVED - timedelta(minutes=1)).isoformat(),
+        ),
+        CICheckRun(
+            "private-optional-job",
+            "completed",
+            "success",
+            (RELEASE_OBSERVED - timedelta(minutes=3)).isoformat(),
+            (RELEASE_OBSERVED - timedelta(minutes=1)).isoformat(),
+        ),
+        CICheckRun(
+            "web",
+            "completed",
+            "success",
+            (RELEASE_OBSERVED - timedelta(minutes=3)).isoformat(),
+            (RELEASE_OBSERVED - timedelta(minutes=1)).isoformat(),
+        ),
+    )
+    if duplicate_optional:
+        checks += (checks[1],)
+    status = CIStatus("example/project", RELEASE_REVISION, len(checks), checks)
+    source = "https://ci.private.invalid/repos/example/project"
+    request = {
+        "repository": status.repository,
+        "revision": status.revision,
+        "source": source,
+    }
+    request_sha256 = hash_payload(request)
+    response_sha256 = hash_payload(status.payload())
+    return ConnectorOutput(
+        status,
+        EvidenceProvenance(
+            evidence_id="1" * 32,
+            connector_id="private-ci-connector",
+            connector_version="private-version",
+            capability=EvidenceKind.CI_STATUS,
+            source=source,
+            source_revision=RELEASE_REVISION,
+            observed_at=RELEASE_OBSERVED.isoformat(),
+            source_updated_at=(RELEASE_OBSERVED - timedelta(minutes=1)).isoformat(),
+            freshness=Freshness.POINT_IN_TIME,
+            description="private connector description",
+            request_sha256=request_sha256,
+            response_sha256=response_sha256,
+            artifact_sha256="2" * 64,
+            content_sha256=hash_payload(
+                {
+                    "request_sha256": request_sha256,
+                    "response_sha256": response_sha256,
+                }
+            ),
+            security=ConnectorSecurity(
+                source_access="read_only",
+                network_access="host_unrestricted",
+                isolation="in_process",
+                credential_access="ambient_host",
+            ),
+        ),
+    )
+
+
+def _release_receipt(output: ConnectorOutput[CIStatus]) -> dict:
+    receipt = {
+        "payload_schema": "ci-status/v1",
+        "request": {
+            "repository": output.payload.repository,
+            "revision": output.payload.revision,
+            "source": output.provenance.source,
+        },
+        "payload": output.payload.payload(),
+        "provenance": asdict(output.provenance),
+    }
+    return json.loads(json.dumps(receipt))
+
+
+def _release_verified_claim(tmp_path: Path, *, duplicate_optional: bool = False):
+    legacy = read_verified_claim(_bug_bundle(tmp_path), signing_key=KEY)
+    output = _release_output(duplicate_optional=duplicate_optional)
+    policy = parse_policy_document(
+        {
+            "schema_version": "release-policy/v1",
+            "name": "main-release",
+            "required_checks": ["engine", "web"],
+            "max_age_s": 3600,
+        }
+    )
+    record, assessment = create_release_record(
+        output,
+        policy,
+        evaluated_at=RELEASE_OBSERVED + timedelta(minutes=5),
+    )
+    claim = json.loads(json.dumps(legacy.claim))
+    claim["repo"] = "https://github.com/example/project"
+    claim["target_commit"] = RELEASE_REVISION
+    claim["release_evidence"] = record
+    claim["truth"]["release"] = assessment.release.value
+    claim["truth"]["release_reason"] = assessment.reason
+    return replace(
+        legacy,
+        format_version="eef/v3",
+        claim=claim,
+        connector_receipts=(_release_receipt(output),),
+    )
 
 
 def _bug_bundle(tmp_path: Path) -> Path:
@@ -219,6 +357,199 @@ def test_bug_passport_is_verified_hash_linked_and_credential_free(tmp_path: Path
     assert "ConfirmedCredential456" not in encoded
     assert "test_repro.py" not in encoded
     assert KEY.decode() not in encoded
+
+
+def test_release_passport_v2_projects_only_allowlisted_rederived_evidence(tmp_path: Path):
+    verified = _release_verified_claim(tmp_path)
+
+    passport = passport_from_verified_claim(verified)
+    encoded = json.dumps(passport, sort_keys=True)
+
+    assert passport["schema_version"] == RELEASE_PASSPORT_SCHEMA
+    assert set(passport) == {
+        "schema_version",
+        "claim_type",
+        "subject",
+        "verification",
+        "privacy",
+        "release_evidence",
+    }
+    assert passport["verification"]["eef_format"] == "eef/v3"
+    assert passport["subject"]["truth"]["release"] == "SAFE"
+    release = passport["release_evidence"]
+    assert release["release"] == "SAFE"
+    assert [check["name"] for check in release["checks"]] == ["engine", "web"]
+    assert all(
+        set(check) == {"name", "status", "conclusion", "started_at", "completed_at"}
+        for check in release["checks"]
+    )
+    assert release["collection"] == {
+        "reported_total": 3,
+        "collected_count": 3,
+        "omitted_check_count": 1,
+        "all_check_names_unique": True,
+    }
+    public_policy = dict(release["policy"])
+    policy_digest = public_policy.pop("sha256")
+    assert policy_digest == hashlib.sha256(eef._canonical(public_policy)).hexdigest()
+    assert set(release["provenance"]) == {
+        "request_sha256",
+        "response_sha256",
+        "artifact_sha256",
+        "content_sha256",
+    }
+    assert "private-optional-job" not in encoded
+    assert "ci.private.invalid" not in encoded
+    assert "example/project" not in encoded
+    assert "private-ci-connector" not in encoded
+    assert "private-version" not in encoded
+    assert "private connector description" not in encoded
+    assert "1" * 32 not in encoded
+    assert "security" not in encoded
+
+
+def test_release_passport_uses_a_distinct_domain_and_rejects_semantic_tampering(
+    tmp_path: Path,
+):
+    payload = passport_from_verified_claim(_release_verified_claim(tmp_path))
+    payload["passport_signature"] = {
+        "algorithm": "hmac-sha256",
+        "value": "0" * 64,
+        "meaning": "shared-key authenticity; publisher identity is not established",
+    }
+    _resign_release_passport(payload)
+
+    assert verify_passport(payload, signing_key=KEY)
+
+    wrong_domain = json.loads(json.dumps(payload))
+    _resign_release_passport(wrong_domain, legacy_domain=True)
+    assert not verify_passport(wrong_domain, signing_key=KEY)
+
+    replayed = json.loads(json.dumps(payload))
+    replayed["verification"]["execution_replayed"] = True
+    _resign_release_passport(replayed)
+    with pytest.raises(ValueError, match="verification section"):
+        verify_passport(replayed, signing_key=KEY)
+
+    contradictory = json.loads(json.dumps(payload))
+    contradictory["release_evidence"]["release"] = "UNSAFE"
+    _resign_release_passport(contradictory)
+    with pytest.raises(ValueError, match="truth is inconsistent"):
+        verify_passport(contradictory, signing_key=KEY)
+
+    false_reason = json.loads(json.dumps(payload))
+    false_reason["release_evidence"]["reason"] = "all checks were probably fine"
+    _resign_release_passport(false_reason)
+    with pytest.raises(ValueError, match="public reason"):
+        verify_passport(false_reason, signing_key=KEY)
+
+    identity_leak = json.loads(json.dumps(payload))
+    identity_leak["release_evidence"]["provenance"]["connector_id"] = "private-ci"
+    _resign_release_passport(identity_leak)
+    with pytest.raises(ValueError, match="provenance"):
+        verify_passport(identity_leak, signing_key=KEY)
+
+    bad_policy_digest = json.loads(json.dumps(payload))
+    bad_policy_digest["release_evidence"]["policy"]["sha256"] = "f" * 64
+    _resign_release_passport(bad_policy_digest)
+    with pytest.raises(ValueError, match="policy digest"):
+        verify_passport(bad_policy_digest, signing_key=KEY)
+
+    false_collection = json.loads(json.dumps(payload))
+    false_collection["release_evidence"]["collection"]["collected_count"] = 4
+    _resign_release_passport(false_collection)
+    with pytest.raises(ValueError, match="collection summary"):
+        verify_passport(false_collection, signing_key=KEY)
+
+    stale_success = json.loads(json.dumps(payload))
+    stale_success["release_evidence"]["checks"][0]["completed_at"] = (
+        RELEASE_OBSERVED - timedelta(days=1)
+    ).isoformat()
+    _resign_release_passport(stale_success)
+    with pytest.raises(ValueError, match="public reason"):
+        verify_passport(stale_success, signing_key=KEY)
+
+    extra_subject_field = json.loads(json.dumps(payload))
+    extra_subject_field["subject"]["private_connector_id"] = "private-ci"
+    _resign_release_passport(extra_subject_field)
+    with pytest.raises(ValueError, match="subject shape"):
+        verify_passport(extra_subject_field, signing_key=KEY)
+
+
+def test_release_passport_sanitizes_duplicate_optional_check_reason(tmp_path: Path):
+    passport = passport_from_verified_claim(
+        _release_verified_claim(tmp_path, duplicate_optional=True)
+    )
+    encoded = json.dumps(passport, sort_keys=True)
+
+    assert passport["subject"]["truth"]["release"] == "UNCERTAIN"
+    assert passport["release_evidence"]["release"] == "UNCERTAIN"
+    assert passport["release_evidence"]["reason"] == "CI status contains duplicate check names"
+    assert passport["release_evidence"]["collection"]["all_check_names_unique"] is False
+    assert "private-optional-job" not in encoded
+
+
+def test_create_release_passport_is_deterministic_and_signed_as_v2(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+):
+    verified = _release_verified_claim(tmp_path)
+    bundle = tmp_path / "release.eef"
+    bundle.write_bytes(b"verified privately by the test double")
+    monkeypatch.setattr(passport_module, "read_verified_claim", lambda *_args, **_kwargs: verified)
+
+    first = create_passport(bundle, tmp_path / "first-v2.json", signing_key=KEY)
+    second = create_passport(bundle, tmp_path / "second-v2.json", signing_key=KEY)
+
+    assert first.read_bytes() == second.read_bytes()
+    payload = json.loads(first.read_text())
+    assert payload["schema_version"] == RELEASE_PASSPORT_SCHEMA
+    assert verify_passport(payload, signing_key=KEY)
+
+
+def test_release_passport_requires_assessed_v3_bug_evidence(tmp_path: Path):
+    assessed = _release_verified_claim(tmp_path)
+    unassessed_claim = json.loads(json.dumps(assessed.claim))
+    del unassessed_claim["release_evidence"]
+    unassessed_claim["truth"]["release"] = "NOT_ASSESSED"
+    unassessed_claim["truth"]["release_reason"] = "release safety was not assessed"
+
+    with pytest.raises(ValueError, match="requires assessed release evidence"):
+        passport_from_verified_claim(
+            replace(assessed, claim=unassessed_claim, connector_receipts=())
+        )
+    with pytest.raises(ValueError, match="bug-flip claim"):
+        passport_from_verified_claim(replace(assessed, claim_type="behavior_preserving_refactor"))
+
+
+def test_release_passport_html_renders_allowlisted_policy_without_private_identity(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+):
+    verified = _release_verified_claim(tmp_path)
+    bundle = tmp_path / "release.eef"
+    bundle.write_bytes(b"verified privately by the test double")
+    monkeypatch.setattr(passport_module, "read_verified_claim", lambda *_args, **_kwargs: verified)
+    passport = create_passport(bundle, tmp_path / "release.json", signing_key=KEY)
+
+    first = create_html_passport(passport, tmp_path / "first.html", signing_key=KEY)
+    second = create_html_passport(passport, tmp_path / "second.html", signing_key=KEY)
+
+    assert first.read_bytes() == second.read_bytes()
+    rendered = first.read_text()
+    assert "Release policy observation" in rendered
+    assert "Named checks at a pinned instant" in rendered
+    assert "main-release" in rendered
+    assert "engine" in rendered
+    assert "web" in rendered
+    assert "SAFE means only" in rendered
+    for private_value in (
+        "private-optional-job",
+        "ci.private.invalid",
+        "private-ci-connector",
+        "private connector description",
+    ):
+        assert private_value not in rendered
 
 
 def test_refactor_passport_omits_private_contract_logs_sources_and_paths(tmp_path: Path):

@@ -10,7 +10,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from .passport import PASSPORT_SCHEMA, verify_passport
+from .passport import PASSPORT_SCHEMA, RELEASE_PASSPORT_SCHEMA, verify_passport
 
 _MAX_JSON_BYTES = 1024 * 1024
 _MAX_HTML_BYTES = 2 * 1024 * 1024
@@ -88,6 +88,7 @@ def _validate_depth(value: object, *, maximum: int = 64) -> None:
 
 
 def _validate_render_schema(passport: dict[str, Any]) -> None:
+    schema_version = passport.get("schema_version")
     verification = passport["verification"]
     privacy = passport["privacy"]
     if set(verification) != {
@@ -102,7 +103,13 @@ def _validate_render_schema(passport: dict[str, Any]) -> None:
     if (
         verification.get("integrity_verified") is not True
         or verification.get("publisher_signature_verified") is not True
-        or verification.get("eef_format") not in {"eef/v1", "eef/v2"}
+        or (
+            schema_version == PASSPORT_SCHEMA
+            and verification.get("eef_format") not in {"eef/v1", "eef/v2"}
+        )
+        or (
+            schema_version == RELEASE_PASSPORT_SCHEMA and verification.get("eef_format") != "eef/v3"
+        )
         or not (
             verification.get("execution_replayed") is None
             or isinstance(verification.get("execution_replayed"), bool)
@@ -129,12 +136,20 @@ def _validate_render_schema(passport: dict[str, Any]) -> None:
 
     subject = passport["subject"]
     if passport["claim_type"] == "bug_flip":
-        _validate_bug_subject(subject)
+        expected_release = "NOT_ASSESSED"
+        if schema_version == RELEASE_PASSPORT_SCHEMA:
+            release_evidence = passport.get("release_evidence")
+            if not isinstance(release_evidence, dict):
+                raise ValueError("release passport evidence section is invalid")
+            expected_release = release_evidence.get("release")
+        _validate_bug_subject(subject, expected_release=expected_release)
     else:
+        if schema_version != PASSPORT_SCHEMA:
+            raise ValueError("release passport claim type is invalid")
         _validate_refactor_subject(subject)
 
 
-def _validate_bug_subject(subject: dict[str, Any]) -> None:
+def _validate_bug_subject(subject: dict[str, Any], *, expected_release: object) -> None:
     expected = {
         "case_id_sha256",
         "verdict",
@@ -163,7 +178,7 @@ def _validate_bug_subject(subject: dict[str, Any]) -> None:
         subject.get("truth"),
         expected_goal=subject["verdict"],
         expected_execution="COMPLETED",
-        expected_release="NOT_ASSESSED",
+        expected_release=expected_release,
     )
     proposals = subject.get("proposal_runs")
     sources = subject.get("evidence_sources")
@@ -303,7 +318,7 @@ def _validate_truth(
     *,
     expected_goal: str,
     expected_execution: str | None,
-    expected_release: str,
+    expected_release: object,
 ) -> None:
     if (
         not isinstance(value, dict)
@@ -408,6 +423,13 @@ def render_html_passport(passport: dict[str, Any]) -> str:
     replay_label = "Not replayed" if replay is None else "Matched" if replay else "Mismatch"
     claim_label = "Bug flip" if claim_type == "bug_flip" else "Behavior-preserving refactor"
     details = _bug_details(subject) if claim_type == "bug_flip" else _refactor_details(subject)
+    release_details = _release_details(passport.get("release_evidence"))
+    release_block = f"{release_details}\n\n    " if release_details else ""
+    styles = (
+        f"{_STYLES}\n{_RELEASE_STYLES}"
+        if passport.get("schema_version") == RELEASE_PASSPORT_SCHEMA
+        else _STYLES
+    )
     raw_json = html.escape(json.dumps(passport, ensure_ascii=False, indent=2, sort_keys=True))
     return f"""<!doctype html>
 <html lang="en">
@@ -417,7 +439,7 @@ def render_html_passport(passport: dict[str, Any]) -> str:
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
   <title>Exhibit A — {claim_label} passport</title>
-  <style>{_STYLES}</style>
+  <style>{styles}</style>
 </head>
 <body>
   <main>
@@ -457,7 +479,7 @@ def render_html_passport(passport: dict[str, Any]) -> str:
       </div>
     </section>
 
-    {details}
+    {release_block}{details}
 
     <section class="raw" aria-labelledby="raw-title">
       <div class="section-heading">
@@ -471,13 +493,59 @@ def render_html_passport(passport: dict[str, Any]) -> str:
     </section>
 
     <footer>
-      <span>{PASSPORT_SCHEMA}</span>
+      <span>{_text(passport.get("schema_version"))}</span>
       <span>No source, logs, credentials, or executable code embedded</span>
     </footer>
   </main>
 </body>
 </html>
 """
+
+
+def _release_details(value: object) -> str:
+    if not isinstance(value, dict):
+        return ""
+    policy = value.get("policy", {})
+    freshness = value.get("freshness", {})
+    collection = value.get("collection", {})
+    provenance = value.get("provenance", {})
+    checks = value.get("checks", [])
+    return f"""<section class="release" aria-labelledby="release-title">
+      <div class="section-heading">
+        <p class="eyebrow">Release policy observation</p>
+        <h2 id="release-title">Named checks at a pinned instant</h2>
+      </div>
+      <div class="release-callout">
+        <span>Derived release truth</span>
+        <strong>{_text(value.get("release"))}</strong>
+        <p>{_text(value.get("reason"))}</p>
+      </div>
+      <dl class="ledger">
+        {_fact("Policy", policy.get("name"))}
+        {_fact("Maximum age", f"{policy.get('max_age_s')} seconds")}
+        {_fact("Evaluated at", freshness.get("evaluated_at"), mono=True)}
+        {_fact("Observed at", freshness.get("observed_at"), mono=True)}
+        {_fact("Checks collected", collection.get("collected_count"))}
+        {_fact("Check names omitted", collection.get("omitted_check_count"))}
+        {_fact("Policy commitment", policy.get("sha256"), mono=True)}
+        {_fact("Response commitment", provenance.get("response_sha256"), mono=True)}
+      </dl>
+      {_release_table(checks if isinstance(checks, list) else [])}
+      <p class="scope-note">SAFE means only that this immutable revision satisfied the named CI policy at the recorded instant. It is not a claim of program correctness.</p>
+    </section>"""
+
+
+def _release_table(checks: list[dict[str, Any]]) -> str:
+    rows = "".join(
+        "<tr>"
+        f"<td>{_text(item.get('name'))}</td>"
+        f"<td>{_text(item.get('status'))}</td>"
+        f"<td>{_text(item.get('conclusion'))}</td>"
+        f"<td><code>{_text(item.get('completed_at'))}</code></td>"
+        "</tr>"
+        for item in checks
+    )
+    return f"""<div class="table-wrap"><table><caption>Policy-required checks</caption><thead><tr><th>Check</th><th>Status</th><th>Conclusion</th><th>Completed</th></tr></thead><tbody>{rows}</tbody></table></div>"""
 
 
 def _bug_details(subject: dict[str, Any]) -> str:
@@ -604,4 +672,9 @@ _STYLES = """
 @media(max-width:760px){body{padding:0}main{border:0}.masthead{grid-template-columns:1fr;padding:36px 24px}.seal{width:118px;height:118px}.chain{grid-template-columns:1fr;padding:28px 24px}.chain-facts{grid-template-columns:1fr}.truth,.evidence,.raw{padding:36px 24px}.section-heading{display:block}.section-heading .eyebrow{margin-bottom:10px}.truth-grid,.state-grid,.ledger{grid-template-columns:1fr}.ledger div,.ledger div:nth-child(odd),.ledger div:nth-child(even){padding:14px 0;border-left:0}.ledger div{grid-template-columns:125px minmax(0,1fr)}footer{display:grid;padding:20px 24px}}
 @media print{html{background:white}body{padding:0}main{border:0;box-shadow:none}.raw{break-before:page}.raw details{display:block}.raw summary{display:none}.raw pre{max-height:none}.seal{box-shadow:inset 0 0 0 7px white,inset 0 0 0 8px var(--blue)}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+"""
+
+_RELEASE_STYLES = """
+.release{padding:48px 56px;border-bottom:1px solid var(--line);background:#eef2ff}.release-callout{display:grid;grid-template-columns:160px 150px minmax(0,1fr);gap:22px;align-items:center;margin-bottom:28px;padding:22px 24px;border:1px solid #b8c6ef;background:var(--white)}.release-callout span{color:var(--muted);font-size:12px}.release-callout strong{color:var(--blue);font:800 22px/1 ui-monospace,monospace}.release-callout p,.scope-note{margin:0;color:var(--muted);font-size:13px;line-height:1.5}.scope-note{margin-top:22px;max-width:760px}.release table{min-width:620px}
+@media(max-width:760px){.release{padding:36px 24px}.release-callout{grid-template-columns:1fr;gap:10px}}
 """
