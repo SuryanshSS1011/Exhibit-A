@@ -104,7 +104,7 @@ v3 compatibility. Do not begin signature work while receipt semantics are still 
 
 ## Milestone 2 — Make passports publicly verifiable and replay environments immutable
 
-- [ ] **5. Record the signature and key-distribution decision in an ADR**
+- [x] **5. Record the signature and key-distribution decision in an ADR**
   Source refs: `docs/EEF.md`, `docs/PASSPORT.md`, the in-toto envelope specification,
   SLSA provenance, and the Sigstore bundle format.
   What to build: Threat-model shared-secret HMAC, offline public-key verification,
@@ -117,6 +117,13 @@ v3 compatibility. Do not begin signature work while receipt semantics are still 
   bundles remain readable without being mislabeled as public identity claims.
   Verify: schema examples validate, signature test vectors are checked independently, and
   a skeptical security review signs off before implementation.
+
+  Decision: [`ADR 0001`](./adr/0001-eef-v4-public-key-signatures.md) selects an offline
+  DSSE/in-toto Ed25519 profile with separately distributed trust policy, conservative
+  revocation, explicit thresholds, downgrade-safe legacy HMAC wording, and optional
+  Sigstore keyless sidecars. Checked examples and OpenSSL-backed vectors, independent of
+  Exhibit A's future implementation, make the boundary concrete without adding v4 signing
+  code in this milestone.
 
 - [ ] **6. Implement EEF v4 public-key signatures**
   Source refs: the accepted ADR, `eef.py`, `passport.py`, and existing HMAC tamper tests.

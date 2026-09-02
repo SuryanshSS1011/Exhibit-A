@@ -1,0 +1,44 @@
+{
+  "expiresAt": "2030-01-01T00:00:00Z",
+  "keys": [
+    {
+      "algorithm": "ed25519",
+      "keyId": "sha256:06e3fd8fda29bb60ab59557de61edb0aecdb231134be30e75b455f8e1b792fa9",
+      "label": "RFC 8032 test key — never use in production",
+      "publicKey": {
+        "encoding": "raw-base64",
+        "value": "11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo="
+      },
+      "status": "active"
+    }
+  ],
+  "policies": [
+    {
+      "authorizedKeyIds": [
+        "sha256:06e3fd8fda29bb60ab59557de61edb0aecdb231134be30e75b455f8e1b792fa9"
+      ],
+      "payloadType": "application/vnd.in-toto+json",
+      "predicateType": "https://exhibit-a.dev/eef/v4",
+      "policyId": "eef-reference-v1",
+      "profile": "eef-ed25519-v1",
+      "publisherId": "https://exhibit-a.dev/publishers/reference",
+      "purpose": "eef",
+      "threshold": 1
+    },
+    {
+      "authorizedKeyIds": [
+        "sha256:06e3fd8fda29bb60ab59557de61edb0aecdb231134be30e75b455f8e1b792fa9"
+      ],
+      "payloadType": "application/vnd.exhibit-a.passport.v3+json",
+      "predicateType": null,
+      "policyId": "passport-reference-v1",
+      "profile": "passport-ed25519-v1",
+      "publisherId": "https://exhibit-a.dev/publishers/reference",
+      "purpose": "passport",
+      "threshold": 1
+    }
+  ],
+  "rootId": "https://exhibit-a.dev/trust-roots/reference",
+  "rootVersion": 1,
+  "schemaVersion": "exhibit-a-trust-root/v1"
+}

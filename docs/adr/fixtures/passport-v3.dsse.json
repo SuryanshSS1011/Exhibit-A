@@ -1,0 +1,10 @@
+{
+  "payload": "eyJwYXNzcG9ydElzc3VlciI6eyJpZCI6Imh0dHBzOi8vZXhoaWJpdC1hLmRldi9wdWJsaXNoZXJzL3JlZmVyZW5jZSJ9LCJzY2hlbWFWZXJzaW9uIjoiZXhoaWJpdC1hLXBhc3Nwb3J0L3YzIiwic2lnbmF0dXJlUHJvZmlsZSI6InBhc3Nwb3J0LWVkMjU1MTktdjEiLCJzb3VyY2VFZWYiOnsiZm9ybWF0IjoiZWVmL3Y0IiwibWFuaWZlc3RTaGEyNTYiOiI4ZGJkNjU3NWVmMmExNjg5N2ZkODNhNTJkNjUxNjJkMGU1YTIxNTI2YzQ0NzM3YWQ1ZGZiZDczMDBhOTkyMTgyIiwicHVibGlzaGVyIjp7ImlkIjoiaHR0cHM6Ly9leGhpYml0LWEuZGV2L3B1Ymxpc2hlcnMvcmVmZXJlbmNlIn0sInRydXN0Um9vdCI6eyJyb290SWQiOiJodHRwczovL2V4aGliaXQtYS5kZXYvdHJ1c3Qtcm9vdHMvcmVmZXJlbmNlIiwicm9vdFNoYTI1NiI6IjBmOWEwYzE4ZTRiNzM4Mjk3ZWUyYzYwZDkyZDRlM2YxZjMxODhlZTk4NGU4NjljMzQ0OGUxZGU1MTA2YjJlYWUiLCJyb290VmVyc2lvbiI6MX0sInZlcmlmaWVkS2V5SWRzIjpbInNoYTI1NjowNmUzZmQ4ZmRhMjliYjYwYWI1OTU1N2RlNjFlZGIwYWVjZGIyMzExMzRiZTMwZTc1YjQ1NWY4ZTFiNzkyZmE5Il19fQ==",
+  "payloadType": "application/vnd.exhibit-a.passport.v3+json",
+  "signatures": [
+    {
+      "keyid": "sha256:06e3fd8fda29bb60ab59557de61edb0aecdb231134be30e75b455f8e1b792fa9",
+      "sig": "wKu7A++880XEVnOfzrha0lO15zu5+6sq2b6pN/ZkF63JIo7iwnO0M0/L6l7mSXuNUf0S3ClXlfEJsM5TOepFAg=="
+    }
+  ]
+}

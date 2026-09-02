@@ -1,0 +1,14 @@
+{
+  "evaluationTime": "2026-09-02T00:00:00Z",
+  "expectedSignatureBase64": "wKu7A++880XEVnOfzrha0lO15zu5+6sq2b6pN/ZkF63JIo7iwnO0M0/L6l7mSXuNUf0S3ClXlfEJsM5TOepFAg==",
+  "keyId": "sha256:06e3fd8fda29bb60ab59557de61edb0aecdb231134be30e75b455f8e1b792fa9",
+  "paeSha256": "600c76d039d6f9aeced32aadd9044d9d2ecb26099e1d324dbcd8da21fc24068e",
+  "payloadBase64": "eyJwYXNzcG9ydElzc3VlciI6eyJpZCI6Imh0dHBzOi8vZXhoaWJpdC1hLmRldi9wdWJsaXNoZXJzL3JlZmVyZW5jZSJ9LCJzY2hlbWFWZXJzaW9uIjoiZXhoaWJpdC1hLXBhc3Nwb3J0L3YzIiwic2lnbmF0dXJlUHJvZmlsZSI6InBhc3Nwb3J0LWVkMjU1MTktdjEiLCJzb3VyY2VFZWYiOnsiZm9ybWF0IjoiZWVmL3Y0IiwibWFuaWZlc3RTaGEyNTYiOiI4ZGJkNjU3NWVmMmExNjg5N2ZkODNhNTJkNjUxNjJkMGU1YTIxNTI2YzQ0NzM3YWQ1ZGZiZDczMDBhOTkyMTgyIiwicHVibGlzaGVyIjp7ImlkIjoiaHR0cHM6Ly9leGhpYml0LWEuZGV2L3B1Ymxpc2hlcnMvcmVmZXJlbmNlIn0sInRydXN0Um9vdCI6eyJyb290SWQiOiJodHRwczovL2V4aGliaXQtYS5kZXYvdHJ1c3Qtcm9vdHMvcmVmZXJlbmNlIiwicm9vdFNoYTI1NiI6IjBmOWEwYzE4ZTRiNzM4Mjk3ZWUyYzYwZDkyZDRlM2YxZjMxODhlZTk4NGU4NjljMzQ0OGUxZGU1MTA2YjJlYWUiLCJyb290VmVyc2lvbiI6MX0sInZlcmlmaWVkS2V5SWRzIjpbInNoYTI1NjowNmUzZmQ4ZmRhMjliYjYwYWI1OTU1N2RlNjFlZGIwYWVjZGIyMzExMzRiZTMwZTc1YjQ1NWY4ZTFiNzkyZmE5Il19fQ==",
+  "payloadSha256": "bd551248be71c0d29483d903d19adead32cd3a14ee08543b314379cc5ad720f9",
+  "payloadType": "application/vnd.exhibit-a.passport.v3+json",
+  "privateKeySeedHex": "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60",
+  "publicKeyBase64": "11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=",
+  "schemaVersion": "passport-signature-test-vector/v1",
+  "source": "RFC 8032 section 7.1 test vector 1 key; passport-specific DSSE PAE message",
+  "testOnly": true
+}

@@ -1,0 +1,12 @@
+{
+  "expectedPolicyIds": {
+    "eef": "eef-reference-v1",
+    "passport": "passport-reference-v1"
+  },
+  "minimumRootVersion": 1,
+  "pinnedRootSha256": "0f9a0c18e4b738297ee2c60d92d4e3f1f3188ee984e869c3448e1de5106b2eae",
+  "provisionedAt": "2026-09-02T00:00:00Z",
+  "rootId": "https://exhibit-a.dev/trust-roots/reference",
+  "schemaVersion": "exhibit-a-trust-anchor/v1",
+  "testOnly": true
+}

@@ -1,0 +1,15 @@
+{
+  "evaluationTime": "2026-09-02T00:00:00Z",
+  "expectedSignatureBase64": "oBsrDz1Md0jN9VY2I7SVwK5T5DQYgjeD4/UwmodaLBydTyiDbKhSQGTgBM0IZuYCXZfQMd9lenfqka4UjU9bDg==",
+  "keyId": "sha256:06e3fd8fda29bb60ab59557de61edb0aecdb231134be30e75b455f8e1b792fa9",
+  "manifestSha256": "8dbd6575ef2a16897fd83a52d65162d0e5a21526c44737ad5dfbd7300a992182",
+  "paeSha256": "978a81da8a60f09df26b315c8831f8c1b22c39d34079d2fcc4b49063c684f42d",
+  "payloadBase64": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiY2xhaW1UeXBlIjoiYnVnX2ZsaXAiLCJmb3JtYXQiOiJlZWYvdjQiLCJwdWJsaXNoZXIiOnsiaWQiOiJodHRwczovL2V4aGliaXQtYS5kZXYvcHVibGlzaGVycy9yZWZlcmVuY2UifSwic2lnbmF0dXJlUHJvZmlsZSI6ImVlZi1lZDI1NTE5LXYxIiwidmVyZGljdCI6IlZFUklGSUVEIn0sInByZWRpY2F0ZVR5cGUiOiJodHRwczovL2V4aGliaXQtYS5kZXYvZWVmL3Y0Iiwic3ViamVjdCI6W3siZGlnZXN0Ijp7InNoYTI1NiI6IjhkYmQ2NTc1ZWYyYTE2ODk3ZmQ4M2E1MmQ2NTE2MmQwZTVhMjE1MjZjNDQ3MzdhZDVkZmJkNzMwMGE5OTIxODIifSwibmFtZSI6Im1hbmlmZXN0Lmpzb24ifV19",
+  "payloadSha256": "306485f012f416ea8b40cb878d75c01dbf60f5dc9b3fda76412054bc422db7f4",
+  "payloadType": "application/vnd.in-toto+json",
+  "privateKeySeedHex": "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60",
+  "publicKeyBase64": "11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=",
+  "schemaVersion": "eef-signature-test-vector/v1",
+  "source": "RFC 8032 section 7.1 test vector 1 key; EEF-specific DSSE PAE message",
+  "testOnly": true
+}
