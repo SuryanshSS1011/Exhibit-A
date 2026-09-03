@@ -132,7 +132,7 @@ fixtures/                       tiny buggy/fixed repo pairs for offline runs
 ```bash
 # Engine
 cd engine
-pip install -e ".[dev]"          # or: pip install pytest ruff
+pip install -e ".[dev,public-signatures]"   # public-signatures adds the Ed25519 backend
 python3 -m pytest -q             # proves the flip check and verdicts end to end
 
 # Web UI

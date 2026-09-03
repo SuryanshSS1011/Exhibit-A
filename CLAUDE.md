@@ -13,7 +13,7 @@ Both gates must pass before reporting done — CI runs exactly these.
 ```bash
 # Engine (Python 3.11+; CI uses 3.12)
 cd engine
-pip install -e ".[dev]"
+pip install -e ".[dev,public-signatures]"
 python3 -m pytest -q            # ~2 min
 ruff check .
 ruff format --check .
@@ -76,7 +76,9 @@ Scores (mutation, minimization, evidence strength) describe evidence. They never
 - `engine/.exhibit-a/` is runtime output from local runs, gitignored. `submission/` and
   `.exhibit-internal/` are gitignored too and must never be committed.
 - The engine has no runtime dependencies. Keep it that way; `dev` extras are pytest and
-  ruff only.
+  ruff only. The one exception is the `public-signatures` extra (`cryptography`), which
+  the optional Ed25519 backend imports lazily — the full suite needs it installed, so CI
+  installs `.[dev,public-signatures]`.
 
 ## Conventions
 
