@@ -218,14 +218,18 @@ def parse_json(content: bytes, *, label: str) -> dict[str, Any]:
 
 def _parse_root(content: bytes) -> dict[str, Any]:
     root = parse_json(content, label="trust root")
-    if set(root) != {
-        "expiresAt",
-        "keys",
-        "policies",
-        "rootId",
-        "rootVersion",
-        "schemaVersion",
-    } or root.get("schemaVersion") != TRUST_ROOT_SCHEMA:
+    if (
+        set(root)
+        != {
+            "expiresAt",
+            "keys",
+            "policies",
+            "rootId",
+            "rootVersion",
+            "schemaVersion",
+        }
+        or root.get("schemaVersion") != TRUST_ROOT_SCHEMA
+    ):
         raise ValueError("trust root schema is unsupported")
     root_id = root.get("rootId")
     version = root.get("rootVersion")

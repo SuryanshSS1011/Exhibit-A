@@ -62,9 +62,10 @@ def test_checked_vectors_verify_under_the_anchored_policy(
     assert identity.verified_key_ids == (
         "sha256:06e3fd8fda29bb60ab59557de61edb0aecdb231134be30e75b455f8e1b792fa9",
     )
-    assert payload.get("signatureProfile") == profile or payload["predicate"][
-        "signatureProfile"
-    ] == profile
+    assert (
+        payload.get("signatureProfile") == profile
+        or payload["predicate"]["signatureProfile"] == profile
+    )
 
     recreated = sign_envelope(
         payload,
@@ -74,9 +75,10 @@ def test_checked_vectors_verify_under_the_anchored_policy(
         policy_id=identity.policy_id,
         purpose=purpose,
     )
-    assert canonical_json(recreated) + b"\n" == canonical_json(
-        json.loads(_fixture(envelope_name))
-    ) + b"\n"
+    assert (
+        canonical_json(recreated) + b"\n"
+        == canonical_json(json.loads(_fixture(envelope_name))) + b"\n"
+    )
 
 
 def test_public_material_does_not_grant_signing_authority() -> None:

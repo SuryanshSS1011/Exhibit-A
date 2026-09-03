@@ -65,9 +65,7 @@ def create_public_passport(
     )
     payload = _public_passport_payload(
         verified,
-        passport_issuer=policy_publisher(
-            trust_root, passport_policy_id, purpose="passport"
-        ),
+        passport_issuer=policy_publisher(trust_root, passport_policy_id, purpose="passport"),
     )
     envelope = sign_envelope(
         payload,
@@ -118,8 +116,7 @@ def verify_public_passport(
     source = payload.get("sourceEef")
     if (
         not isinstance(source, dict)
-        or set(source)
-        != {"format", "manifestSha256", "publisher", "trustRoot", "verifiedKeyIds"}
+        or set(source) != {"format", "manifestSha256", "publisher", "trustRoot", "verifiedKeyIds"}
         or source.get("format") != "eef/v4"
     ):
         raise ValueError("public passport source EEF metadata is invalid")

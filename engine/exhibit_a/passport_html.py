@@ -81,8 +81,8 @@ def render_public_html_passport(passport: dict[str, Any], verified_issuer: str) 
 <p class="seal">DSSE signature verified under the installed public-key trust policy.</p>
 <dl><dt>Passport issuer</dt><dd>{html.escape(str(issuer))}</dd>
 <dt>Verified issuer</dt><dd>{html.escape(verified_issuer)}</dd>
-<dt>Source EEF publisher (issuer-signed claim)</dt><dd>{html.escape(str(source['publisher']['id']))}</dd>
-<dt>Manifest SHA-256</dt><dd>{html.escape(str(source['manifestSha256']))}</dd></dl>
+<dt>Source EEF publisher (issuer-signed claim)</dt><dd>{html.escape(str(source["publisher"]["id"]))}</dd>
+<dt>Manifest SHA-256</dt><dd>{html.escape(str(source["manifestSha256"]))}</dd></dl>
 <p>The source publisher identity is not independently verified unless the source EEF and its trust root are also checked.</p>
 <details><summary>Machine record</summary><pre>{machine}</pre></details></main></body></html>"""
 

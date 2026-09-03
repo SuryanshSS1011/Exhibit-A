@@ -383,7 +383,10 @@ def test_public_signature_cli_round_trip(tmp_path: Path) -> None:
     passport = tmp_path / "cli.passport.json"
     rendered = tmp_path / "cli.passport.html"
 
-    assert main(["verify-v4", str(bundle), "--trust-root", str(root), "--trust-anchor", str(anchor)]) == 0
+    assert (
+        main(["verify-v4", str(bundle), "--trust-root", str(root), "--trust-anchor", str(anchor)])
+        == 0
+    )
     assert (
         main(
             [

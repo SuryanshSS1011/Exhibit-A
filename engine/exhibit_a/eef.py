@@ -473,10 +473,9 @@ def _verify_bundle(
         ):
             raise ValueError("EEF signature verification failed")
         signature_algorithm = "hmac-sha256"
-    if (
-        statement.get("_type") != STATEMENT_TYPE
-        or statement.get("predicateType") != _predicate_type(format_version)
-    ):
+    if statement.get("_type") != STATEMENT_TYPE or statement.get(
+        "predicateType"
+    ) != _predicate_type(format_version):
         raise ValueError("EEF attestation is invalid")
     subjects = statement.get("subject")
     if not isinstance(subjects, list) or len(subjects) != 1 or not isinstance(subjects[0], dict):
@@ -1200,9 +1199,7 @@ def _write_bundle(
             {
                 "claimType": statement_predicate.get("claim_type"),
                 "format": PUBLIC_FORMAT_VERSION,
-                "publisher": {
-                    "id": policy_publisher(trust_root, policy_id, purpose="eef")
-                },
+                "publisher": {"id": policy_publisher(trust_root, policy_id, purpose="eef")},
                 "signatureProfile": EEF_PROFILE,
             }
         )
@@ -1233,9 +1230,7 @@ def _write_bundle(
             "statement": statement,
             "signature": {
                 "algorithm": "hmac-sha256",
-                "value": hmac.new(
-                    signing_key, _canonical(statement), hashlib.sha256
-                ).hexdigest(),
+                "value": hmac.new(signing_key, _canonical(statement), hashlib.sha256).hexdigest(),
             },
         }
     payloads["manifest.json"] = manifest_bytes
