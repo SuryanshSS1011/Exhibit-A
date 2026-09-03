@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
+import { refuse } from "@/lib/api-guard";
 
 const ROOT = path.resolve(
   process.cwd(),
@@ -24,6 +25,9 @@ interface Body {
 
 // POST-only and local: labels are never exposed by a read endpoint or sent to a PR.
 export async function POST(req: NextRequest) {
+  const refusal = refuse(req);
+  if (refusal) return refusal;
+
   let body: Body;
   try {
     body = await req.json();

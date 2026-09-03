@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Case } from "@/lib/case";
+import { apiHeaders } from "@/lib/api-client";
 
 export function IntentConfirmation({ c }: { c: Case }) {
   const [choice, setChoice] = useState<"intended" | "regression" | null>(null);
@@ -12,7 +13,7 @@ export function IntentConfirmation({ c }: { c: Case }) {
     try {
       const response = await fetch("/api/intent-confirmation", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: apiHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({
           caseId: c.id,
           choice: next,

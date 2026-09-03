@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { apiHeaders } from "@/lib/api-client";
 import type { Case } from "@/lib/case";
 import { isEvidence } from "@/lib/case";
 import { VerdictStamp } from "@/components/VerdictStamp";
@@ -47,7 +48,7 @@ export default function Home() {
     try {
       const res = await fetch("/api/investigate", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: apiHeaders({ "content-type": "application/json" }),
         body: JSON.stringify(
           replay
             ? { replay }

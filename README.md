@@ -149,6 +149,8 @@ fixtures/                       tiny buggy/fixed repo pairs for offline runs
   `git` and shells as **argv only**, never string-interpolated, never `shell=True`.
 - Remote intake is **HTTPS-only**, SHAs are hex-validated, and git hooks are disabled.
 - Candidate run-commands are gated to a single scoped pytest file before execution.
+- The web API is inert until a token is configured, bounds concurrency and run time,
+  and accepts local repository paths only inside an explicitly configured root.
 
 ## Setup
 
@@ -167,8 +169,19 @@ python3 -m pytest -q             # proves the flip check and verdicts end to end
 ```bash
 cd web
 npm install
+export EXHIBIT_A_API_TOKEN=$(openssl rand -hex 24)   # required; routes are inert without it
+export EXHIBIT_A_LOCAL_ROOT=$(cd .. && pwd)          # optional; enables local-path intake
 npm run dev                      # http://localhost:3000
 ```
+
+The routes that drive the engine or write research labels refuse every request until
+`EXHIBIT_A_API_TOKEN` is set, so an unconfigured deployment is inert rather than open.
+The page is served the same token so the UI can call them, which makes the API exactly
+as private as the page — put real authentication in front of the page for any deployment
+someone else can reach. Local repository paths are rejected unless `EXHIBIT_A_LOCAL_ROOT`
+names the directory investigations may read; remote HTTPS intake needs no such setting.
+`EXHIBIT_A_MAX_CONCURRENT` (default 2) and `EXHIBIT_A_RUN_TIMEOUT_S` (default 1800) bound
+how much work one caller can start.
 
 ## Usage
 

@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
+import { localRootConfigured, refuse, resolveLocalRepo } from "@/lib/api-guard";
 
 /**
  * POST /api/investigate — stream Evidence Engine progress and the final Case.
@@ -17,6 +18,12 @@ const PYTHON = process.env.EXHIBIT_A_PYTHON ?? "python3";
 // The sandbox is not a caller's choice. A repository reaching this route is untrusted,
 // and running its suite outside a container executes whatever its conftest imports on
 // this host. The engine sandboxes by default, so this route simply never opts out.
+
+// One request spawns an engine that builds images and runs suites, so unbounded
+// concurrency is a trivial way to exhaust the host.
+const MAX_CONCURRENT = Math.max(1, Number(process.env.EXHIBIT_A_MAX_CONCURRENT ?? "2"));
+const RUN_TIMEOUT_MS = Math.max(1, Number(process.env.EXHIBIT_A_RUN_TIMEOUT_S ?? "1800")) * 1000;
+let active = 0;
 
 interface Body {
   repo?: string;
@@ -37,6 +44,9 @@ const REPLAY_CASES = {
 } as const;
 
 export async function POST(req: NextRequest) {
+  const refusal = refuse(req);
+  if (refusal) return refusal;
+
   let body: Body;
   try {
     body = await req.json();
@@ -47,7 +57,31 @@ export async function POST(req: NextRequest) {
   if (body.replay && !replay) {
     return NextResponse.json({ error: "unknown sealed Case" }, { status: 400 });
   }
-  const hasLocal = Boolean(body.repo);
+  // A local path over HTTP otherwise means "copy and run any directory on this host".
+  const localPaths: Partial<Record<"repo" | "fixed" | "control", string>> = {};
+  if (!replay) {
+    for (const key of ["repo", "fixed", "control"] as const) {
+      const value = body[key];
+      if (!value) continue;
+      const resolved = resolveLocalRepo(value);
+      if (!resolved) {
+        return NextResponse.json(
+          {
+            error: localRootConfigured()
+              ? `${key} path resolves outside the configured local root`
+              : "local repository paths are not accepted",
+            hint: localRootConfigured()
+              ? undefined
+              : "set EXHIBIT_A_LOCAL_ROOT to the directory investigations may read",
+          },
+          { status: 400 },
+        );
+      }
+      localPaths[key] = resolved;
+    }
+  }
+
+  const hasLocal = Boolean(localPaths.repo);
   const hasRemote = Boolean(body.repoUrl && body.baseSha && body.fixSha);
   if (!replay && (!body.claim || hasLocal === hasRemote)) {
     return NextResponse.json(
@@ -63,7 +97,7 @@ export async function POST(req: NextRequest) {
         "-m",
         "exhibit_a.cli",
         "repro",
-        hasRemote ? body.repoUrl! : body.repo!,
+        hasRemote ? body.repoUrl! : localPaths.repo!,
         "--claim",
         body.claim!,
         "--out",
@@ -72,11 +106,19 @@ export async function POST(req: NextRequest) {
       ];
   if (!replay) {
     if (body.expect) args.push("--expect", body.expect);
-    if (body.fixed) args.push("--fixed", body.fixed);
-    if (body.control) args.push("--control", body.control);
+    if (localPaths.fixed) args.push("--fixed", localPaths.fixed);
+    if (localPaths.control) args.push("--control", localPaths.control);
     if (hasRemote) args.push("--base-sha", body.baseSha!, "--fix-sha", body.fixSha!);
     if (body.controlSha) args.push("--control-sha", body.controlSha);
   }
+
+  if (active >= MAX_CONCURRENT) {
+    return NextResponse.json(
+      { error: "too many investigations in flight", hint: "retry when one finishes" },
+      { status: 429, headers: { "Retry-After": "30" } },
+    );
+  }
+  active += 1;
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
@@ -85,6 +127,13 @@ export async function POST(req: NextRequest) {
       let stderr = "";
       let closed = false;
       let sawCase = false;
+      let released = false;
+      const release = () => {
+        if (!released) {
+          released = true;
+          active -= 1;
+        }
+      };
       const send = (payload: unknown, event = "message") => {
         if (!closed) {
           controller.enqueue(
@@ -109,7 +158,22 @@ export async function POST(req: NextRequest) {
         }
       };
 
-      const child = spawn(PYTHON, args, { cwd: ENGINE_DIR });
+      const child = spawn(PYTHON, args, { cwd: ENGINE_DIR, detached: true });
+      const stopChild = () => {
+        try {
+          // Negative pid signals the group: the engine spawns docker and pytest below it.
+          process.kill(-child.pid!, "SIGKILL");
+        } catch {
+          child.kill("SIGKILL");
+        }
+      };
+      const budget = setTimeout(() => {
+        send(
+          { event: "error", error: `engine exceeded its ${RUN_TIMEOUT_MS / 1000}s budget` },
+          "error",
+        );
+        stopChild();
+      }, RUN_TIMEOUT_MS);
       child.stdout.on("data", (chunk) => {
         buffer += chunk.toString();
         const lines = buffer.split("\n");
@@ -118,10 +182,14 @@ export async function POST(req: NextRequest) {
       });
       child.stderr.on("data", (d) => (stderr += d.toString()));
       child.on("error", (error) => {
+        clearTimeout(budget);
+        release();
         send({ event: "error", error: error.message }, "error");
         close();
       });
       child.on("close", (code) => {
+        clearTimeout(budget);
+        release();
         if (buffer) consumeLine(buffer);
         if (code !== 0 && code !== 1) {
           send(
@@ -134,7 +202,7 @@ export async function POST(req: NextRequest) {
         close();
       });
 
-      req.signal.addEventListener("abort", () => child.kill("SIGTERM"), { once: true });
+      req.signal.addEventListener("abort", stopChild, { once: true });
     },
   });
 
