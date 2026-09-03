@@ -9,6 +9,7 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "ruff>=0.6"]
+public-signatures = ["cryptography>=43"]
 
 [project.scripts]
 exhibit-a = "exhibit_a.cli:main"
