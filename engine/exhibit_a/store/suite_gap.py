@@ -5,9 +5,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from .. import __version__
 from ..models.case import Case
 
-ENGINE_VERSION = "0.0.1"
+# Stamped into every research record; must never drift from the installed package.
+ENGINE_VERSION = __version__
 SCHEMA_VERSION = "suite-gap/v1"
 
 

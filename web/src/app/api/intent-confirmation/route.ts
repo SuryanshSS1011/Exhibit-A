@@ -3,6 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 import { refuse } from "@/lib/api-guard";
+import { engineVersion } from "@/lib/engine-version";
 
 const ROOT = path.resolve(
   process.cwd(),
@@ -13,6 +14,7 @@ const ROOT = path.resolve(
   "intent-confirmations",
 );
 const CASE_ID = /^[A-Za-z0-9_-]{1,64}$/;
+const ENGINE_VERSION = engineVersion();
 
 interface Body {
   caseId?: string;
@@ -45,7 +47,7 @@ export async function POST(req: NextRequest) {
   const recordedAt = new Date().toISOString();
   const record = {
     schema_version: "intent-confirmation/v1",
-    engine_version: "0.0.1",
+    engine_version: ENGINE_VERSION,
     model_version: body.intentModel ?? "not_assessed",
     recorded_at: recordedAt,
     case_id: body.caseId,

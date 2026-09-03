@@ -1,6 +1,6 @@
 [project]
 name = "exhibit-a"
-version = "0.0.1"
+dynamic = ["version"]
 description = "An evidence engine for code that's only allowed to speak with proof."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -17,6 +17,10 @@ exhibit-a = "exhibit_a.cli:main"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+# One source of truth for the version: the package declares it, packaging reads it.
+[tool.hatch.version]
+path = "exhibit_a/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["exhibit_a"]
