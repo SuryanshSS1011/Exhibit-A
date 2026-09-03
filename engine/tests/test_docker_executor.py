@@ -7,31 +7,57 @@ from pathlib import Path
 import pytest
 
 from exhibit_a.executor.base import EnvironmentSetupError, ExecSpec, RepoState, SourceMutation
-from exhibit_a.executor.docker_exec import DockerExecutor, _environment_spec
+from exhibit_a.executor.docker_exec import (
+    DockerExecutor,
+    _base_reference,
+    _dockerfile,
+    _environment_spec,
+)
+
+BASE_DIGEST = "python@sha256:" + "a" * 64
+
+
+def _base_probe(argv: list[str]) -> subprocess.CompletedProcess | None:
+    """Answer the base-image digest probe. None means the call is something else."""
+    if argv[1:3] == ["image", "inspect"] and "--format" in argv:
+        return subprocess.CompletedProcess(argv, 0, BASE_DIGEST + "\n", "")
+    return None
 
 
 def test_environment_requires_a_lockfile(tmp_path: Path):
     with pytest.raises(
         EnvironmentSetupError, match="dependency discovery is intentionally disabled"
     ):
-        _environment_spec(RepoState(str(tmp_path), "target", source="repo-a"))
+        _environment_spec(
+            RepoState(str(tmp_path), "target", source="repo-a"), base_reference=BASE_DIGEST
+        )
 
 
 def test_requirements_must_be_pinned(tmp_path: Path):
     (tmp_path / "requirements.txt").write_text("requests>=2\n")
 
     with pytest.raises(EnvironmentSetupError, match="not a self-contained pinned"):
-        _environment_spec(RepoState(str(tmp_path), "target", source="repo-a"))
+        _environment_spec(
+            RepoState(str(tmp_path), "target", source="repo-a"), base_reference=BASE_DIGEST
+        )
 
 
 def test_environment_cache_key_uses_repo_and_lock_content(tmp_path: Path):
     lock = tmp_path / "requirements.txt"
     lock.write_text("requests==2.32.4\n")
-    first = _environment_spec(RepoState(str(tmp_path), "target", source="repo-a"))
-    same = _environment_spec(RepoState(str(tmp_path), "base", source="repo-a"))
-    other_repo = _environment_spec(RepoState(str(tmp_path), "target", source="repo-b"))
+    first = _environment_spec(
+        RepoState(str(tmp_path), "target", source="repo-a"), base_reference=BASE_DIGEST
+    )
+    same = _environment_spec(
+        RepoState(str(tmp_path), "base", source="repo-a"), base_reference=BASE_DIGEST
+    )
+    other_repo = _environment_spec(
+        RepoState(str(tmp_path), "target", source="repo-b"), base_reference=BASE_DIGEST
+    )
     lock.write_text("requests==2.32.5\n")
-    other_lock = _environment_spec(RepoState(str(tmp_path), "target", source="repo-a"))
+    other_lock = _environment_spec(
+        RepoState(str(tmp_path), "target", source="repo-a"), base_reference=BASE_DIGEST
+    )
 
     assert first.image == same.image
     assert first.image != other_repo.image
@@ -43,7 +69,9 @@ def test_pipfile_lock_is_converted_to_exact_requirements(tmp_path: Path):
         json.dumps({"default": {"requests": {"version": "==2.32.4"}}, "develop": {}})
     )
 
-    spec = _environment_spec(RepoState(str(tmp_path), "target", source="repo-a"))
+    spec = _environment_spec(
+        RepoState(str(tmp_path), "target", source="repo-a"), base_reference=BASE_DIGEST
+    )
 
     assert spec.requirements == ("requests==2.32.4\n",)
 
@@ -56,6 +84,9 @@ def test_prepare_builds_with_argv_and_reuses_cached_image(
 
     def fake_run(argv: list[str], **kwargs) -> subprocess.CompletedProcess:
         calls.append(argv)
+        probe = _base_probe(argv)
+        if probe is not None:
+            return probe
         if argv[1:3] == ["image", "inspect"]:
             return subprocess.CompletedProcess(argv, 1, "", "missing")
         dockerfile = Path(argv[argv.index("--file") + 1]).read_text()
@@ -68,8 +99,9 @@ def test_prepare_builds_with_argv_and_reuses_cached_image(
     image = executor.prepare(RepoState(str(tmp_path), "target", source="repo-a"))
 
     assert image and image.startswith("exhibit-a-env:")
-    assert calls[0][:3] == ["docker", "image", "inspect"]
-    assert calls[1][0:2] == ["docker", "build"]
+    assert calls[0][1:3] == ["image", "inspect"] and "--format" in calls[0]
+    assert calls[1][:3] == ["docker", "image", "inspect"]
+    assert calls[2][0:2] == ["docker", "build"]
     assert all(isinstance(call, list) for call in calls)
 
 
@@ -128,3 +160,53 @@ def test_mutant_is_applied_only_to_disposable_read_only_container_copy(
 
     assert outcome.passed
     assert source.read_text() == "FLAG = True\n"
+
+
+def test_base_digest_participates_in_the_environment_key(tmp_path: Path):
+    """A moved base tag must produce a different image, not silently reuse the cache."""
+    (tmp_path / "requirements.txt").write_text("requests==2.32.4\n")
+    repo = RepoState(str(tmp_path), "target", source="repo-a")
+
+    pinned = _environment_spec(repo, base_reference=BASE_DIGEST)
+    moved = _environment_spec(repo, base_reference="python@sha256:" + "b" * 64)
+
+    assert pinned.image != moved.image
+    assert pinned.base_reference == BASE_DIGEST
+
+
+def test_dockerfile_builds_from_the_digest_not_the_tag():
+    dockerfile = _dockerfile(["requirements-0.txt"], BASE_DIGEST)
+
+    assert dockerfile.startswith(f"FROM {BASE_DIGEST}\n")
+    assert "FROM python:3.12-slim\n" not in dockerfile
+
+
+def test_base_reference_pulls_once_when_the_image_is_absent(monkeypatch: pytest.MonkeyPatch):
+    calls: list[list[str]] = []
+    present = {"value": False}
+
+    def fake_run(argv: list[str], **kwargs) -> subprocess.CompletedProcess:
+        calls.append(argv)
+        if argv[1] == "pull":
+            present["value"] = True
+            return subprocess.CompletedProcess(argv, 0, "", "")
+        if present["value"]:
+            return subprocess.CompletedProcess(argv, 0, BASE_DIGEST + "\n", "")
+        return subprocess.CompletedProcess(argv, 1, "", "No such image")
+
+    monkeypatch.setattr("exhibit_a.executor.docker_exec.subprocess.run", fake_run)
+
+    assert _base_reference("docker") == BASE_DIGEST
+    assert [call[1] for call in calls] == ["image", "pull", "image"]
+
+
+def test_base_reference_fails_closed_when_the_image_cannot_be_resolved(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    def fake_run(argv: list[str], **kwargs) -> subprocess.CompletedProcess:
+        return subprocess.CompletedProcess(argv, 1, "", "offline")
+
+    monkeypatch.setattr("exhibit_a.executor.docker_exec.subprocess.run", fake_run)
+
+    with pytest.raises(EnvironmentSetupError, match="could not be pulled"):
+        _base_reference("docker")

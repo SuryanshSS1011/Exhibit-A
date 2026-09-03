@@ -35,7 +35,10 @@ from .base import (
 )
 
 DEFAULT_IMAGE = "exhibit-a-python-pytest:3.12"
+_BASE_IMAGE = "python:3.12-slim"
+_PYTEST_VERSION = "8.4.1"
 _CLEANUP_TIMEOUT_S = 30
+_PULL_TIMEOUT_S = 600
 _PINNED_REQUIREMENT = re.compile(r"^[A-Za-z0-9_.-]+(?:\[[A-Za-z0-9_,.-]+\])?==[^\s;\\]+")
 
 
@@ -54,7 +57,7 @@ class DockerExecutor(Executor):
     def prepare(self, repo: RepoState) -> str | None:
         if self.base_image != DEFAULT_IMAGE:
             return self.base_image
-        environment = _environment_spec(repo)
+        environment = _environment_spec(repo, base_reference=_base_reference(self.docker_bin))
         inspect = subprocess.run(
             [self.docker_bin, "image", "inspect", environment.image],
             capture_output=True,
@@ -68,7 +71,9 @@ class DockerExecutor(Executor):
                     name = f"requirements-{index}.txt"
                     (context / name).write_text(content)
                     requirement_names.append(name)
-                (context / "Dockerfile").write_text(_dockerfile(requirement_names))
+                (context / "Dockerfile").write_text(
+                    _dockerfile(requirement_names, environment.base_reference)
+                )
                 build = subprocess.run(
                     [
                         self.docker_bin,
@@ -266,12 +271,51 @@ def _remove_container(docker_bin: str, name: str) -> None:
 
 
 class _EnvironmentSpec:
-    def __init__(self, image: str, requirements: tuple[str, ...]):
+    def __init__(self, image: str, requirements: tuple[str, ...], base_reference: str):
         self.image = image
         self.requirements = requirements
+        self.base_reference = base_reference
 
 
-def _environment_spec(repo: RepoState) -> _EnvironmentSpec:
+def _base_reference(docker_bin: str) -> str:
+    """Resolve the base image to an immutable digest, pulling it once if absent.
+
+    ``python:3.12-slim`` is a tag, and tags move. The environment cache key is content
+    addressed over the repository and its lockfile only, so a moved tag used to change
+    what a rebuilt image contains while the key stayed put -- evidence would name an
+    environment that no longer existed, with nothing to signal the drift.
+    """
+    reference = _inspect_base_digest(docker_bin)
+    if reference is None:
+        pull = subprocess.run(
+            [docker_bin, "pull", "--quiet", _BASE_IMAGE],
+            capture_output=True,
+            text=True,
+            timeout=_PULL_TIMEOUT_S,
+        )
+        if pull.returncode != 0:
+            detail = pull.stderr.strip() or pull.stdout.strip() or "no diagnostic"
+            raise EnvironmentSetupError(f"base image {_BASE_IMAGE} could not be pulled: {detail}")
+        reference = _inspect_base_digest(docker_bin)
+    if reference is None:
+        raise EnvironmentSetupError(f"base image {_BASE_IMAGE} exposes no digest to pin to")
+    return reference
+
+
+def _inspect_base_digest(docker_bin: str) -> str | None:
+    inspect = subprocess.run(
+        [docker_bin, "image", "inspect", "--format", "{{index .RepoDigests 0}}", _BASE_IMAGE],
+        capture_output=True,
+        text=True,
+        timeout=_CLEANUP_TIMEOUT_S,
+    )
+    reference = inspect.stdout.strip()
+    if inspect.returncode != 0 or "@sha256:" not in reference:
+        return None
+    return reference
+
+
+def _environment_spec(repo: RepoState, *, base_reference: str) -> _EnvironmentSpec:
     root = Path(repo.path).resolve()
     if not root.is_dir():
         raise EnvironmentSetupError(f"repo checkout not found: {root}")
@@ -295,10 +339,17 @@ def _environment_spec(repo: RepoState) -> _EnvironmentSpec:
 
     identity = repo.source or str(root)
     digest = hashlib.sha256(identity.encode())
+    # The base image and pinned pytest are part of what the image *is*, so they belong in
+    # the key that decides whether a cached image may be reused.
+    for component in (base_reference, _PYTEST_VERSION):
+        digest.update(b"\0")
+        digest.update(component.encode())
     for content in requirements:
         digest.update(b"\0")
         digest.update(content.encode())
-    return _EnvironmentSpec(f"exhibit-a-env:{digest.hexdigest()[:20]}", requirements)
+    return _EnvironmentSpec(
+        f"exhibit-a-env:{digest.hexdigest()[:20]}", requirements, base_reference
+    )
 
 
 def _requirements_from_poetry(path: Path) -> str:
@@ -362,7 +413,7 @@ def _validate_pinned_requirements(content: str, name: str) -> None:
             )
 
 
-def _dockerfile(requirement_names: list[str]) -> str:
+def _dockerfile(requirement_names: list[str], base_reference: str) -> str:
     copies = "\n".join(f"COPY {name} /tmp/locks/{name}" for name in requirement_names)
     installs = "\n".join(
         "RUN python -m pip install --disable-pip-version-check --no-cache-dir "
@@ -370,8 +421,9 @@ def _dockerfile(requirement_names: list[str]) -> str:
         for name in requirement_names
     )
     return (
-        "FROM python:3.12-slim\n"
-        "RUN python -m pip install --disable-pip-version-check --no-cache-dir pytest==8.4.1\n"
+        f"FROM {base_reference}\n"
+        "RUN python -m pip install --disable-pip-version-check --no-cache-dir "
+        f"pytest=={_PYTEST_VERSION}\n"
         f"{copies}\n{installs}\n"
         "USER 65534:65534\n"
     )
