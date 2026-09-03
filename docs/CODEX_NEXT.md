@@ -125,7 +125,7 @@ v3 compatibility. Do not begin signature work while receipt semantics are still 
   Exhibit A's future implementation, make the boundary concrete without adding v4 signing
   code in this milestone.
 
-- [ ] **6. Implement EEF v4 public-key signatures**
+- [x] **6. Implement EEF v4 public-key signatures**
   Source refs: the accepted ADR, `eef.py`, `passport.py`, and existing HMAC tamper tests.
   What to build: Implement signing and verification behind a small cryptographic backend,
   with domain separation and strict key/algorithm parsing. Add public key ID and rotation
@@ -137,6 +137,11 @@ v3 compatibility. Do not begin signature work while receipt semantics are still 
   tests remain green.
   Verify: official algorithm test vectors, round trips, mutation/tamper matrices, cross-
   process verification, and the full engine suite.
+
+  Result: the optional `public-signatures` backend implements strict DSSE/Ed25519 signing,
+  externally anchored root/policy verification, v4 bug and refactor archives, passport v3
+  JSON/HTML, and additive CLI workflows. Legacy HMAC output and verification remain on
+  their explicit path; mixed trust inputs and downgrade attempts fail closed.
 
 - [ ] **7. Replace mutable replay tags with an immutable environment descriptor**
   Source refs: `executor/docker_exec.py`, `eef.py`, `eef_refactor.py`, `docs/EEF.md`.

@@ -16,6 +16,7 @@ import uuid
 import zipfile
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any
 
@@ -35,10 +36,21 @@ from .eef_receipts import (
 from .executor.base import ExecOutcome
 from .models.case import Verdict, normalize_case_payload, normalize_verdict
 from .release_evidence import validate_release_evidence
+from .signatures import (
+    EEF_PAYLOAD_TYPE,
+    EEF_PROFILE,
+    EEF_PREDICATE_TYPE,
+    VerifiedIdentity,
+    canonical_json,
+    policy_publisher,
+    sign_envelope,
+    verify_envelope,
+)
 from .verdict.flip_check import flip_check
 
 FORMAT_VERSION = "eef/v2"
 RECEIPT_FORMAT_VERSION = "eef/v3"
+PUBLIC_FORMAT_VERSION = "eef/v4"
 STATEMENT_TYPE = "https://in-toto.io/Statement/v1"
 PREDICATE_TYPE = "https://exhibit-a.dev/eef/v2"
 RECEIPT_PREDICATE_TYPE = "https://exhibit-a.dev/eef/v3"
@@ -79,6 +91,7 @@ class VerifiedClaim:
     signature_value: str
     archived_states: tuple[str, ...]
     connector_receipts: tuple[dict[str, Any], ...] = ()
+    verified_identity: VerifiedIdentity | None = None
 
 
 @dataclass
@@ -105,12 +118,14 @@ def create_bundle(
     *,
     target_source: str | Path,
     base_source: str | Path | None,
-    signing_key: bytes,
+    signing_key: bytes | None = None,
+    private_key_seed: bytes | None = None,
+    trust_root: bytes | None = None,
+    policy_id: str | None = None,
     connector_outputs: Sequence[ConnectorOutput[CIStatus]] = (),
 ) -> Path:
     """Serialize a Case plus source snapshots into a deterministic signed archive."""
-    if len(signing_key) < 32:
-        raise ValueError("EEF signing key must contain at least 32 bytes")
+    _validate_signing_inputs(signing_key, private_key_seed, trust_root, policy_id)
     case = normalize_case_payload(case)
     test = case.get("test_file")
     if not isinstance(test, Mapping) or not isinstance(test.get("path"), str):
@@ -168,6 +183,9 @@ def create_bundle(
         payloads,
         output,
         signing_key,
+        private_key_seed=private_key_seed,
+        trust_root=trust_root,
+        policy_id=policy_id,
         format_version=format_version,
         manifest_metadata={
             "claim_type": "bug_flip",
@@ -190,7 +208,10 @@ def create_refactor_bundle(
     *,
     base_source: str | Path,
     target_source: str | Path,
-    signing_key: bytes,
+    signing_key: bytes | None = None,
+    private_key_seed: bytes | None = None,
+    trust_root: bytes | None = None,
+    policy_id: str | None = None,
     output_limit_bytes: int = _OUTPUT_LIMIT_BYTES,
     connector_outputs: Sequence[ConnectorOutput[CIStatus]] = (),
 ) -> Path:
@@ -203,6 +224,9 @@ def create_refactor_bundle(
         base_source=base_source,
         target_source=target_source,
         signing_key=signing_key,
+        private_key_seed=private_key_seed,
+        trust_root=trust_root,
+        policy_id=policy_id,
         output_limit_bytes=output_limit_bytes,
         connector_outputs=connector_outputs,
     )
@@ -211,7 +235,10 @@ def create_refactor_bundle(
 def verify_bundle(
     bundle: str | Path,
     *,
-    signing_key: bytes,
+    signing_key: bytes | None = None,
+    trust_root: bytes | None = None,
+    trust_anchor: bytes | None = None,
+    evaluated_at: datetime | None = None,
     execute: bool = False,
     docker_bin: str = "docker",
 ) -> VerificationResult:
@@ -219,14 +246,32 @@ def verify_bundle(
     return _verify_bundle(
         bundle,
         signing_key=signing_key,
+        trust_root=trust_root,
+        trust_anchor=trust_anchor,
+        evaluated_at=evaluated_at,
         execute=execute,
         docker_bin=docker_bin,
     ).verification
 
 
-def read_verified_claim(bundle: str | Path, *, signing_key: bytes) -> VerifiedClaim:
+def read_verified_claim(
+    bundle: str | Path,
+    *,
+    signing_key: bytes | None = None,
+    trust_root: bytes | None = None,
+    trust_anchor: bytes | None = None,
+    evaluated_at: datetime | None = None,
+) -> VerifiedClaim:
     """Return the validated claim needed for a public passport without replaying it."""
-    verified = _verify_bundle(bundle, signing_key=signing_key, execute=False, docker_bin="docker")
+    verified = _verify_bundle(
+        bundle,
+        signing_key=signing_key,
+        trust_root=trust_root,
+        trust_anchor=trust_anchor,
+        evaluated_at=evaluated_at,
+        execute=False,
+        docker_bin="docker",
+    )
     if verified.claim_type == "bug_flip":
         _validate_public_bug_truth(
             verified.claim,
@@ -313,7 +358,10 @@ def _validate_public_bug_truth(
 def _verify_bundle(
     bundle: str | Path,
     *,
-    signing_key: bytes,
+    signing_key: bytes | None,
+    trust_root: bytes | None,
+    trust_anchor: bytes | None,
+    evaluated_at: datetime | None,
     execute: bool,
     docker_bin: str,
 ) -> VerifiedClaim:
@@ -335,12 +383,14 @@ def _verify_bundle(
         blobs = {name: archive.read(name) for name in names}
     try:
         manifest = json.loads(blobs["manifest.json"])
-        attestation = json.loads(blobs["attestation.json"])
     except KeyError as exc:
         raise ValueError(f"EEF is missing required entry: {exc.args[0]}") from exc
+    if "attestation.json" not in blobs:
+        raise ValueError("EEF is missing required entry: attestation.json")
     if not isinstance(manifest, dict) or manifest.get("format") not in {
         FORMAT_VERSION,
         RECEIPT_FORMAT_VERSION,
+        PUBLIC_FORMAT_VERSION,
         _LEGACY_FORMAT_VERSION,
     }:
         raise ValueError("EEF manifest format is unsupported")
@@ -372,16 +422,48 @@ def _verify_bundle(
         if not hmac.compare_digest(hashlib.sha256(content).hexdigest(), digest):
             raise ValueError(f"EEF entry hash mismatch: {name}")
 
-    if not isinstance(attestation, dict):
-        raise ValueError("EEF attestation is invalid")
-    statement = attestation.get("statement")
-    signature = attestation.get("signature", {})
+    verified_identity = None
+    if format_version == PUBLIC_FORMAT_VERSION:
+        if signing_key is not None or trust_root is None or trust_anchor is None:
+            raise ValueError("EEF v4 verification requires only a trust root and anchor")
+        statement, verified_identity = verify_envelope(
+            blobs["attestation.json"],
+            trust_root=trust_root,
+            trust_anchor=trust_anchor,
+            purpose="eef",
+            evaluated_at=evaluated_at,
+        )
+        signature_algorithm = "ed25519"
+        signature_value = ",".join(verified_identity.verified_key_ids)
+    else:
+        if signing_key is None or trust_root is not None or trust_anchor is not None:
+            raise ValueError("legacy EEF verification requires only its shared signing key")
+        try:
+            attestation = json.loads(blobs["attestation.json"])
+        except (UnicodeDecodeError, json.JSONDecodeError, RecursionError) as exc:
+            raise ValueError("EEF attestation is invalid") from exc
+        if not isinstance(attestation, dict):
+            raise ValueError("EEF attestation is invalid")
+        statement = attestation.get("statement")
+        signature = attestation.get("signature", {})
+        if (
+            not isinstance(statement, dict)
+            or not isinstance(signature, dict)
+            or signature.get("algorithm") != "hmac-sha256"
+        ):
+            raise ValueError("EEF attestation is invalid")
+        expected_signature = hmac.new(
+            signing_key, _canonical(statement), hashlib.sha256
+        ).hexdigest()
+        signature_value = signature.get("value")
+        if not _is_sha256(signature_value) or not hmac.compare_digest(
+            expected_signature, signature_value
+        ):
+            raise ValueError("EEF signature verification failed")
+        signature_algorithm = "hmac-sha256"
     if (
-        not isinstance(statement, dict)
-        or statement.get("_type") != STATEMENT_TYPE
+        statement.get("_type") != STATEMENT_TYPE
         or statement.get("predicateType") != _predicate_type(format_version)
-        or not isinstance(signature, dict)
-        or signature.get("algorithm") != "hmac-sha256"
     ):
         raise ValueError("EEF attestation is invalid")
     subjects = statement.get("subject")
@@ -398,13 +480,6 @@ def _verify_bundle(
         subject_digest or "", hashlib.sha256(blobs["manifest.json"]).hexdigest()
     ):
         raise ValueError("EEF attestation does not cover its manifest")
-    expected_signature = hmac.new(signing_key, _canonical(statement), hashlib.sha256).hexdigest()
-    signature_value = signature.get("value")
-    if not _is_sha256(signature_value) or not hmac.compare_digest(
-        expected_signature, signature_value
-    ):
-        raise ValueError("EEF signature verification failed")
-
     predicate = statement.get("predicate")
     if not isinstance(predicate, dict):
         raise ValueError("EEF attestation predicate is invalid")
@@ -450,7 +525,7 @@ def _verify_bundle(
     claim = json.loads(blobs[claim_name])
     if not isinstance(claim, dict):
         raise TypeError("EEF verified claim payload was not an object")
-    if claim_type == "bug_flip" and format_version == RECEIPT_FORMAT_VERSION:
+    if claim_type == "bug_flip" and receipt_archive is not None:
         validate_release_evidence(
             claim,
             receipt_archive.receipts if receipt_archive else (),
@@ -461,7 +536,7 @@ def _verify_bundle(
         claim_type=claim_type,
         claim=claim,
         manifest_sha256=hashlib.sha256(blobs["manifest.json"]).hexdigest(),
-        signature_algorithm="hmac-sha256",
+        signature_algorithm=signature_algorithm,
         signature_value=signature_value,
         archived_states=tuple(
             state
@@ -469,6 +544,7 @@ def _verify_bundle(
             if any(name.startswith(f"sources/{state}/") for name in blobs)
         ),
         connector_receipts=receipt_archive.receipts if receipt_archive else (),
+        verified_identity=verified_identity,
     )
 
 
@@ -602,9 +678,18 @@ def _validate_bug_bundle(
     if format_version != _LEGACY_FORMAT_VERSION:
         expected_manifest_keys.add("claim_type")
         expected_predicate["claim_type"] = "bug_flip"
-    if format_version == RECEIPT_FORMAT_VERSION:
+    if RECEIPT_ENTRY in blobs:
         expected_manifest_keys.update(_receipt_metadata_keys())
         expected_predicate.update(_receipt_metadata(manifest))
+    if format_version == PUBLIC_FORMAT_VERSION:
+        expected_predicate.update(
+            {
+                "claimType": "bug_flip",
+                "format": PUBLIC_FORMAT_VERSION,
+                "publisher": statement["predicate"].get("publisher"),
+                "signatureProfile": EEF_PROFILE,
+            }
+        )
     if (
         set(manifest) != expected_manifest_keys
         or not isinstance(predicate, dict)
@@ -625,7 +710,7 @@ def _validate_bug_bundle(
         "manifest.json",
         "attestation.json",
     }
-    if format_version == RECEIPT_FORMAT_VERSION:
+    if RECEIPT_ENTRY in blobs:
         fixed_entries.add(RECEIPT_ENTRY)
     for name in blobs:
         if name in fixed_entries or name.startswith(("sources/base/", "sources/target/")):
@@ -998,16 +1083,22 @@ def _validate_payload_limits(payloads: dict[str, bytes]) -> None:
 def _write_bundle(
     payloads: dict[str, bytes],
     output: str | Path,
-    signing_key: bytes,
+    signing_key: bytes | None,
     *,
+    private_key_seed: bytes | None = None,
+    trust_root: bytes | None = None,
+    policy_id: str | None = None,
     format_version: str = FORMAT_VERSION,
     manifest_metadata: Mapping[str, Any],
     predicate: Mapping[str, Any],
 ) -> Path:
-    if len(signing_key) < 32:
-        raise ValueError("EEF signing key must contain at least 32 bytes")
+    _validate_signing_inputs(signing_key, private_key_seed, trust_root, policy_id)
+    public = private_key_seed is not None
+    if public:
+        format_version = PUBLIC_FORMAT_VERSION
     if format_version not in {FORMAT_VERSION, RECEIPT_FORMAT_VERSION}:
-        raise ValueError("EEF output format is unsupported")
+        if format_version != PUBLIC_FORMAT_VERSION:
+            raise ValueError("EEF output format is unsupported")
     manifest = {
         "format": format_version,
         **manifest_metadata,
@@ -1017,6 +1108,19 @@ def _write_bundle(
         },
     }
     manifest_bytes = _canonical(manifest) + b"\n"
+    statement_predicate = dict(predicate)
+    if public:
+        assert trust_root is not None and policy_id is not None
+        statement_predicate.update(
+            {
+                "claimType": statement_predicate.get("claim_type"),
+                "format": PUBLIC_FORMAT_VERSION,
+                "publisher": {
+                    "id": policy_publisher(trust_root, policy_id, purpose="eef")
+                },
+                "signatureProfile": EEF_PROFILE,
+            }
+        )
     statement = {
         "_type": STATEMENT_TYPE,
         "subject": [
@@ -1026,17 +1130,33 @@ def _write_bundle(
             }
         ],
         "predicateType": _predicate_type(format_version),
-        "predicate": dict(predicate),
+        "predicate": statement_predicate,
     }
-    attestation = {
-        "statement": statement,
-        "signature": {
-            "algorithm": "hmac-sha256",
-            "value": hmac.new(signing_key, _canonical(statement), hashlib.sha256).hexdigest(),
-        },
-    }
+    if public:
+        assert private_key_seed is not None and trust_root is not None and policy_id is not None
+        attestation = sign_envelope(
+            statement,
+            payload_type=EEF_PAYLOAD_TYPE,
+            private_key_seed=private_key_seed,
+            trust_root=trust_root,
+            policy_id=policy_id,
+            purpose="eef",
+        )
+    else:
+        assert signing_key is not None
+        attestation = {
+            "statement": statement,
+            "signature": {
+                "algorithm": "hmac-sha256",
+                "value": hmac.new(
+                    signing_key, _canonical(statement), hashlib.sha256
+                ).hexdigest(),
+            },
+        }
     payloads["manifest.json"] = manifest_bytes
-    payloads["attestation.json"] = _canonical(attestation) + b"\n"
+    payloads["attestation.json"] = (
+        canonical_json(attestation) if public else _canonical(attestation)
+    ) + b"\n"
     _validate_payload_limits(payloads)
 
     destination = Path(output)
@@ -1050,6 +1170,26 @@ def _write_bundle(
     return destination
 
 
+def _validate_signing_inputs(
+    signing_key: bytes | None,
+    private_key_seed: bytes | None,
+    trust_root: bytes | None,
+    policy_id: str | None,
+) -> None:
+    legacy = signing_key is not None
+    public = private_key_seed is not None or trust_root is not None or policy_id is not None
+    if legacy == public:
+        raise ValueError("select exactly one EEF signing profile")
+    if legacy:
+        if signing_key is None or len(signing_key) < 32:
+            raise ValueError("EEF signing key must contain at least 32 bytes")
+        return
+    if private_key_seed is None or trust_root is None or policy_id is None:
+        raise ValueError("EEF v4 signing requires a private key, trust root, and policy ID")
+    if len(private_key_seed) != 32:
+        raise ValueError("Ed25519 private key seed must contain exactly 32 bytes")
+
+
 def _validated_receipt_archive(
     blobs: dict[str, bytes],
     manifest: Mapping[str, Any],
@@ -1058,9 +1198,13 @@ def _validated_receipt_archive(
     format_version: str,
     claim_type: object,
 ) -> ReceiptArchive | None:
-    if format_version != RECEIPT_FORMAT_VERSION:
+    if format_version not in {RECEIPT_FORMAT_VERSION, PUBLIC_FORMAT_VERSION}:
         if RECEIPT_ENTRY in blobs:
             raise ValueError("legacy EEF contains an unsupported connector receipt section")
+        return None
+    if format_version == PUBLIC_FORMAT_VERSION and RECEIPT_ENTRY not in blobs:
+        if any(manifest.get(name) is not None for name in _receipt_metadata_keys()):
+            raise ValueError("EEF v4 receipt metadata has no connector receipt section")
         return None
     if claim_type == "bug_flip":
         claim_name = "case.json"
@@ -1103,6 +1247,7 @@ def _predicate_type(format_version: str) -> str:
         _LEGACY_FORMAT_VERSION: _LEGACY_PREDICATE_TYPE,
         FORMAT_VERSION: PREDICATE_TYPE,
         RECEIPT_FORMAT_VERSION: RECEIPT_PREDICATE_TYPE,
+        PUBLIC_FORMAT_VERSION: EEF_PREDICATE_TYPE,
     }.get(format_version, "")
 
 

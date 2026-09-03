@@ -12,7 +12,9 @@ a Dockerfile, content manifest, and an in-toto Statement-shaped attestation. EEF
 supports bug-flip Cases and behavior-preserving refactor evidence. EEF v3 adds claim-bound
 remote connector receipts without changing either deterministic claim judge. Minting
 remains byte-compatible v2 when no remote receipt is supplied; the verifier reads signed
-v1, v2, and v3 archives.
+v1, v2, and v3 archives. EEF v4 adds an optional public-signature path using the
+DSSE/Ed25519 profile and externally anchored trust policy defined by
+[ADR 0001](./adr/0001-eef-v4-public-key-signatures.html).
 
 ## Guarantees
 
@@ -20,6 +22,10 @@ v1, v2, and v3 archives.
 - The attestation signs the manifest with HMAC-SHA256. Verification therefore proves
   that the holder of the shared publisher key minted the bundle. Key distribution is
   deliberately outside EEF v2; this is not a public-key identity claim.
+- EEF v4 instead verifies with public key material: publishing its trust root does not
+  grant signing authority. The external trust anchor pins the exact root, rollback floor,
+  and expected policy before the DSSE payload is parsed. This proves attribution under
+  that installed policy—not evidence correctness or a legal identity.
 - `verify` also validates claim-specific structure. For refactor evidence it revalidates
   every run/receipt digest and linkage and re-derives the complete recorded truth from the
   signed outcomes. This detects internally inconsistent evidence without executing code.
@@ -104,6 +110,14 @@ python3 -m exhibit_a.cli refactor-bundle \
 python3 -m exhibit_a.cli verify case.eef --signing-key /secure/eef.key
 python3 -m exhibit_a.cli verify case.eef --signing-key /secure/eef.key --execute
 
+# Public-key profile (install the `public-signatures` extra first).
+python3 -m exhibit_a.cli bundle-v4 case.json \
+  --target-source /path/to/bad --base-source /path/to/good \
+  --private-key /secure/ed25519.seed --trust-root trust-root.json \
+  --policy-id eef-production-v1 --out case-v4.eef
+python3 -m exhibit_a.cli verify-v4 case-v4.eef \
+  --trust-root trust-root.json --trust-anchor trust-anchor.json
+
 python3 -m exhibit_a.cli passport case.eef \
   --signing-key /secure/eef.key --out case.passport.json
 
@@ -123,7 +137,7 @@ python3 -m exhibit_a.cli release-evidence case.json \
 ## Archive layout
 
 ```text
-attestation.json       in-toto Statement + HMAC signature
+attestation.json       legacy Statement + HMAC, or v4 DSSE in-toto Statement
 case.json              canonical bug-flip Case (exactly one claim payload)
 refactor.json          canonical refactor evidence (alternative claim payload)
 connector_receipts.json  optional v3 normalized remote facts and provenance

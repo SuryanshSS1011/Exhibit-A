@@ -66,6 +66,15 @@ def public_key_from_seed(private_key_seed: bytes) -> bytes:
     return private_key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
 
 
+def policy_publisher(trust_root: bytes, policy_id: str, *, purpose: str) -> str:
+    """Return the publisher bound to one validated signing policy."""
+    root = _parse_root(trust_root)
+    policy = _policy_by_id(root, policy_id)
+    if policy.get("purpose") != purpose:
+        raise ValueError("trusted policy purpose does not match the requested artifact")
+    return str(policy["publisherId"])
+
+
 def sign_envelope(
     payload: Mapping[str, Any],
     *,

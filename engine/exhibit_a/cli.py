@@ -46,8 +46,8 @@ from .hypothesis.property import CodexPropertyGenerator
 from .intake.git_bisect import bisect_reproduction
 from .intake.git_checkout import checkout_context, checkout_pair, checkout_triplet
 from .models.case import Case, Mode, ReleaseTruth, Verdict, normalize_case_payload
-from .passport import create_passport
-from .passport_html import create_html_passport
+from .passport import create_passport, create_public_passport
+from .passport_html import create_html_passport, create_public_html_passport
 from .providers import ProviderRole, load_provider_config
 from .release_evidence import create_release_record, parse_policy_document
 from .store.json_store import JsonCaseStore
@@ -303,6 +303,24 @@ def cmd_bundle(args: argparse.Namespace) -> int:
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(f"error: cannot create EEF bundle: {exc}", file=sys.stderr)
+        return 2
+    print(path)
+    return 0
+
+
+def cmd_bundle_v4(args: argparse.Namespace) -> int:
+    try:
+        path = create_bundle(
+            json.loads(Path(args.case).read_text()),
+            args.out,
+            target_source=args.target_source,
+            base_source=args.base_source,
+            private_key_seed=Path(args.private_key).read_bytes(),
+            trust_root=Path(args.trust_root).read_bytes(),
+            policy_id=args.policy_id,
+        )
+    except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as exc:
+        print(f"error: cannot create EEF v4 bundle: {exc}", file=sys.stderr)
         return 2
     print(path)
     return 0
@@ -637,6 +655,21 @@ def cmd_verify(args: argparse.Namespace) -> int:
     return 0 if result.execution_verified is not False else 1
 
 
+def cmd_verify_v4(args: argparse.Namespace) -> int:
+    try:
+        result = verify_bundle(
+            args.bundle,
+            trust_root=Path(args.trust_root).read_bytes(),
+            trust_anchor=Path(args.trust_anchor).read_bytes(),
+            execute=args.execute,
+        )
+    except (OSError, RuntimeError, ValueError, json.JSONDecodeError, zipfile.BadZipFile) as exc:
+        print(f"error: EEF v4 verification failed: {exc}", file=sys.stderr)
+        return 1
+    print(json.dumps(result.__dict__, indent=2))
+    return 0 if result.execution_verified is not False else 1
+
+
 def cmd_passport(args: argparse.Namespace) -> int:
     try:
         bundle = Path(args.bundle).resolve(strict=True)
@@ -679,6 +712,38 @@ def cmd_passport_html(args: argparse.Namespace) -> int:
         )
     except (OSError, TypeError, ValueError, json.JSONDecodeError) as exc:
         print(f"error: cannot create HTML passport: {exc}", file=sys.stderr)
+        return 2
+    print(path)
+    return 0
+
+
+def cmd_passport_v3(args: argparse.Namespace) -> int:
+    try:
+        path = create_public_passport(
+            args.bundle,
+            args.out,
+            private_key_seed=Path(args.private_key).read_bytes(),
+            trust_root=Path(args.trust_root).read_bytes(),
+            trust_anchor=Path(args.trust_anchor).read_bytes(),
+            passport_policy_id=args.policy_id,
+        )
+    except (OSError, RuntimeError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        print(f"error: cannot create public passport v3: {exc}", file=sys.stderr)
+        return 2
+    print(path)
+    return 0
+
+
+def cmd_passport_html_v3(args: argparse.Namespace) -> int:
+    try:
+        path = create_public_html_passport(
+            args.passport,
+            args.out,
+            trust_root=Path(args.trust_root).read_bytes(),
+            trust_anchor=Path(args.trust_anchor).read_bytes(),
+        )
+    except (OSError, RuntimeError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        print(f"error: cannot create public passport v3 HTML: {exc}", file=sys.stderr)
         return 2
     print(path)
     return 0
@@ -1123,6 +1188,16 @@ def main(argv: list[str] | None = None) -> int:
     bundle.add_argument("--out", required=True, help="output .eef path")
     bundle.set_defaults(func=cmd_bundle)
 
+    bundle_v4 = sub.add_parser("bundle-v4", help="mint a publicly verifiable EEF v4 archive")
+    bundle_v4.add_argument("case", help="Case JSON to package")
+    bundle_v4.add_argument("--target-source", required=True, help="target source snapshot")
+    bundle_v4.add_argument("--base-source", help="base source snapshot for a full flip")
+    bundle_v4.add_argument("--private-key", required=True, help="32-byte Ed25519 private seed")
+    bundle_v4.add_argument("--trust-root", required=True, help="authorized public-key root JSON")
+    bundle_v4.add_argument("--policy-id", required=True, help="EEF signing policy ID")
+    bundle_v4.add_argument("--out", required=True, help="output .eef path")
+    bundle_v4.set_defaults(func=cmd_bundle_v4)
+
     refactor_bundle = sub.add_parser(
         "refactor-bundle",
         help="run a before/after behavior contract and mint signed EEF evidence",
@@ -1202,6 +1277,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     verify.set_defaults(func=cmd_verify)
 
+    verify_v4 = sub.add_parser("verify-v4", help="verify an EEF v4 archive offline")
+    verify_v4.add_argument("bundle", help="EEF v4 archive to verify")
+    verify_v4.add_argument("--trust-root", required=True, help="public-key trust root JSON")
+    verify_v4.add_argument("--trust-anchor", required=True, help="external trust anchor JSON")
+    verify_v4.add_argument("--execute", action="store_true", help="replay the evidence offline")
+    verify_v4.set_defaults(func=cmd_verify_v4)
+
     passport = sub.add_parser(
         "passport",
         help="derive a credential-free public JSON passport from a verified EEF",
@@ -1210,6 +1292,15 @@ def main(argv: list[str] | None = None) -> int:
     passport.add_argument("--signing-key", required=True, help="publisher verification key file")
     passport.add_argument("--out", required=True, help="output passport JSON path")
     passport.set_defaults(func=cmd_passport)
+
+    passport_v3 = sub.add_parser("passport-v3", help="derive a DSSE-signed public passport v3")
+    passport_v3.add_argument("bundle", help="publicly signed EEF v4 archive")
+    passport_v3.add_argument("--private-key", required=True, help="32-byte Ed25519 private seed")
+    passport_v3.add_argument("--trust-root", required=True, help="public-key trust root JSON")
+    passport_v3.add_argument("--trust-anchor", required=True, help="external trust anchor JSON")
+    passport_v3.add_argument("--policy-id", required=True, help="passport signing policy ID")
+    passport_v3.add_argument("--out", required=True, help="output passport v3 JSON path")
+    passport_v3.set_defaults(func=cmd_passport_v3)
 
     passport_html = sub.add_parser(
         "passport-html",
@@ -1221,6 +1312,17 @@ def main(argv: list[str] | None = None) -> int:
     )
     passport_html.add_argument("--out", required=True, help="output standalone HTML path")
     passport_html.set_defaults(func=cmd_passport_html)
+
+    passport_html_v3 = sub.add_parser(
+        "passport-html-v3", help="render a verified public passport v3 as standalone HTML"
+    )
+    passport_html_v3.add_argument("passport", help="DSSE-signed public passport v3 JSON")
+    passport_html_v3.add_argument("--trust-root", required=True, help="public-key trust root JSON")
+    passport_html_v3.add_argument(
+        "--trust-anchor", required=True, help="external trust anchor JSON"
+    )
+    passport_html_v3.add_argument("--out", required=True, help="output standalone HTML path")
+    passport_html_v3.set_defaults(func=cmd_passport_html_v3)
 
     observe = sub.add_parser("observe", help="re-run a minted test on a pinned upstream SHA")
     observe.add_argument("case", help="minted Case JSON")

@@ -7,6 +7,7 @@ import subprocess
 import sys
 import zipfile
 from dataclasses import asdict
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -87,6 +88,58 @@ def _case() -> dict:
         deterministic=True,
     )
     return case.to_dict()
+
+
+def test_eef_v4_is_publicly_verifiable_without_forgery_authority(tmp_path: Path):
+    target = tmp_path / "target"
+    base = tmp_path / "base"
+    target.mkdir()
+    base.mkdir()
+    (target / "inventory.py").write_text("def stock_for(rows, sku): return 1\n")
+    (base / "inventory.py").write_text("def stock_for(rows, sku): return 0\n")
+    fixtures = Path(__file__).resolve().parents[2] / "docs" / "adr" / "fixtures"
+    root = (fixtures / "eef-v4-trust-root.json").read_bytes()
+    anchor = (fixtures / "eef-v4-trust-anchor.json").read_bytes()
+    seed = bytes.fromhex("9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60")
+
+    first = create_bundle(
+        _case(),
+        tmp_path / "first-v4.eef",
+        target_source=target,
+        base_source=base,
+        private_key_seed=seed,
+        trust_root=root,
+        policy_id="eef-reference-v1",
+    )
+    second = create_bundle(
+        _case(),
+        tmp_path / "second-v4.eef",
+        target_source=target,
+        base_source=base,
+        private_key_seed=seed,
+        trust_root=root,
+        policy_id="eef-reference-v1",
+    )
+
+    assert first.read_bytes() == second.read_bytes()
+    result = verify_bundle(
+        first,
+        trust_root=root,
+        trust_anchor=anchor,
+        evaluated_at=datetime.fromisoformat("2026-09-02T00:00:00Z"),
+    )
+    assert result.signature_verified
+    with pytest.raises(ValueError, match="requires only a trust root and anchor"):
+        verify_bundle(first, signing_key=KEY, trust_root=root, trust_anchor=anchor)
+    with pytest.raises(ValueError, match="requires only its shared signing key"):
+        legacy = create_bundle(
+            _case(),
+            tmp_path / "legacy.eef",
+            target_source=target,
+            base_source=base,
+            signing_key=KEY,
+        )
+        verify_bundle(legacy, trust_root=root, trust_anchor=anchor)
 
 
 def test_eef_is_byte_deterministic_and_verifies_offline(tmp_path: Path):

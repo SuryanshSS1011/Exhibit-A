@@ -5,6 +5,7 @@ import hmac
 import json
 import zipfile
 from dataclasses import replace
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -68,6 +69,38 @@ def _bundle(
         target_source=target,
         signing_key=KEY,
     )
+
+
+def test_refactor_eef_v4_round_trip(tmp_path: Path) -> None:
+    base, target = _sources(tmp_path)
+    evidence = collect_refactor_evidence(
+        StateExecutor(),
+        RepoState(str(base), "base", commit="a" * 40, source="https://example.com/repo"),
+        RepoState(str(target), "target", commit="b" * 40, source="https://example.com/repo"),
+        CONTRACT,
+    )
+    fixtures = Path(__file__).resolve().parents[2] / "docs" / "adr" / "fixtures"
+    root = (fixtures / "eef-v4-trust-root.json").read_bytes()
+    anchor = (fixtures / "eef-v4-trust-anchor.json").read_bytes()
+    bundle = create_refactor_bundle(
+        evidence,
+        tmp_path / "refactor-v4.eef",
+        base_source=base,
+        target_source=target,
+        private_key_seed=bytes.fromhex(
+            "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60"
+        ),
+        trust_root=root,
+        policy_id="eef-reference-v1",
+    )
+
+    result = verify_bundle(
+        bundle,
+        trust_root=root,
+        trust_anchor=anchor,
+        evaluated_at=datetime.fromisoformat("2026-09-02T00:00:00Z"),
+    )
+    assert result.integrity_verified and result.signature_verified
 
 
 def _resign_bundle(bundle: Path, output: Path, mutate) -> Path:

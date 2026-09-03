@@ -25,6 +25,7 @@ from .connectors import (
 )
 from .eef import (
     FORMAT_VERSION,
+    PUBLIC_FORMAT_VERSION,
     RECEIPT_FORMAT_VERSION,
     _MAX_RERUNS,
     _OUTPUT_LIMIT_BYTES,
@@ -43,6 +44,7 @@ from .eef import (
     _safe_relative,
     _write_bundle,
 )
+from .signatures import EEF_PROFILE
 from .eef_receipts import (
     RECEIPT_ENTRY,
     ReceiptBinding,
@@ -212,13 +214,14 @@ def create_refactor_bundle(
     *,
     base_source: str | Path,
     target_source: str | Path,
-    signing_key: bytes,
+    signing_key: bytes | None = None,
+    private_key_seed: bytes | None = None,
+    trust_root: bytes | None = None,
+    policy_id: str | None = None,
     output_limit_bytes: int = _OUTPUT_LIMIT_BYTES,
     connector_outputs: Sequence[ConnectorOutput[CIStatus]] = (),
 ) -> Path:
     """Serialize typed refactor evidence and both source states into EEF."""
-    if len(signing_key) < 32:
-        raise ValueError("EEF signing key must contain at least 32 bytes")
     if type(evidence) is not RefactorEvidence:
         raise TypeError("refactor EEF requires a RefactorEvidence object")
     # Validate the exact JSON shape readers receive, not dataclass tuple internals.
@@ -264,6 +267,9 @@ def create_refactor_bundle(
         payloads,
         output,
         signing_key,
+        private_key_seed=private_key_seed,
+        trust_root=trust_root,
+        policy_id=policy_id,
         format_version=format_version,
         manifest_metadata={
             "claim_type": CLAIM_TYPE,
@@ -348,7 +354,7 @@ def validate_refactor_bundle(
     if blobs.get("Dockerfile") != _dockerfile(argv).encode():
         raise ValueError("refactor EEF Dockerfile does not match the trusted replay harness")
     fixed = {"refactor.json", "reproduce.json", "Dockerfile", "manifest.json", "attestation.json"}
-    if format_version == RECEIPT_FORMAT_VERSION:
+    if RECEIPT_ENTRY in blobs:
         fixed.add(RECEIPT_ENTRY)
     for name in blobs:
         if name in fixed or name.startswith(("sources/base/", "sources/target/")):
@@ -373,9 +379,18 @@ def validate_refactor_bundle(
         "release": result["release"],
         "deterministic": result["deterministic"],
     }
-    if format_version == RECEIPT_FORMAT_VERSION:
+    if RECEIPT_ENTRY in blobs:
         expected_manifest_keys.update(_receipt_metadata_keys())
         expected_predicate.update(_receipt_metadata(manifest))
+    if format_version == PUBLIC_FORMAT_VERSION:
+        expected_predicate.update(
+            {
+                "claimType": CLAIM_TYPE,
+                "format": PUBLIC_FORMAT_VERSION,
+                "publisher": statement["predicate"].get("publisher"),
+                "signatureProfile": EEF_PROFILE,
+            }
+        )
     if (
         set(manifest) != expected_manifest_keys
         or manifest.get("claim_type") != CLAIM_TYPE

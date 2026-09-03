@@ -30,6 +30,13 @@ to a SHA-256 commitment after credential stripping; local sources become `local-
 The final encoded passport is capped at 1 MiB and is installed with an atomic replacement
 that cannot truncate a hardlinked EEF or verification key.
 
+Passport v3 is the public-key counterpart for EEF v4. Its sanitized JSON payload is
+wrapped in a domain-separated DSSE envelope and verified with the external trust root and
+anchor; the public verification material cannot forge a passport. It records the source
+EEF publisher, verified key IDs, and exact root digest/version, but labels those as claims
+made by the passport issuer unless the source EEF is independently supplied and verified.
+The two identities remain separate in JSON and HTML even when their strings match.
+
 Passport v2 adds an exact-shape `release_evidence` section. It publishes the named policy
 and its SHA-256 commitment, only policy-required check names/states/timestamps, total and
 omitted check counts, point-in-time freshness, request/response/artifact/content
@@ -53,6 +60,14 @@ python3 -m exhibit_a.cli passport case.eef \
 
 python3 -m exhibit_a.cli passport-html case.passport.json \
   --signing-key /secure/eef.key --out case.passport.html
+
+python3 -m exhibit_a.cli passport-v3 case-v4.eef \
+  --private-key /secure/ed25519.seed --trust-root trust-root.json \
+  --trust-anchor trust-anchor.json --policy-id passport-production-v1 \
+  --out case.passport-v3.json
+python3 -m exhibit_a.cli passport-html-v3 case.passport-v3.json \
+  --trust-root trust-root.json --trust-anchor trust-anchor.json \
+  --out case.passport-v3.html
 ```
 
 The complete release workflow collects once, evaluates once at an explicit instant, and

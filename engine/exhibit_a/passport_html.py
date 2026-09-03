@@ -10,13 +10,81 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from .passport import PASSPORT_SCHEMA, RELEASE_PASSPORT_SCHEMA, verify_passport
+from .passport import (
+    PASSPORT_SCHEMA,
+    RELEASE_PASSPORT_SCHEMA,
+    verify_passport,
+    verify_public_passport,
+)
 
 _MAX_JSON_BYTES = 1024 * 1024
 _MAX_HTML_BYTES = 2 * 1024 * 1024
 _SHA256_LENGTH = 64
 _VERDICTS = {"VERIFIED", "PARTIAL", "FAILED", "UNCERTAIN"}
 _EXECUTION = {"NOT_RUN", "COMPLETED", "FAILED"}
+
+
+def create_public_html_passport(
+    passport: str | Path,
+    output: str | Path,
+    *,
+    trust_root: bytes,
+    trust_anchor: bytes,
+    evaluated_at: Any = None,
+) -> Path:
+    """Verify a passport v3 envelope and render a standalone public view."""
+    source = Path(passport).expanduser().absolute()
+    destination = Path(output).expanduser().absolute()
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NONBLOCK", 0)
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    descriptor = os.open(source, flags)
+    try:
+        source_stat = os.fstat(descriptor)
+        if not stat.S_ISREG(source_stat.st_mode):
+            raise ValueError("JSON passport must be a regular file")
+        if destination == source or (
+            destination.exists() and os.path.samestat(destination.stat(), source_stat)
+        ):
+            raise ValueError("HTML passport output must not overwrite its JSON passport")
+        encoded = _read_bounded(descriptor, _MAX_JSON_BYTES + 1)
+    finally:
+        os.close(descriptor)
+    if len(encoded) > _MAX_JSON_BYTES:
+        raise ValueError("JSON passport exceeds the 1 MiB size limit")
+    payload, identity = verify_public_passport(
+        encoded,
+        trust_root=trust_root,
+        trust_anchor=trust_anchor,
+        evaluated_at=evaluated_at,
+    )
+    rendered = render_public_html_passport(payload, identity.publisher_id)
+    if len(rendered.encode()) > _MAX_HTML_BYTES:
+        raise ValueError("HTML passport exceeds the 2 MiB size limit")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    _atomic_write(destination, rendered)
+    return destination
+
+
+def render_public_html_passport(passport: dict[str, Any], verified_issuer: str) -> str:
+    """Render an already verified passport v3 without adding new claims."""
+    source = passport["sourceEef"]
+    issuer = passport["passportIssuer"]["id"]
+    machine = html.escape(json.dumps(passport, ensure_ascii=False, indent=2, sort_keys=True))
+    return f"""<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<title>Exhibit A · Public Evidence Passport</title>
+<style>body{{margin:0;overflow-x:hidden;background:#101416;color:#e8ece9;font:16px/1.55 ui-monospace,monospace}}main{{box-sizing:border-box;max-width:880px;margin:auto;padding:48px 24px}}h1{{font:700 2.2rem/1.1 Georgia,serif;color:#fff}}.seal{{border-left:4px solid #5ee29a;padding:14px 18px;background:#17201b;overflow-wrap:anywhere}}dt{{color:#9eaaa3;margin-top:16px}}dd{{margin:2px 0;overflow-wrap:anywhere}}details{{margin-top:32px}}pre{{white-space:pre-wrap;background:#080b0c;padding:18px;overflow:auto}}@media(max-width:520px){{main{{padding:28px 16px}}h1{{font-size:1.7rem}}}}</style></head>
+<body><main><p>EXHIBIT A / PASSPORT V3</p><h1>Public evidence passport</h1>
+<p class="seal">DSSE signature verified under the installed public-key trust policy.</p>
+<dl><dt>Passport issuer</dt><dd>{html.escape(str(issuer))}</dd>
+<dt>Verified issuer</dt><dd>{html.escape(verified_issuer)}</dd>
+<dt>Source EEF publisher (issuer-signed claim)</dt><dd>{html.escape(str(source['publisher']['id']))}</dd>
+<dt>Manifest SHA-256</dt><dd>{html.escape(str(source['manifestSha256']))}</dd></dl>
+<p>The source publisher identity is not independently verified unless the source EEF and its trust root are also checked.</p>
+<details><summary>Machine record</summary><pre>{machine}</pre></details></main></body></html>"""
 
 
 def create_html_passport(

@@ -42,11 +42,17 @@ from exhibit_a.models.case import TestArtifact as CaseTestArtifact
 from exhibit_a.passport import (
     PASSPORT_SCHEMA,
     RELEASE_PASSPORT_SCHEMA,
+    create_public_passport,
     create_passport,
     passport_from_verified_claim,
     verify_passport,
+    verify_public_passport,
 )
-from exhibit_a.passport_html import create_html_passport, render_html_passport
+from exhibit_a.passport_html import (
+    create_html_passport,
+    create_public_html_passport,
+    render_html_passport,
+)
 from exhibit_a.release_evidence import create_release_record, parse_policy_document
 from exhibit_a.verdict.refactor_runner import collect_refactor_evidence
 
@@ -233,7 +239,7 @@ def _release_verified_claim(tmp_path: Path, *, duplicate_optional: bool = False)
     )
 
 
-def _bug_bundle(tmp_path: Path) -> Path:
+def _bug_bundle(tmp_path: Path, *, public: bool = False) -> Path:
     target = tmp_path / "target"
     base = tmp_path / "base"
     target.mkdir()
@@ -289,13 +295,118 @@ def _bug_bundle(tmp_path: Path) -> Path:
             total_tokens=25,
         )
     ]
+    signing: dict[str, object]
+    if public:
+        fixtures = Path(__file__).resolve().parents[2] / "docs" / "adr" / "fixtures"
+        signing = {
+            "private_key_seed": bytes.fromhex(
+                "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60"
+            ),
+            "trust_root": (fixtures / "eef-v4-trust-root.json").read_bytes(),
+            "policy_id": "eef-reference-v1",
+        }
+    else:
+        signing = {"signing_key": KEY}
     return create_bundle(
         case.to_dict(),
         tmp_path / "bug.eef",
         target_source=target,
         base_source=base,
-        signing_key=KEY,
+        **signing,
     )
+
+
+def test_public_passport_v3_round_trip_and_identity_separation(tmp_path: Path) -> None:
+    fixtures = Path(__file__).resolve().parents[2] / "docs" / "adr" / "fixtures"
+    root = (fixtures / "eef-v4-trust-root.json").read_bytes()
+    anchor = (fixtures / "eef-v4-trust-anchor.json").read_bytes()
+    seed = bytes.fromhex("9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60")
+    evaluated_at = datetime.fromisoformat("2026-09-02T00:00:00Z")
+    bundle = _bug_bundle(tmp_path, public=True)
+
+    output = create_public_passport(
+        bundle,
+        tmp_path / "public.passport.json",
+        private_key_seed=seed,
+        trust_root=root,
+        trust_anchor=anchor,
+        evaluated_at=evaluated_at,
+        passport_policy_id="passport-reference-v1",
+    )
+    payload, identity = verify_public_passport(
+        output.read_bytes(),
+        trust_root=root,
+        trust_anchor=anchor,
+        evaluated_at=evaluated_at,
+    )
+
+    assert payload["schemaVersion"] == "exhibit-a-passport/v3"
+    assert payload["passportIssuer"]["id"] == identity.publisher_id
+    assert payload["sourceEef"]["publisher"]["id"] == identity.publisher_id
+    assert payload["verification"]["meaning"].startswith("source identity is an issuer")
+    assert SECRET not in output.read_text()
+
+    html_output = create_public_html_passport(
+        output,
+        tmp_path / "public.passport.html",
+        trust_root=root,
+        trust_anchor=anchor,
+        evaluated_at=evaluated_at,
+    )
+    rendered = html_output.read_text()
+    assert "DSSE signature verified" in rendered
+    assert "issuer-signed claim" in rendered
+    assert SECRET not in rendered
+
+
+def test_public_signature_cli_round_trip(tmp_path: Path) -> None:
+    fixtures = Path(__file__).resolve().parents[2] / "docs" / "adr" / "fixtures"
+    root = fixtures / "eef-v4-trust-root.json"
+    anchor = fixtures / "eef-v4-trust-anchor.json"
+    seed = tmp_path / "seed.key"
+    seed.write_bytes(
+        bytes.fromhex("9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60")
+    )
+    bundle = _bug_bundle(tmp_path, public=True)
+    passport = tmp_path / "cli.passport.json"
+    rendered = tmp_path / "cli.passport.html"
+
+    assert main(["verify-v4", str(bundle), "--trust-root", str(root), "--trust-anchor", str(anchor)]) == 0
+    assert (
+        main(
+            [
+                "passport-v3",
+                str(bundle),
+                "--private-key",
+                str(seed),
+                "--trust-root",
+                str(root),
+                "--trust-anchor",
+                str(anchor),
+                "--policy-id",
+                "passport-reference-v1",
+                "--out",
+                str(passport),
+            ]
+        )
+        == 0
+    )
+    assert (
+        main(
+            [
+                "passport-html-v3",
+                str(passport),
+                "--trust-root",
+                str(root),
+                "--trust-anchor",
+                str(anchor),
+                "--out",
+                str(rendered),
+            ]
+        )
+        == 0
+    )
+    assert passport.exists() and rendered.exists()
 
 
 def _refactor_bundle(

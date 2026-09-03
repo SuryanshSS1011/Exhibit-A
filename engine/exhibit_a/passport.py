@@ -15,9 +15,18 @@ from typing import Any
 from .connectors import credential_free_source
 from .eef import VerifiedClaim, read_verified_claim
 from .release_evidence import public_release_projection, validate_release_evidence
+from .signatures import (
+    PASSPORT_PAYLOAD_TYPE,
+    PASSPORT_PROFILE,
+    VerifiedIdentity,
+    policy_publisher,
+    sign_envelope,
+    verify_envelope,
+)
 
 PASSPORT_SCHEMA = "exhibit-a-passport/v1"
 RELEASE_PASSPORT_SCHEMA = "exhibit-a-passport/v2"
+PUBLIC_PASSPORT_SCHEMA = "exhibit-a-passport/v3"
 _PASSPORT_MAC_DOMAIN = b"exhibit-a-passport/v1\0"
 _RELEASE_PASSPORT_MAC_DOMAIN = b"exhibit-a-passport/v2\0"
 _SHA256 = re.compile(r"[0-9a-f]{64}\Z")
@@ -29,6 +38,159 @@ _MAX_RELEASE_REASON_CHARS = 64 * 1024
 _VERDICTS = {"VERIFIED", "PARTIAL", "FAILED", "UNCERTAIN"}
 _EXECUTION = {"NOT_RUN", "COMPLETED", "FAILED"}
 _RELEASE = {"NOT_ASSESSED", "SAFE", "UNSAFE", "UNCERTAIN"}
+
+
+def create_public_passport(
+    bundle: str | Path,
+    output: str | Path,
+    *,
+    private_key_seed: bytes,
+    trust_root: bytes,
+    trust_anchor: bytes,
+    evaluated_at: datetime | None = None,
+    passport_policy_id: str,
+) -> Path:
+    """Verify an EEF v4 bundle and create a DSSE-signed public passport v3."""
+    bundle_path = Path(bundle).resolve()
+    destination = Path(output).expanduser().absolute()
+    if destination == bundle_path or (
+        destination.exists() and os.path.samestat(destination.stat(), bundle_path.stat())
+    ):
+        raise ValueError("passport output must not overwrite its EEF bundle")
+    verified = read_verified_claim(
+        bundle_path,
+        trust_root=trust_root,
+        trust_anchor=trust_anchor,
+        evaluated_at=evaluated_at,
+    )
+    payload = _public_passport_payload(
+        verified,
+        passport_issuer=policy_publisher(
+            trust_root, passport_policy_id, purpose="passport"
+        ),
+    )
+    envelope = sign_envelope(
+        payload,
+        payload_type=PASSPORT_PAYLOAD_TYPE,
+        private_key_seed=private_key_seed,
+        trust_root=trust_root,
+        policy_id=passport_policy_id,
+        purpose="passport",
+    )
+    encoded = json.dumps(envelope, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    if len(encoded.encode()) > _MAX_PASSPORT_BYTES:
+        raise ValueError("public passport exceeds the 1 MiB size limit")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    _atomic_write(destination, encoded)
+    return destination
+
+
+def verify_public_passport(
+    envelope: bytes,
+    *,
+    trust_root: bytes,
+    trust_anchor: bytes,
+    evaluated_at: datetime | None = None,
+) -> tuple[dict[str, Any], VerifiedIdentity]:
+    """Verify and validate a standalone public passport v3 envelope."""
+    payload, identity = verify_envelope(
+        envelope,
+        trust_root=trust_root,
+        trust_anchor=trust_anchor,
+        purpose="passport",
+        evaluated_at=evaluated_at,
+    )
+    if payload.get("schemaVersion") != PUBLIC_PASSPORT_SCHEMA:
+        raise ValueError("public passport schema is unsupported")
+    if payload.get("signatureProfile") != PASSPORT_PROFILE:
+        raise ValueError("public passport signature profile is invalid")
+    if set(payload) != {
+        "claimType",
+        "passportIssuer",
+        "privacy",
+        "schemaVersion",
+        "signatureProfile",
+        "sourceEef",
+        "subject",
+        "verification",
+    }:
+        raise ValueError("public passport shape is invalid")
+    source = payload.get("sourceEef")
+    if (
+        not isinstance(source, dict)
+        or set(source)
+        != {"format", "manifestSha256", "publisher", "trustRoot", "verifiedKeyIds"}
+        or source.get("format") != "eef/v4"
+    ):
+        raise ValueError("public passport source EEF metadata is invalid")
+    if not _SHA256.fullmatch(str(source.get("manifestSha256", ""))):
+        raise ValueError("public passport manifest digest is invalid")
+    publisher = source.get("publisher")
+    root = source.get("trustRoot")
+    key_ids = source.get("verifiedKeyIds")
+    if not isinstance(publisher, dict) or set(publisher) != {"id"}:
+        raise ValueError("public passport source publisher is invalid")
+    if not isinstance(root, dict) or set(root) != {"rootId", "rootSha256", "rootVersion"}:
+        raise ValueError("public passport source trust root is invalid")
+    if not _SHA256.fullmatch(str(root.get("rootSha256", ""))):
+        raise ValueError("public passport source trust root digest is invalid")
+    if (
+        not isinstance(key_ids, list)
+        or not key_ids
+        or any(not isinstance(item, str) or not item.startswith("sha256:") for item in key_ids)
+    ):
+        raise ValueError("public passport source key IDs are invalid")
+    return payload, identity
+
+
+def _public_passport_payload(
+    verified: VerifiedClaim,
+    *,
+    passport_issuer: str,
+) -> dict[str, Any]:
+    identity = verified.verified_identity
+    if verified.format_version != "eef/v4" or identity is None:
+        raise ValueError("public passport v3 requires a publicly verified EEF v4 claim")
+    if verified.claim_type == "bug_flip":
+        subject = _bug_subject(verified.claim)
+    elif verified.claim_type == "behavior_preserving_refactor":
+        subject = _refactor_subject(verified.claim)
+    else:
+        raise ValueError("public passport claim type is unsupported")
+    return {
+        "claimType": verified.claim_type,
+        "passportIssuer": {"id": passport_issuer},
+        "privacy": {
+            "credentialFree": True,
+            "omits": [
+                "source snapshots",
+                "test and contract source",
+                "raw execution logs",
+                "repository-local paths",
+                "free-form claim and model narratives",
+            ],
+        },
+        "schemaVersion": PUBLIC_PASSPORT_SCHEMA,
+        "signatureProfile": PASSPORT_PROFILE,
+        "sourceEef": {
+            "format": verified.format_version,
+            "manifestSha256": verified.manifest_sha256,
+            "publisher": {"id": identity.publisher_id},
+            "trustRoot": {
+                "rootId": identity.root_id,
+                "rootSha256": identity.root_sha256,
+                "rootVersion": identity.root_version,
+            },
+            "verifiedKeyIds": list(identity.verified_key_ids),
+        },
+        "subject": subject,
+        "verification": {
+            "executionReplayed": verified.verification.execution_verified,
+            "integrityVerified": True,
+            "publisherSignatureVerified": True,
+            "meaning": "source identity is an issuer-signed claim unless the EEF is supplied",
+        },
+    }
 
 
 def create_passport(
