@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -8,6 +9,13 @@ from exhibit_a.intake import git_checkout
 
 REPO_URL = "https://github.com/example/project.git"
 SHA = "abc1234def567890"
+PUBLIC_ADDRESS = "140.82.121.4"
+
+
+@pytest.fixture(autouse=True)
+def offline_resolver(monkeypatch: pytest.MonkeyPatch):
+    """Keep the suite offline; tests that care about resolution override this."""
+    monkeypatch.setattr(git_checkout, "_resolve", lambda hostname: [PUBLIC_ADDRESS])
 
 
 def test_checkout_rejects_untrusted_sha_before_git(monkeypatch: pytest.MonkeyPatch):
@@ -91,3 +99,67 @@ def test_checkout_triplet_labels_and_cleans_all_states(monkeypatch: pytest.Monke
         assert [state.label for state in states] == ["target", "base", "control"]
 
     assert all(not path.exists() for path in paths)
+
+
+@pytest.mark.parametrize(
+    "repo_url",
+    [
+        "https://127.0.0.1/repo.git",
+        "https://169.254.169.254/latest/meta-data/",
+        "https://10.0.0.5/repo.git",
+        "https://192.168.1.10/repo.git",
+        "https://[::1]/repo.git",
+    ],
+)
+def test_checkout_rejects_literal_private_hosts(repo_url: str):
+    with pytest.raises(ValueError, match="public address"):
+        git_checkout.checkout(repo_url, SHA)
+
+
+def test_checkout_rejects_a_name_resolving_into_a_private_range(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(git_checkout, "_resolve", lambda hostname: ["127.0.0.1"])
+
+    with pytest.raises(ValueError, match="public address"):
+        git_checkout.checkout("https://rebound.invalid/repo.git", SHA)
+
+
+def test_checkout_rejects_a_name_resolving_to_a_public_and_private_mix(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(git_checkout, "_resolve", lambda hostname: [PUBLIC_ADDRESS, "10.0.0.5"])
+
+    with pytest.raises(ValueError, match="public address"):
+        git_checkout.checkout("https://split.invalid/repo.git", SHA)
+
+
+def test_checkout_rejects_an_ipv4_mapped_loopback(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(git_checkout, "_resolve", lambda hostname: ["::ffff:127.0.0.1"])
+
+    with pytest.raises(ValueError, match="public address"):
+        git_checkout.checkout("https://mapped.invalid/repo.git", SHA)
+
+
+def test_checkout_rejects_a_host_that_resolves_to_nothing(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(git_checkout, "_resolve", lambda hostname: [])
+
+    with pytest.raises(ValueError, match="does not resolve"):
+        git_checkout.checkout("https://missing.invalid/repo.git", SHA)
+
+
+def test_git_commands_carry_a_wall_clock_timeout(monkeypatch: pytest.MonkeyPatch):
+    """A wedged or hostile remote must not hang the investigation forever."""
+    seen: list[object] = []
+
+    def fake_run(argv, **kwargs):
+        seen.append(kwargs.get("timeout"))
+        raise subprocess.TimeoutExpired(argv, kwargs.get("timeout"))
+
+    monkeypatch.setattr(git_checkout.subprocess, "run", fake_run)
+
+    with pytest.raises(subprocess.TimeoutExpired):
+        git_checkout.checkout(REPO_URL, SHA)
+
+    assert seen == [git_checkout._GIT_TIMEOUT_S]
+    assert git_checkout._GIT_TIMEOUT_S > 0

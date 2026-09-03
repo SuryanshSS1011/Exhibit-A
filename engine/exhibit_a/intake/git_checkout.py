@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import re
 import shutil
+import socket
 import subprocess
 import tempfile
 from contextlib import contextmanager
 from dataclasses import replace
+from ipaddress import IPv4Address, IPv6Address, ip_address
 from pathlib import Path
 from typing import Iterator
 from urllib.parse import urlsplit
@@ -16,6 +18,7 @@ from ..executor.base import RepoState
 
 _SHA_RE = re.compile(r"^[0-9a-fA-F]{7,40}$")
 _HOOKS_DISABLED = ["-c", "core.hooksPath=/dev/null"]
+_GIT_TIMEOUT_S = 300
 
 
 def checkout(repo_url: str, sha: str) -> RepoState:
@@ -123,8 +126,57 @@ def validate_repo_url(repo_url: str) -> None:
     parsed = urlsplit(repo_url)
     if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
         raise ValueError("repo URL must be an HTTPS URL without embedded credentials")
+    _require_public_host(parsed.hostname)
+
+
+def _require_public_host(hostname: str) -> None:
+    """Refuse a host that resolves into a private, loopback, or link-local range.
+
+    Remote intake is reachable from the web API, so a repo URL is untrusted input that
+    would otherwise aim ``git`` at localhost or a cloud metadata endpoint. A literal
+    address is checked as given; a name is checked against every address it resolves
+    to, so a name that resolves to a mix of public and private addresses fails closed.
+    """
+    host = hostname.strip("[]")
+    addresses = [host] if _parse_address(host) is not None else _resolve(host)
+    if not addresses:
+        raise ValueError("repo URL host does not resolve to any address")
+    for address in addresses:
+        parsed = _parse_address(address)
+        if parsed is None or not _is_public(parsed):
+            raise ValueError("repo URL host must resolve to a public address")
+
+
+def _resolve(hostname: str) -> list[str]:
+    """Return every address ``hostname`` maps to. Seam so tests stay offline."""
+    try:
+        infos = socket.getaddrinfo(hostname, None, proto=socket.IPPROTO_TCP)
+    except OSError as exc:
+        raise ValueError(f"repo URL host does not resolve: {hostname!r}") from exc
+    return [str(info[4][0]).split("%", 1)[0] for info in infos]
+
+
+def _parse_address(value: str) -> IPv4Address | IPv6Address | None:
+    try:
+        return ip_address(value)
+    except ValueError:
+        return None
+
+
+def _is_public(address: IPv4Address | IPv6Address) -> bool:
+    mapped = getattr(address, "ipv4_mapped", None)
+    if mapped is not None:
+        address = mapped
+    return not (
+        address.is_private
+        or address.is_loopback
+        or address.is_link_local
+        or address.is_multicast
+        or address.is_reserved
+        or address.is_unspecified
+    )
 
 
 def _run_git(argv: list[str]) -> None:
     """Run one fixed-shape Git command without a shell."""
-    subprocess.run(argv, check=True, capture_output=True, text=True)
+    subprocess.run(argv, check=True, capture_output=True, text=True, timeout=_GIT_TIMEOUT_S)
