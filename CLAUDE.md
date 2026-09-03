@@ -14,7 +14,8 @@ Both gates must pass before reporting done — CI runs exactly these.
 # Engine (Python 3.11+; CI uses 3.12)
 cd engine
 pip install -e ".[dev,public-signatures]"
-python3 -m pytest -q            # ~2 min
+python3 -m pytest -q            # ~2 min; Docker-backed tests are deselected
+python3 -m pytest -m docker -q  # the real sandbox, needs a daemon (~30s)
 ruff check .
 ruff format --check .
 
@@ -28,6 +29,8 @@ npm run build                   # next build
 ```
 
 CI runs the engine suite on Python 3.11, 3.12, and 3.13; lint and format run once, on 3.12.
+A separate `sandbox` job runs the Docker-backed tests — the only place the real
+executor is exercised, since everything else fakes the daemon.
 
 ## Architecture
 

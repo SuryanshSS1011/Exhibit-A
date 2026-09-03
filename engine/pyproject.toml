@@ -33,3 +33,7 @@ select = ["E4", "E7", "E9", "F"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Docker-backed tests need a daemon and pull an image, so they are opt-in: `pytest`
+# deselects them and `pytest -m docker` runs only them (the last -m wins).
+addopts = "-m \"not docker\""
+markers = ["docker: exercises a real Docker daemon"]

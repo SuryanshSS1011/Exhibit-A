@@ -1,0 +1,3 @@
+# This fixture has no third-party dependencies, but the pinned-image path refuses to
+# guess: it builds only from a lockfile that exists. A comment-only file is a valid
+# self-contained pin of "nothing", which keeps the sandbox smoke test fast.
