@@ -26,6 +26,7 @@ from .connectors import (
 from .eef import (
     FORMAT_VERSION,
     PUBLIC_FORMAT_VERSION,
+    REPLAY_ENVIRONMENT_ENTRY,
     RECEIPT_FORMAT_VERSION,
     _MAX_RERUNS,
     _OUTPUT_LIMIT_BYTES,
@@ -35,16 +36,17 @@ from .eef import (
     _build_state,
     _canonical,
     _dockerfile,
+    _environment_from_bundle,
     _is_sha256,
     _remove_image,
     _receipt_metadata,
     _receipt_metadata_keys,
+    _select_replay_environment,
     _run_state,
     _safe_pytest_argv,
     _safe_relative,
     _write_bundle,
 )
-from .signatures import EEF_PROFILE
 from .eef_receipts import (
     RECEIPT_ENTRY,
     ReceiptBinding,
@@ -53,6 +55,8 @@ from .eef_receipts import (
 )
 from .executor.base import ExecOutcome, ExecSpec, Executor, RepoState
 from .models.case import ExecutionTruth, GoalTruth, ReleaseTruth, Verdict
+from .replay_environment import inspect_local_replay_image
+from .signatures import EEF_PROFILE
 from .verdict.refactor_check import SuiteStatus, refactor_check
 from .verdict.refactor_runner import (
     CLAIM_TYPE,
@@ -218,6 +222,7 @@ def create_refactor_bundle(
     private_key_seed: bytes | None = None,
     trust_root: bytes | None = None,
     policy_id: str | None = None,
+    replay_environment: Mapping[str, Any] | None = None,
     output_limit_bytes: int = _OUTPUT_LIMIT_BYTES,
     connector_outputs: Sequence[ConnectorOutput[CIStatus]] = (),
 ) -> Path:
@@ -251,7 +256,10 @@ def create_refactor_bundle(
         "target_tree_sha256": _tree_sha256(payloads, "target"),
     }
     payloads["reproduce.json"] = _canonical(reproduce) + b"\n"
-    payloads["Dockerfile"] = _dockerfile(argv).encode()
+    environment = _select_replay_environment(private_key_seed, replay_environment)
+    payloads["Dockerfile"] = _dockerfile(argv, environment).encode()
+    if environment is not None:
+        payloads[REPLAY_ENVIRONMENT_ENTRY] = _canonical(environment.to_dict()) + b"\n"
     format_version = FORMAT_VERSION
     receipt_archive = None
     if connector_outputs:
@@ -351,9 +359,12 @@ def validate_refactor_bundle(
     for state in ("base", "target"):
         if blobs.get(f"sources/{state}/{CONTRACT_PATH}") != contract:
             raise ValueError(f"refactor EEF {state} contract does not match its evidence")
-    if blobs.get("Dockerfile") != _dockerfile(argv).encode():
+    environment = _environment_from_bundle(blobs, format_version)
+    if blobs.get("Dockerfile") != _dockerfile(argv, environment).encode():
         raise ValueError("refactor EEF Dockerfile does not match the trusted replay harness")
     fixed = {"refactor.json", "reproduce.json", "Dockerfile", "manifest.json", "attestation.json"}
+    if format_version == PUBLIC_FORMAT_VERSION:
+        fixed.add(REPLAY_ENVIRONMENT_ENTRY)
     if RECEIPT_ENTRY in blobs:
         fixed.add(RECEIPT_ENTRY)
     for name in blobs:
@@ -462,9 +473,13 @@ def reexecute_refactor(
     blobs: dict[str, bytes],
     validated: ValidatedRefactorBundle,
     *,
+    format_version: str,
     docker_bin: str,
 ) -> bool:
     """Replay both archived states and compare the complete deterministic result."""
+    environment = _environment_from_bundle(blobs, format_version)
+    if environment is not None:
+        inspect_local_replay_image(environment, docker_bin=docker_bin)
     with tempfile.TemporaryDirectory(prefix="exhibit-a-refactor-eef-") as tmp:
         root = Path(tmp)
         for name, content in blobs.items():
@@ -482,7 +497,7 @@ def reexecute_refactor(
             for state in ("base", "target"):
                 image = images[state]
                 intended.append(image)
-                _build_state(docker_bin, root, state, image)
+                _build_state(docker_bin, root, state, image, environment=environment)
                 outcomes[state] = [
                     _run_state(
                         docker_bin,

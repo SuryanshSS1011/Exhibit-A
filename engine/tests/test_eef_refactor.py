@@ -18,6 +18,17 @@ from exhibit_a.models.case import Verdict
 from exhibit_a.verdict.refactor_runner import collect_refactor_evidence
 
 KEY = b"refactor-evidence-publisher-key-32-bytes"
+REPLAY_ENVIRONMENT = {
+    "image": {
+        "architecture": "amd64",
+        "digest": "sha256:" + "c" * 64,
+        "os": "linux",
+        "reference": "registry.example/exhibit-a/replay-python",
+        "variant": None,
+    },
+    "pytest": {"artifactSha256": "sha256:" + "d" * 64, "version": "8.4.1"},
+    "schemaVersion": "eef-replay-environment/v1",
+}
 CONTRACT = "def test_contract():\n    assert True\n"
 
 
@@ -92,7 +103,16 @@ def test_refactor_eef_v4_round_trip(tmp_path: Path) -> None:
         ),
         trust_root=root,
         policy_id="eef-reference-v1",
+        replay_environment=REPLAY_ENVIRONMENT,
     )
+
+    with zipfile.ZipFile(bundle) as archive:
+        assert json.loads(archive.read("environment.json")) == REPLAY_ENVIRONMENT
+        assert (
+            archive.read("Dockerfile")
+            .decode()
+            .startswith("FROM registry.example/exhibit-a/replay-python@sha256:" + "c" * 64 + "\n")
+        )
 
     result = verify_bundle(
         bundle,
@@ -192,7 +212,7 @@ def test_refactor_eef_is_deterministic_and_integrity_verifies_without_execution(
         "39f70cacb408ce7a9aa2c52ccbf93457208c1d56378d2348ae397daf9fb76f0e"
     )
     monkeypatch.setattr(
-        eef_refactor, "_build_state", lambda *args: pytest.fail("unexpected execution")
+        eef_refactor, "_build_state", lambda *args, **kwargs: pytest.fail("unexpected execution")
     )
     result = verify_bundle(first, signing_key=KEY)
     assert result.integrity_verified and result.signature_verified
@@ -226,7 +246,7 @@ def test_refactor_eef_replay_verifies_the_complete_recorded_result(
     monkeypatch.setattr(
         eef_refactor,
         "_build_state",
-        lambda docker, root, state, image: built.append(state),
+        lambda docker, root, state, image, **kwargs: built.append(state),
     )
 
     def run(docker, image, argv, *, timeout_s, output_limit_bytes):
@@ -251,7 +271,7 @@ def test_refactor_eef_replay_reports_fresh_result_mismatch(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ):
     bundle = _bundle(tmp_path)
-    monkeypatch.setattr(eef_refactor, "_build_state", lambda *args: None)
+    monkeypatch.setattr(eef_refactor, "_build_state", lambda *args, **kwargs: None)
     monkeypatch.setattr(
         eef_refactor,
         "_run_state",
@@ -517,7 +537,7 @@ def test_refactor_max_rerun_output_stays_within_single_entry_limit(
     (target / "behavior.py").write_text("VALUE = 10\n")
     limit = eef_refactor.REFACTOR_OUTPUT_LIMIT_BYTES
 
-    monkeypatch.setattr(eef_refactor, "_build_state", lambda *args: None)
+    monkeypatch.setattr(eef_refactor, "_build_state", lambda *args, **kwargs: None)
 
     def run(*args, output_limit_bytes: int, **kwargs) -> ExecOutcome:
         assert output_limit_bytes == limit

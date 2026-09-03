@@ -47,7 +47,8 @@ DSSE/Ed25519 profile and externally anchored trust policy defined by
   but not a duplicate result. The verifier compares its derived release truth and reason
   with the signed truth fields. An assessed claim without its receipt, or a changed
   policy/truth/receipt combination, fails closed even when validly re-signed.
-- `verify --execute` builds with Docker networking disabled. Bug bundles submit fresh raw
+- `verify --execute` builds with Docker networking disabled and Docker pulling disabled.
+  Bug bundles submit fresh raw
   outcomes to the unchanged `flip_check`. Refactor bundles repeat both archived states and
   compare the newly derived complete result with the recorded result. Replay can therefore
   confirm a reproducible `FAILED` claim as well as a `VERIFIED` one.
@@ -67,10 +68,22 @@ DSSE/Ed25519 profile and externally anchored trust policy defined by
 - ZIP entries are sorted, uncompressed, timestamped at the ZIP epoch, and assigned a
   fixed mode. Identical Case/source/key inputs produce byte-identical archives.
 
-The Docker base image and `pytest==8.4.1` must already exist in the local Docker
-cache for offline re-execution. The reference `python:3.12-slim` tag is not yet bound
-to an OCI digest, so the local image cache remains an explicit replay trust boundary.
-EEF v2 does not embed OCI layers. Repository source
+Public EEF v4 archives carry a canonical `eef-replay-environment/v1` descriptor. It binds
+the replay image repository, OCI digest, operating system, architecture and optional
+variant, plus pytest `8.4.1` and the SHA-256 of the exact pytest artifact installed in the
+image. Before executing archived code, the verifier performs a local, digest-qualified
+image inspection and compares the repository digest, platform and these image labels:
+`dev.exhibit-a.pytest.version` and `dev.exhibit-a.pytest.artifact-sha256`. It will neither
+resolve a mutable tag nor pull a missing image. Import the signed digest into Docker before
+replay; a retagged image, wrong platform, missing labels or changed pytest artifact fails
+closed. `lock-replay-environment` is the separate, explicit workflow for accepting a new
+local digest and writing a descriptor. It also performs no pull, and refuses to replace an
+existing file unless `--force` is supplied.
+
+Legacy v1/v2/v3 archives retain their historical `python:3.12-slim` Dockerfile and
+`pytest==8.4.1` installation behavior for compatibility; their mutable local image cache
+remains an explicit replay trust boundary and must not be described as v4-grade replay
+identity. EEF does not embed OCI layers. Repository source
 snapshots exclude `.git`, `.exhibit-a`, `__pycache__`, and `.env`; publishers must
 still review bundles for repository-specific secrets before sharing them. EEF is a
 private/full-fidelity evidence archive, not a sanitized public passport. Refactor bundles
@@ -111,10 +124,19 @@ python3 -m exhibit_a.cli verify case.eef --signing-key /secure/eef.key
 python3 -m exhibit_a.cli verify case.eef --signing-key /secure/eef.key --execute
 
 # Public-key profile (install the `public-signatures` extra first).
+# First, intentionally lock a digest that is already present locally. The image must carry
+# the two Exhibit A pytest identity labels described above; this command never pulls it.
+python3 -m exhibit_a.cli lock-replay-environment \
+  --reference registry.example/exhibit-a/replay-python \
+  --digest sha256:<64-hex-image-digest> --architecture amd64 \
+  --pytest-artifact-sha256 sha256:<64-hex-pytest-artifact-digest> \
+  --out replay-environment.json
+
 python3 -m exhibit_a.cli bundle-v4 case.json \
   --target-source /path/to/bad --base-source /path/to/good \
   --private-key /secure/ed25519.seed --trust-root trust-root.json \
-  --policy-id eef-production-v1 --out case-v4.eef
+  --policy-id eef-production-v1 --replay-environment replay-environment.json \
+  --out case-v4.eef
 python3 -m exhibit_a.cli verify-v4 case-v4.eef \
   --trust-root trust-root.json --trust-anchor trust-anchor.json
 
@@ -143,7 +165,8 @@ refactor.json          canonical refactor evidence (alternative claim payload)
 connector_receipts.json  optional v3 normalized remote facts and provenance
 manifest.json          SHA-256 and byte size of every signed payload
 reproduce.json         claim-specific argv, budgets, tree digests, and expectations
-Dockerfile             no-network replay environment
+environment.json       v4-only immutable OCI/platform/pytest replay identity
+Dockerfile             generated no-network, no-pull replay environment
 sources/target/**      target snapshot plus generated test/contract
 sources/base/**        base snapshot plus generated test/contract
 logs/**                 raw target/base/control/bisect/suite logs

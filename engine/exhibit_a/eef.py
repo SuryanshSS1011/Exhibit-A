@@ -36,6 +36,11 @@ from .eef_receipts import (
 from .executor.base import ExecOutcome
 from .models.case import Verdict, normalize_case_payload, normalize_verdict
 from .release_evidence import validate_release_evidence
+from .replay_environment import (
+    ReplayEnvironment,
+    inspect_local_replay_image,
+    parse_replay_environment,
+)
 from .signatures import (
     EEF_PAYLOAD_TYPE,
     EEF_PROFILE,
@@ -66,6 +71,7 @@ _BUILD_TIMEOUT_S = 300
 _RUN_TIMEOUT_S = 120
 _CLEANUP_TIMEOUT_S = 30
 _OUTPUT_LIMIT_BYTES = 8 * 1024 * 1024
+REPLAY_ENVIRONMENT_ENTRY = "environment.json"
 _ALLOWED_PYTEST_FLAGS = {"-x", "-q", "--tb=short", "--disable-warnings"}
 _ALLOWED_PYTHON_BINS = {"python", "python3", "python3.11", "python3.12"}
 _ALLOWED_PYTEST_BINS = {"pytest", "pytest3"}
@@ -122,10 +128,12 @@ def create_bundle(
     private_key_seed: bytes | None = None,
     trust_root: bytes | None = None,
     policy_id: str | None = None,
+    replay_environment: Mapping[str, Any] | None = None,
     connector_outputs: Sequence[ConnectorOutput[CIStatus]] = (),
 ) -> Path:
     """Serialize a Case plus source snapshots into a deterministic signed archive."""
     _validate_signing_inputs(signing_key, private_key_seed, trust_root, policy_id)
+    environment = _select_replay_environment(private_key_seed, replay_environment)
     case = normalize_case_payload(case)
     test = case.get("test_file")
     if not isinstance(test, Mapping) or not isinstance(test.get("path"), str):
@@ -157,7 +165,9 @@ def create_bundle(
     for field in ("fail_log", "pass_log", "control_log", "bisect_log"):
         payloads[f"logs/{field}.txt"] = str(evidence.get(field, "")).encode()
     payloads["logs/existing_suite_log.txt"] = str(case.get("existing_suite_log", "")).encode()
-    payloads["Dockerfile"] = _dockerfile(run_argv).encode()
+    payloads["Dockerfile"] = _dockerfile(run_argv, environment).encode()
+    if environment is not None:
+        payloads[REPLAY_ENVIRONMENT_ENTRY] = _canonical(environment.to_dict()) + b"\n"
 
     format_version = FORMAT_VERSION
     receipt_archive = None
@@ -212,6 +222,7 @@ def create_refactor_bundle(
     private_key_seed: bytes | None = None,
     trust_root: bytes | None = None,
     policy_id: str | None = None,
+    replay_environment: Mapping[str, Any] | None = None,
     output_limit_bytes: int = _OUTPUT_LIMIT_BYTES,
     connector_outputs: Sequence[ConnectorOutput[CIStatus]] = (),
 ) -> Path:
@@ -227,6 +238,7 @@ def create_refactor_bundle(
         private_key_seed=private_key_seed,
         trust_root=trust_root,
         policy_id=policy_id,
+        replay_environment=replay_environment,
         output_limit_bytes=output_limit_bytes,
         connector_outputs=connector_outputs,
     )
@@ -506,7 +518,11 @@ def _verify_bundle(
             statement,
             format_version=format_version,
         )
-        execution_verified = _reexecute_bug(blobs, docker_bin=docker_bin) if execute else None
+        execution_verified = (
+            _reexecute_bug(blobs, format_version=format_version, docker_bin=docker_bin)
+            if execute
+            else None
+        )
     elif claim_type == "behavior_preserving_refactor" and has_refactor:
         from .eef_refactor import reexecute_refactor, validate_refactor_bundle
 
@@ -517,7 +533,14 @@ def _verify_bundle(
             format_version=format_version,
         )
         execution_verified = (
-            reexecute_refactor(blobs, validated, docker_bin=docker_bin) if execute else None
+            reexecute_refactor(
+                blobs,
+                validated,
+                format_version=format_version,
+                docker_bin=docker_bin,
+            )
+            if execute
+            else None
         )
     else:
         raise ValueError("EEF claim type and payload are unsupported")
@@ -548,7 +571,7 @@ def _verify_bundle(
     )
 
 
-def _reexecute_bug(blobs: dict[str, bytes], *, docker_bin: str) -> bool:
+def _reexecute_bug(blobs: dict[str, bytes], *, format_version: str, docker_bin: str) -> bool:
     reproduce = json.loads(blobs["reproduce.json"])
     case = json.loads(blobs["case.json"])
     if not isinstance(reproduce, dict) or not isinstance(case, dict):
@@ -563,9 +586,12 @@ def _reexecute_bug(blobs: dict[str, bytes], *, docker_bin: str) -> bool:
     validated_argv = _safe_pytest_argv(shlex.join(run_argv), str(test["path"]))
     if validated_argv != run_argv:
         raise ValueError("EEF replay argv is noncanonical")
-    expected_dockerfile = _dockerfile(validated_argv).encode()
+    environment = _environment_from_bundle(blobs, format_version)
+    expected_dockerfile = _dockerfile(validated_argv, environment).encode()
     if not hmac.compare_digest(blobs.get("Dockerfile", b""), expected_dockerfile):
         raise ValueError("EEF Dockerfile does not match the trusted replay harness")
+    if environment is not None:
+        inspect_local_replay_image(environment, docker_bin=docker_bin)
     with tempfile.TemporaryDirectory(prefix="exhibit-a-eef-") as tmp:
         root = Path(tmp)
         for name, content in blobs.items():
@@ -579,14 +605,14 @@ def _reexecute_bug(blobs: dict[str, bytes], *, docker_bin: str) -> bool:
         built_images: list[str] = []
         try:
             built_images.append(target_image)
-            _build_state(docker_bin, root, "target", target_image)
+            _build_state(docker_bin, root, "target", target_image, environment=environment)
             target_runs = [
                 _run_state(docker_bin, target_image, validated_argv) for _ in range(reruns)
             ]
             base_run = None
             if any(name.startswith("sources/base/") for name in blobs):
                 built_images.append(base_image)
-                _build_state(docker_bin, root, "base", base_image)
+                _build_state(docker_bin, root, "base", base_image, environment=environment)
                 base_run = _run_state(docker_bin, base_image, validated_argv)
             expected_verdict = normalize_verdict(reproduce.get("verdict"))
             if expected_verdict not in (Verdict.VERIFIED, Verdict.PARTIAL):
@@ -658,7 +684,8 @@ def _validate_bug_bundle(
         raise ValueError("EEF Case failure signature is invalid")
     if expected_signature != case_signature:
         raise ValueError("EEF replay signature does not match the Case evidence")
-    expected_dockerfile = _dockerfile(validated_argv).encode()
+    environment = _environment_from_bundle(blobs, format_version)
+    expected_dockerfile = _dockerfile(validated_argv, environment).encode()
     if not hmac.compare_digest(blobs.get("Dockerfile", b""), expected_dockerfile):
         raise ValueError("EEF Dockerfile does not match the trusted replay harness")
     try:
@@ -710,6 +737,8 @@ def _validate_bug_bundle(
         "manifest.json",
         "attestation.json",
     }
+    if format_version == PUBLIC_FORMAT_VERSION:
+        fixed_entries.add(REPLAY_ENVIRONMENT_ENTRY)
     if RECEIPT_ENTRY in blobs:
         fixed_entries.add(RECEIPT_ENTRY)
     for name in blobs:
@@ -728,20 +757,34 @@ def _validate_bug_bundle(
             raise ValueError(f"EEF log payload does not match the Case: {name}")
 
 
-def _build_state(docker_bin: str, root: Path, state: str, image: str) -> None:
+def _build_state(
+    docker_bin: str,
+    root: Path,
+    state: str,
+    image: str,
+    *,
+    environment: ReplayEnvironment | None = None,
+) -> None:
     command = [
         docker_bin,
         "build",
         "--network",
         "none",
-        "--build-arg",
-        f"STATE={state}",
-        "--tag",
-        image,
-        "--file",
-        str(root / "Dockerfile"),
-        str(root),
+        "--pull=false",
     ]
+    if environment is not None:
+        command.extend(["--platform", environment.platform])
+    command.extend(
+        [
+            "--build-arg",
+            f"STATE={state}",
+            "--tag",
+            image,
+            "--file",
+            str(root / "Dockerfile"),
+            str(root),
+        ]
+    )
     proc, timed_out = _run_process_capped(command, timeout_s=_BUILD_TIMEOUT_S)
     if timed_out:
         raise RuntimeError(f"offline EEF image build timed out for {state}")
@@ -986,7 +1029,16 @@ def _discover_source_files(root_descriptor: int) -> list[Path]:
     return sorted(files)
 
 
-def _dockerfile(argv: list[str]) -> str:
+def _dockerfile(argv: list[str], environment: ReplayEnvironment | None = None) -> str:
+    if environment is not None:
+        return (
+            f"FROM {environment.image}\n"
+            "ARG STATE\n"
+            "WORKDIR /work\n"
+            "COPY sources/${STATE}/ /work/\n"
+            "USER 65534:65534\n"
+            f"CMD {json.dumps(argv, separators=(',', ':'))}\n"
+        )
     return (
         "FROM python:3.12-slim\n"
         "RUN python -m pip install --disable-pip-version-check --no-cache-dir pytest==8.4.1\n"
@@ -996,6 +1048,39 @@ def _dockerfile(argv: list[str]) -> str:
         "USER 65534:65534\n"
         f"CMD {json.dumps(argv, separators=(',', ':'))}\n"
     )
+
+
+def _select_replay_environment(
+    private_key_seed: bytes | None,
+    value: Mapping[str, Any] | None,
+) -> ReplayEnvironment | None:
+    if private_key_seed is None:
+        if value is not None:
+            raise ValueError("legacy EEF cannot carry a v4 replay environment")
+        return None
+    if value is None:
+        raise ValueError("EEF v4 requires an immutable replay environment descriptor")
+    return parse_replay_environment(value)
+
+
+def _environment_from_bundle(
+    blobs: Mapping[str, bytes], format_version: str
+) -> ReplayEnvironment | None:
+    content = blobs.get(REPLAY_ENVIRONMENT_ENTRY)
+    if format_version != PUBLIC_FORMAT_VERSION:
+        if content is not None:
+            raise ValueError("legacy EEF contains a v4 replay environment")
+        return None
+    if content is None:
+        raise ValueError("EEF v4 is missing its replay environment descriptor")
+    try:
+        value = json.loads(content)
+    except (UnicodeDecodeError, json.JSONDecodeError, RecursionError) as exc:
+        raise ValueError("EEF replay environment is invalid JSON") from exc
+    environment = parse_replay_environment(value)
+    if content != _canonical(environment.to_dict()) + b"\n":
+        raise ValueError("EEF replay environment is noncanonical")
+    return environment
 
 
 def _safe_pytest_argv(command: str, test_path: str) -> list[str]:

@@ -57,6 +57,17 @@ from exhibit_a.release_evidence import create_release_record, parse_policy_docum
 from exhibit_a.verdict.refactor_runner import collect_refactor_evidence
 
 KEY = b"public-passport-test-key-at-least-32-bytes"
+REPLAY_ENVIRONMENT = {
+    "image": {
+        "architecture": "amd64",
+        "digest": "sha256:" + "c" * 64,
+        "os": "linux",
+        "reference": "registry.example/exhibit-a/replay-python",
+        "variant": None,
+    },
+    "pytest": {"artifactSha256": "sha256:" + "d" * 64, "version": "8.4.1"},
+    "schemaVersion": "eef-replay-environment/v1",
+}
 SECRET = "TOP_SECRET_SHOULD_NOT_APPEAR"
 PLAIN_SECRET = "sk-proj-PlainCredential123"
 PATH_SECRET = "ghp_PathCredential789"
@@ -304,6 +315,7 @@ def _bug_bundle(tmp_path: Path, *, public: bool = False) -> Path:
             ),
             "trust_root": (fixtures / "eef-v4-trust-root.json").read_bytes(),
             "policy_id": "eef-reference-v1",
+            "replay_environment": REPLAY_ENVIRONMENT,
         }
     else:
         signing = {"signing_key": KEY}

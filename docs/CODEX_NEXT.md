@@ -155,6 +155,15 @@ v3 compatibility. Do not begin signature work while receipt semantics are still 
   Verify: fake-Docker argv tests, wrong-digest/platform negative tests, one real offline
   replay, and byte-reproducibility checks for the generated EEF.
 
+  Progress: EEF v4 bug-flip and refactor archives now share a strict signed
+  `eef-replay-environment/v1` contract. Verification checks the exact local repository
+  digest, OCI platform, pytest version, and pytest artifact label before building;
+  build argv pins the platform and disables both network and pulls. A separate
+  `lock-replay-environment` command makes digest refresh an explicit local operation.
+  Determinism, fake-Docker argv, wrong-identity, and missing-cache tests pass. The real
+  offline replay remains unchecked on this workstation because its Docker cache contains
+  zero images or build layers; no image was downloaded to manufacture that result.
+
 **Milestone 2 checkpoint:** publish one passport whose integrity, signer, and replay
 environment can all be verified without sharing a secret or contacting a model provider.
 

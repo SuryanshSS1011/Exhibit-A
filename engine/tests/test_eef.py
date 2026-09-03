@@ -27,6 +27,17 @@ from exhibit_a.models.case import (
 from exhibit_a.models.case import TestArtifact as CaseTestArtifact
 
 KEY = b"evidence-publisher-test-key-32-bytes!!"
+REPLAY_ENVIRONMENT = {
+    "image": {
+        "architecture": "amd64",
+        "digest": "sha256:" + "c" * 64,
+        "os": "linux",
+        "reference": "registry.example/exhibit-a/replay-python",
+        "variant": None,
+    },
+    "pytest": {"artifactSha256": "sha256:" + "d" * 64, "version": "8.4.1"},
+    "schemaVersion": "eef-replay-environment/v1",
+}
 TEST_CODE = (
     "from inventory import stock_for\n\n"
     "def test_unknown_sku():\n"
@@ -90,7 +101,9 @@ def _case() -> dict:
     return case.to_dict()
 
 
-def test_eef_v4_is_publicly_verifiable_without_forgery_authority(tmp_path: Path):
+def test_eef_v4_is_publicly_verifiable_without_forgery_authority(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
     target = tmp_path / "target"
     base = tmp_path / "base"
     target.mkdir()
@@ -110,6 +123,7 @@ def test_eef_v4_is_publicly_verifiable_without_forgery_authority(tmp_path: Path)
         private_key_seed=seed,
         trust_root=root,
         policy_id="eef-reference-v1",
+        replay_environment=REPLAY_ENVIRONMENT,
     )
     second = create_bundle(
         _case(),
@@ -119,9 +133,17 @@ def test_eef_v4_is_publicly_verifiable_without_forgery_authority(tmp_path: Path)
         private_key_seed=seed,
         trust_root=root,
         policy_id="eef-reference-v1",
+        replay_environment=REPLAY_ENVIRONMENT,
     )
 
     assert first.read_bytes() == second.read_bytes()
+    with zipfile.ZipFile(first) as archive:
+        assert json.loads(archive.read("environment.json")) == REPLAY_ENVIRONMENT
+        dockerfile = archive.read("Dockerfile").decode()
+    assert dockerfile.startswith(
+        "FROM registry.example/exhibit-a/replay-python@sha256:" + "c" * 64 + "\n"
+    )
+    assert "pip install" not in dockerfile
     result = verify_bundle(
         first,
         trust_root=root,
@@ -140,6 +162,23 @@ def test_eef_v4_is_publicly_verifiable_without_forgery_authority(tmp_path: Path)
             signing_key=KEY,
         )
         verify_bundle(legacy, trust_root=root, trust_anchor=anchor)
+
+    builds = []
+
+    def missing_image(*args, **kwargs):
+        raise RuntimeError("offline replay prerequisite missing; verification will not pull it")
+
+    monkeypatch.setattr(eef, "inspect_local_replay_image", missing_image)
+    monkeypatch.setattr(eef, "_build_state", lambda *args, **kwargs: builds.append(args))
+    with pytest.raises(RuntimeError, match="prerequisite missing.*will not pull"):
+        verify_bundle(
+            first,
+            trust_root=root,
+            trust_anchor=anchor,
+            evaluated_at=datetime.fromisoformat("2026-09-02T00:00:00Z"),
+            execute=True,
+        )
+    assert builds == []
 
 
 def test_eef_is_byte_deterministic_and_verifies_offline(tmp_path: Path):
@@ -345,6 +384,40 @@ def test_eef_reexecution_uses_docker_argv_and_unchanged_flip_judge(
         assert call[call.index("--pids-limit") + 1] == "512"
         assert call[call.index("--memory") + 1] == "2g"
         assert call[call.index("--cpus") + 1] == "2"
+
+
+def test_v4_replay_build_uses_exact_platform_without_pull(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    calls: list[list[str]] = []
+
+    def fake_process(argv: list[str], **kwargs):
+        calls.append(argv)
+        return subprocess.CompletedProcess(argv, 0, "built", ""), False
+
+    monkeypatch.setattr(eef, "_run_process_capped", fake_process)
+    environment = eef.parse_replay_environment(REPLAY_ENVIRONMENT)
+
+    eef._build_state("docker", tmp_path, "target", "test-image", environment=environment)
+
+    assert calls == [
+        [
+            "docker",
+            "build",
+            "--network",
+            "none",
+            "--pull=false",
+            "--platform",
+            "linux/amd64",
+            "--build-arg",
+            "STATE=target",
+            "--tag",
+            "test-image",
+            "--file",
+            str(tmp_path / "Dockerfile"),
+            str(tmp_path),
+        ]
+    ]
 
 
 def test_eef_rejects_validly_signed_archive_controlled_dockerfile(tmp_path: Path):

@@ -50,6 +50,7 @@ from .passport import create_passport, create_public_passport
 from .passport_html import create_html_passport, create_public_html_passport
 from .providers import ProviderRole, load_provider_config
 from .release_evidence import create_release_record, parse_policy_document
+from .replay_environment import inspect_local_replay_image, parse_replay_environment
 from .store.json_store import JsonCaseStore
 from .store.research import ResearchStore
 from .store.suite_gap import SuiteGapStore
@@ -318,11 +319,43 @@ def cmd_bundle_v4(args: argparse.Namespace) -> int:
             private_key_seed=Path(args.private_key).read_bytes(),
             trust_root=Path(args.trust_root).read_bytes(),
             policy_id=args.policy_id,
+            replay_environment=json.loads(Path(args.replay_environment).read_text()),
         )
     except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as exc:
         print(f"error: cannot create EEF v4 bundle: {exc}", file=sys.stderr)
         return 2
     print(path)
+    return 0
+
+
+def cmd_lock_replay_environment(args: argparse.Namespace) -> int:
+    """Write a reviewed, locally available replay identity without pulling it."""
+    try:
+        environment = parse_replay_environment(
+            {
+                "image": {
+                    "architecture": args.architecture,
+                    "digest": args.digest,
+                    "os": args.os,
+                    "reference": args.reference,
+                    "variant": args.variant,
+                },
+                "pytest": {
+                    "artifactSha256": args.pytest_artifact_sha256,
+                    "version": "8.4.1",
+                },
+                "schemaVersion": "eef-replay-environment/v1",
+            }
+        )
+        inspect_local_replay_image(environment, docker_bin=args.docker_bin)
+        mode = "w" if args.force else "x"
+        with Path(args.out).open(mode, encoding="utf-8") as output:
+            json.dump(environment.to_dict(), output, indent=2, sort_keys=True)
+            output.write("\n")
+    except (OSError, RuntimeError, ValueError) as exc:
+        print(f"error: cannot lock replay environment: {exc}", file=sys.stderr)
+        return 2
+    print(args.out)
     return 0
 
 
@@ -1195,8 +1228,36 @@ def main(argv: list[str] | None = None) -> int:
     bundle_v4.add_argument("--private-key", required=True, help="32-byte Ed25519 private seed")
     bundle_v4.add_argument("--trust-root", required=True, help="authorized public-key root JSON")
     bundle_v4.add_argument("--policy-id", required=True, help="EEF signing policy ID")
+    bundle_v4.add_argument(
+        "--replay-environment", required=True, help="immutable replay environment JSON"
+    )
     bundle_v4.add_argument("--out", required=True, help="output .eef path")
     bundle_v4.set_defaults(func=cmd_bundle_v4)
+
+    lock_environment = sub.add_parser(
+        "lock-replay-environment",
+        help="record an exact locally available replay image without pulling it",
+    )
+    lock_environment.add_argument("--reference", required=True, help="OCI repository name")
+    lock_environment.add_argument(
+        "--digest", required=True, help="exact OCI image digest (sha256:...)"
+    )
+    lock_environment.add_argument("--os", default="linux", help="OCI operating system")
+    lock_environment.add_argument(
+        "--architecture", required=True, help="OCI architecture, such as amd64 or arm64"
+    )
+    lock_environment.add_argument("--variant", help="optional OCI architecture variant")
+    lock_environment.add_argument(
+        "--pytest-artifact-sha256",
+        required=True,
+        help="sha256 digest of the pytest 8.4.1 artifact embedded in the image",
+    )
+    lock_environment.add_argument("--docker-bin", default="docker", help=argparse.SUPPRESS)
+    lock_environment.add_argument("--out", required=True, help="output environment JSON")
+    lock_environment.add_argument(
+        "--force", action="store_true", help="replace an existing descriptor intentionally"
+    )
+    lock_environment.set_defaults(func=cmd_lock_replay_environment)
 
     refactor_bundle = sub.add_parser(
         "refactor-bundle",
