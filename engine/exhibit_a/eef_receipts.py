@@ -10,7 +10,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from ipaddress import ip_address
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 from .connectors.base import (
     ConnectorOutput,
@@ -376,21 +376,31 @@ def _validate_connector_source(
     connector_version: str,
     binding: ReceiptBinding,
 ) -> None:
-    if (connector_id, connector_version) != ("github_ci_status", "1"):
+    if connector_version != "1" or connector_id not in {
+        "github_ci_status",
+        "gitlab_ci_status",
+    }:
         raise ValueError("EEF connector receipt source adapter is unsupported")
     parsed = urlsplit(source)
-    expected_origin = (
-        "https://api.github.com"
-        if binding.repository_origin == "https://github.com"
-        else binding.repository_origin
-    )
-    expected_suffix = f"/repos/{binding.repository}"
     path = parsed.path.rstrip("/")
-    if _url_origin(parsed) != expected_origin or (
-        path != expected_suffix
-        if binding.repository_origin == "https://github.com"
-        else not path.endswith(expected_suffix)
-    ):
+    if connector_id == "github_ci_status":
+        expected_origin = (
+            "https://api.github.com"
+            if binding.repository_origin == "https://github.com"
+            else binding.repository_origin
+        )
+        expected_suffix = f"/repos/{binding.repository}"
+        matches = _url_origin(parsed) == expected_origin and (
+            path == expected_suffix
+            if binding.repository_origin == "https://github.com"
+            else path.endswith(expected_suffix)
+        )
+    else:
+        expected_suffix = f"/projects/{quote(binding.repository, safe='')}"
+        matches = _url_origin(parsed) == binding.repository_origin and path.endswith(
+            expected_suffix
+        )
+    if not matches:
         raise ValueError("EEF connector receipt source does not match its repository origin")
 
 

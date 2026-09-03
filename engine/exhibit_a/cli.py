@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import urlsplit, urlunsplit
 
-from .connectors import CIStatusConnector, CIStatusRequest
+from .connectors import CIStatusConnector, CIStatusRequest, GitLabCIStatusConnector
 from .eef import (
     SourceSnapshotBudget,
     create_bundle,
@@ -489,7 +489,7 @@ def cmd_release_evidence(args: argparse.Namespace) -> int:
             raise ValueError("--revision must be a full lowercase SHA-1")
         if case.get("target_commit") != args.revision:
             raise ValueError("--revision does not match the Case target commit")
-        _validate_release_api_base(repository_origin, args.api_base)
+        _validate_release_api_base(repository_origin, args.api_base, forge=args.forge)
 
         truth = case.get("truth")
         if not isinstance(truth, dict):
@@ -505,7 +505,8 @@ def cmd_release_evidence(args: argparse.Namespace) -> int:
         connector_options = {"token_env": args.token_env}
         if args.api_base is not None:
             connector_options["api_base"] = args.api_base
-        connector = CIStatusConnector(**connector_options)
+        connector_type = CIStatusConnector if args.forge == "github" else GitLabCIStatusConnector
+        connector = connector_type(**connector_options)
         if not os.environ.get(args.token_env):
             raise ValueError(f"CI status credential environment {args.token_env!r} is not set")
 
@@ -638,10 +639,19 @@ def _install_release_outputs(sources: tuple[Path, ...], destinations: tuple[Path
         raise
 
 
-def _validate_release_api_base(repository_origin: str, api_base: str | None) -> None:
+def _validate_release_api_base(
+    repository_origin: str,
+    api_base: str | None,
+    *,
+    forge: str,
+) -> None:
     if api_base is None:
-        if repository_origin != "https://github.com":
-            raise ValueError("non-GitHub repositories require an explicit matching --api-base")
+        default_origin = "https://github.com" if forge == "github" else "https://gitlab.com"
+        if repository_origin != default_origin:
+            forge_name = "GitHub" if forge == "github" else "GitLab"
+            raise ValueError(
+                f"non-{forge_name} repositories require an explicit matching --api-base"
+            )
         return
     parsed = urlsplit(api_base)
     if parsed.username or parsed.password or parsed.query or parsed.fragment:
@@ -649,12 +659,12 @@ def _validate_release_api_base(repository_origin: str, api_base: str | None) -> 
     api_origin, _ = repository_coordinates(
         urlunsplit((parsed.scheme, parsed.netloc, "/owner/name", "", ""))
     )
-    expected = (
-        "https://api.github.com" if repository_origin == "https://github.com" else repository_origin
-    )
+    expected = repository_origin
+    if forge == "github" and repository_origin == "https://github.com":
+        expected = "https://api.github.com"
     if api_origin != expected:
         raise ValueError("--api-base does not match the Case repository origin")
-    if repository_origin == "https://github.com" and parsed.path.rstrip("/"):
+    if forge == "github" and repository_origin == "https://github.com" and parsed.path.rstrip("/"):
         raise ValueError("public GitHub --api-base must not contain a path")
 
 
@@ -1304,11 +1314,17 @@ def main(argv: list[str] | None = None) -> int:
     release_evidence.add_argument(
         "--token-env",
         required=True,
-        help="name of the environment variable containing the read-only GitHub token",
+        help="name of the environment variable containing the read-only forge token",
+    )
+    release_evidence.add_argument(
+        "--forge",
+        choices=("github", "gitlab"),
+        default="github",
+        help="CI status provider (default: github)",
     )
     release_evidence.add_argument(
         "--api-base",
-        help="GitHub API base; required for a matching non-github.com origin",
+        help="forge API base; required for a matching non-default origin",
     )
     release_evidence.add_argument(
         "--signing-key", required=True, help="file containing at least 32 key bytes"

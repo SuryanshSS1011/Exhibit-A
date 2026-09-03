@@ -39,25 +39,39 @@ network and `ambient_host` credential access despite the connector's local-only 
 V1 supports standard SHA-1 repositories with UTF-8 paths; other object formats, linked
 worktrees, and non-UTF-8 path bytes fail closed rather than being normalized.
 
-The CI status adapter is the first remote evidence source. It reads GitHub check runs for
-one commit over an outbound HTTPS GET and nothing else: no write scope, no re-run trigger,
-no artifact download. Plain HTTP is refused unless the host is a numeric loopback address,
-so a self-hosted forge can be pointed at locally without silently downgrading a real one.
-Ambient proxies and redirects are disabled, the response is size-bounded and the check
-count capped, and both are rejected rather than truncated so a partial read can never look
+The CI status adapters are the first remote evidence sources. The GitHub implementation
+reads check runs; the GitLab implementation reads the commit-status endpoint. Each performs
+outbound HTTPS GETs only: no write scope, re-run trigger, or artifact download. Plain HTTP
+is refused unless the host is a numeric loopback address, so a self-hosted forge can be
+pointed at locally without silently downgrading a real one. Ambient proxies and redirects
+are disabled, the aggregate response is size-bounded, and the check count is capped.
+Oversized input is rejected rather than truncated so a partial read can never look
 complete. Credentials come only from a named environment variable, are validated for
-control characters, and never reach the payload, the receipt, or an error message; a
-connector configured without one truthfully reports `credential_access: none`. Because the
-read happens in the engine process rather than a subprocess or container, its receipt
-reports `isolation: in_process`.
+control characters, and never reach the payload, receipt, or an error message; a connector
+configured without one truthfully reports `credential_access: none`. Because reads happen
+in the engine process rather than a subprocess or container, receipts report
+`isolation: in_process`.
 
-The adapter reports what the forge said and stops there. It records each run's name,
-status, conclusion, and timestamps verbatim, rejecting vocabulary it does not recognize
-instead of coercing it onto a known outcome, and it never aggregates those runs into a
+GitLab project paths are URL-encoded as a single API path component. The adapter requests
+the latest status per name with an explicit stable order and 100-item page size, then
+follows every `rel=next` link. Each next link must stay on the original origin and endpoint,
+retain the exact allowlisted query, and increment the page by one. Empty intermediate pages,
+cycles, more than 32 pages, more than 250 statuses, and cross-origin or parameter-injecting
+links fail closed. The raw-artifact commitment length-prefixes every page before hashing,
+so page boundaries are authenticated. These rules follow GitLab's documented
+[commit-status endpoint](https://docs.gitlab.com/api/commits/#commit-status) and
+[REST pagination contract](https://docs.gitlab.com/api/rest/#pagination).
+
+The adapters report what the forge said and stop there. They record each run's name,
+normalized status/conclusion, and timestamps, and never aggregate those runs into a
 "CI passed" claim — that inference belongs to a judge, not a collector. Check runs are
 sorted by name so the evidence digest does not depend on the order the forge happened to
-return. Unlike Git metadata, CI status is mutable: a re-run changes it, so its receipt
-reports `point_in_time` freshness and carries the latest completion timestamp it observed.
+return. GitLab's overlapping states map conservatively onto the existing vocabulary:
+`pending`/`running` remain incomplete, while success, failure, cancellation, and skip map
+to their equivalent completed conclusions. Any new valid GitLab state is retained as an
+explicit `gitlab:<state>` incomplete status, which makes release policy `UNCERTAIN` instead
+of guessing. Unlike Git metadata, CI status is mutable: a re-run changes it, so receipts
+report `point_in_time` freshness and carry the latest completion timestamp observed.
 
 ## Deterministic release policy
 
@@ -90,7 +104,7 @@ archived receipt and re-runs the pure policy evaluator, rejecting a changed poli
 receipt, or release label even when the archive has been coherently re-signed.
 
 Hosted API connectors do not inherit process sandboxing from CLI-shaped providers. The
-GitHub adapter therefore states its narrower posture explicitly: direct in-process HTTPS,
+GitHub and GitLab adapters therefore state their narrower posture explicitly: direct in-process HTTPS,
 ambient-host credential access, no redirects or proxies, bounded response/check counts,
 and read-only source semantics. Future HTTP adapters must supply and document their own
 network, credential, redirect, size, and source-origin controls rather than assuming the
@@ -122,8 +136,8 @@ size-bounded section is committed in both the manifest and attestation predicate
 entry is bound to the exact claim hash, canonical repository origin and identity, and full
 target revision. The verifier recomputes the digest of the normalized request, normalized
 response, and their content link without contacting the forge. Connector-specific source
-rules bind the current GitHub adapter to the repository's expected API origin and path; a
-future adapter must add its own fail-closed rule. The raw response is deliberately omitted;
+rules bind both adapters to the repository's expected API origin and provider-specific
+path; a future adapter must add its own fail-closed rule. The raw response is deliberately omitted;
 its artifact digest is a signed commitment to the collected bytes, not a body an offline
 reader can independently rehash. V1 and v2 archives remain readable and expose an empty
 remote-receipt collection; minting without remote evidence remains byte-compatible v2.

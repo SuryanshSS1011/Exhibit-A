@@ -110,6 +110,7 @@ def _output(
     repository: str = "example/project",
     revision: str = REVISION,
     source: str = "https://api.github.com/repos/example/project",
+    connector_id: str = "github_ci_status",
 ) -> ConnectorOutput[CIStatus]:
     status = CIStatus(
         repository=repository,
@@ -142,7 +143,7 @@ def _output(
     response_sha256 = hash_payload(status.payload())
     provenance = EvidenceProvenance(
         evidence_id=evidence_id,
-        connector_id="github_ci_status",
+        connector_id=connector_id,
         connector_version="1",
         capability=EvidenceKind.CI_STATUS,
         source=source,
@@ -551,6 +552,27 @@ def test_v3_rejects_receipts_for_a_different_repository_or_revision(tmp_path: Pa
             signing_key=KEY,
             connector_outputs=(_output(source="https://evil.example/repos/example/project"),),
         )
+
+
+def test_v3_accepts_gitlab_status_receipts_against_the_same_contract(tmp_path: Path):
+    base, target = _sources(tmp_path)
+    bundle = create_bundle(
+        _case(repo="https://gitlab.com/example/project.git"),
+        tmp_path / "gitlab.eef",
+        target_source=target,
+        base_source=base,
+        signing_key=KEY,
+        connector_outputs=(
+            _output(
+                source="https://gitlab.com/api/v4/projects/example%2Fproject",
+                connector_id="gitlab_ci_status",
+            ),
+        ),
+    )
+
+    verified = read_verified_claim(bundle, signing_key=KEY)
+
+    assert verified.connector_receipts[0]["provenance"]["connector_id"] == ("gitlab_ci_status")
 
 
 def test_v3_accepts_numeric_loopback_ipv6_repository_origin(tmp_path: Path):

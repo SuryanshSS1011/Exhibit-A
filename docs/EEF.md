@@ -154,6 +154,15 @@ python3 -m exhibit_a.cli release-evidence case.json \
   --token-env EXHIBIT_A_GITHUB_TOKEN --signing-key /secure/eef.key \
   --eef-out release.eef --passport-json-out release.passport.json \
   --passport-html-out release.passport.html
+
+# GitLab uses the same normalized policy and receipt contract.
+python3 -m exhibit_a.cli release-evidence case.json \
+  --forge gitlab --target-source /path/to/target --base-source /path/to/base \
+  --repository owner/name --revision 0123456789abcdef0123456789abcdef01234567 \
+  --policy release-policy.json --evaluated-at 2026-09-02T12:00:00+00:00 \
+  --token-env EXHIBIT_A_GITLAB_TOKEN --signing-key /secure/eef.key \
+  --eef-out release.eef --passport-json-out release.passport.json \
+  --passport-html-out release.passport.html
 ```
 
 ## Archive layout

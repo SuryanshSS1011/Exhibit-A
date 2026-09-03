@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -18,6 +19,7 @@ from exhibit_a.connectors import (
     EvidenceKind,
     EvidenceProvenance,
     Freshness,
+    GitLabCIStatusConnector,
     hash_payload,
 )
 from exhibit_a.eef import read_verified_claim, verify_bundle
@@ -282,6 +284,52 @@ def test_release_evidence_cli_returns_one_for_unsafe_and_keeps_verified_artifact
     assert verify_passport(passport, signing_key=KEY)
     assert passport["subject"]["truth"]["release"] == "UNSAFE"
     assert "UNSAFE" in paths["html"].read_text()
+
+
+def test_release_evidence_cli_routes_gitlab_through_the_same_evidence_contract(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+):
+    paths = _fixture(tmp_path)
+    case = json.loads(paths["case"].read_text())
+    case["repo"] = "https://gitlab.com/example/project.git"
+    paths["case"].write_text(json.dumps(case))
+    github_output = _output()
+    source = "https://gitlab.com/api/v4/projects/example%2Fproject"
+    request_sha256 = hash_payload(
+        {"repository": "example/project", "revision": REVISION, "source": source}
+    )
+    gitlab_output = ConnectorOutput(
+        github_output.payload,
+        replace(
+            github_output.provenance,
+            connector_id="gitlab_ci_status",
+            source=source,
+            description="Read read-only GitLab commit status for one commit",
+            request_sha256=request_sha256,
+            content_sha256=hash_payload(
+                {
+                    "request_sha256": request_sha256,
+                    "response_sha256": github_output.provenance.response_sha256,
+                }
+            ),
+        ),
+    )
+    requests: list[CIStatusRequest] = []
+
+    def collect(_connector: GitLabCIStatusConnector, request: CIStatusRequest):
+        requests.append(request)
+        return gitlab_output
+
+    monkeypatch.setattr(GitLabCIStatusConnector, "collect", collect)
+    monkeypatch.setenv(TOKEN_ENV, TOKEN_SECRET)
+    argv = [*_argv(paths), "--forge", "gitlab"]
+
+    assert main(argv) == 0
+
+    assert requests == [CIStatusRequest("example/project", REVISION)]
+    verified = read_verified_claim(paths["eef"], signing_key=KEY)
+    assert verified.connector_receipts[0]["provenance"]["connector_id"] == ("gitlab_ci_status")
 
 
 @pytest.mark.parametrize(

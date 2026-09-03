@@ -169,7 +169,7 @@ environment can all be verified without sharing a secret or contacting a model p
 
 ## Milestone 3 — Prove connector portability before adding claim breadth
 
-- [ ] **8. Add a GitLab CI-status adapter against the same normalized contract**
+- [x] **8. Add a GitLab CI-status adapter against the same normalized contract**
   Source refs: `connectors/ci_status.py`, the GitLab commit-status API, and the Milestone 1
   policy tests.
   What to build: Add a read-only GitLab adapter with the same security properties as the
@@ -180,6 +180,13 @@ environment can all be verified without sharing a secret or contacting a model p
   semantics overlap; provider-specific unknown states remain explicit; SSRF, credential,
   redirect, truncation, and pagination tests fail closed.
   Verify: focused connector/policy tests plus the full engine suite.
+
+  Result: `GitLabCIStatusConnector` reads the commit-status API through the same
+  `CIStatus`/receipt/policy contract as GitHub. It validates origin-bound monotonic
+  pagination, aggregates raw-page and check limits without truncation, preserves unknown
+  provider states as explicit indeterminate values, and is selectable through
+  `release-evidence --forge gitlab`. Provider-parity, SSRF, credential, pagination,
+  normalized EEF receipt, and end-to-end CLI tests cover the boundary.
 
 - [ ] **9. Add connector contract fixtures and compatibility tests**
   Source refs: all connector modules and EEF receipt schemas.
