@@ -21,9 +21,13 @@ ruff format --check .
 # Web (Node 20 in CI)
 cd web
 npm ci
+npm run lint                    # eslint
+npm run typecheck               # tsc --noEmit
 npm test                        # vitest
 npm run build                   # next build
 ```
+
+CI runs the engine suite on Python 3.11, 3.12, and 3.13; lint and format run once, on 3.12.
 
 ## Architecture
 

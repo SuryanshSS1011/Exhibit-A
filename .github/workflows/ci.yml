@@ -8,6 +8,11 @@ on:
 jobs:
   engine:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # pyproject declares requires-python >=3.11, so every claimed version is tested.
+        python-version: ["3.11", "3.12", "3.13"]
     defaults:
       run:
         working-directory: engine
@@ -15,12 +20,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
       - name: Install
         run: pip install -e ".[dev,public-signatures]"
       - name: Lint
+        # Style is version-independent; one run is enough to gate it.
+        if: matrix.python-version == '3.12'
         run: ruff check .
       - name: Format check
+        if: matrix.python-version == '3.12'
         run: ruff format --check .
       - name: Test
         run: python -m pytest -q
@@ -39,6 +47,10 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - name: Install
         run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
       - name: Test
         run: npm test
       - name: Build
