@@ -35,7 +35,7 @@ python3 -m exhibit_a.cli study ../fixtures/buggy_inventory \
 
 The Codex CLI does not expose a stable sampling-seed contract, so repeated calls to one
 model are recorded as independent samples, not falsely labeled seeded experiments.
-`--offline` runs the deterministic stub as a fast pipeline smoke test. `--docker` uses
+`--offline` runs the deterministic stub as a fast pipeline smoke test. The study uses
 the hardened executor. The initial command intentionally supports local pinned
 checkouts; callers should make both directories immutable snapshots of the same states.
 

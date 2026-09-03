@@ -181,7 +181,7 @@ for an interrupted child process before calling the web path verified.
 | Read-only `~/.codex/state_5.sqlite` or `Operation not permitted` | The verification is running inside a restricted filesystem/process sandbox. Run it in a normal terminal with access to the authenticated Codex state. |
 | Codex returns no admissible candidate | The result should be `UNCERTAIN` with a concrete generation/rejection reason. This is honest silence, not a crash. Retry once; do not replace it with a claimed proof. |
 | Target failures disagree across reruns | The candidate is flaky and must remain quarantined/silent. Use the sealed exhibit for the stage; do not lower the determinism count. |
-| Docker daemon unavailable | Omit `--docker` for these dependency-free trusted fixtures. Do not weaken Docker isolation for an untrusted repository. |
+| Docker daemon unavailable | Pass `--no-sandbox` for these dependency-free trusted fixtures. Never pass it for an untrusted repository. |
 | Web UI stops before the terminal Case | Confirm the CLI live command first, inspect the Next terminal, then verify the SSE API emits both `verdict` and `case`. |
 | Raw `VERIFIED`, disposition `BEHAVIOR_CHANGE` | Expected for live Detective without intent context. The flip succeeded; regression intent was not assessed. |
 

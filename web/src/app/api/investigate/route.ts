@@ -14,6 +14,10 @@ import { NextRequest, NextResponse } from "next/server";
 const ENGINE_DIR = path.resolve(process.cwd(), "..", "engine");
 const PYTHON = process.env.EXHIBIT_A_PYTHON ?? "python3";
 
+// The sandbox is not a caller's choice. A repository reaching this route is untrusted,
+// and running its suite outside a container executes whatever its conftest imports on
+// this host. The engine sandboxes by default, so this route simply never opts out.
+
 interface Body {
   repo?: string;
   fixed?: string;
@@ -24,7 +28,6 @@ interface Body {
   controlSha?: string;
   claim?: string;
   expect?: string;
-  docker?: boolean;
   replay?: "proven" | "silence";
 }
 
@@ -73,7 +76,6 @@ export async function POST(req: NextRequest) {
     if (body.control) args.push("--control", body.control);
     if (hasRemote) args.push("--base-sha", body.baseSha!, "--fix-sha", body.fixSha!);
     if (body.controlSha) args.push("--control-sha", body.controlSha);
-    if (body.docker) args.push("--docker");
   }
 
   const encoder = new TextEncoder();

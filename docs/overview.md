@@ -119,6 +119,8 @@ fixtures/                       tiny buggy/fixed repo pairs for offline runs
 **Security posture:** untrusted repos and PR text are assumed hostile.
 
 - Executors run against a disposable copy of the checkout, so source is never mutated.
+- Runs are containerized by default; host execution is an explicit `--no-sandbox` opt-in,
+  and the web API never offers the choice.
 - Docker runs are network-off, capability-dropped, `no-new-privileges`, read-only rootfs.
 - All untrusted input (repo URL, SHAs, claim text, model-generated patches) reaches `git`
   and shells as argv only, never string-interpolated, never `shell=True`.
@@ -127,7 +129,7 @@ fixtures/                       tiny buggy/fixed repo pairs for offline runs
 
 ## Setup
 
-**Requirements:** Python 3.11+, Node 18+. Docker is optional for isolated runs.
+**Requirements:** Python 3.11+, Node 18+, and Docker. Runs are sandboxed by default; `--no-sandbox` trades that for host execution and is only for checkouts you trust. Replaying a sealed Case needs neither Docker nor a model.
 
 ```bash
 # Engine
@@ -150,7 +152,7 @@ cd engine
 python3 -m exhibit_a.cli repro ../fixtures/buggy_inventory \
   --fixed ../fixtures/fixed_inventory \
   --claim "stock_for should return zero for an unknown SKU instead of raising KeyError" \
-  --expect KeyError --json
+  --expect KeyError --json --no-sandbox
 
 # 2) A real repository at two commits (base is buggy, fix is the fixing commit or PR head)
 python3 -m exhibit_a.cli repro https://github.com/org/repo.git \
@@ -160,6 +162,9 @@ python3 -m exhibit_a.cli repro https://github.com/org/repo.git \
 # 3) Deterministic replay of a sealed, known-good Case (no model, no execution)
 python3 -m exhibit_a.cli repro --replay ../fixtures/cases/inventory_proven.json --json
 ```
+
+`--no-sandbox` appears only on the in-repo fixtures: they are trusted, and carry no
+lockfile for the pinned-image path to build from. Real repositories run sandboxed.
 
 ## How Codex and GPT-5.6 were used
 

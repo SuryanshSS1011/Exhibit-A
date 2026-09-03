@@ -38,7 +38,7 @@ Run it with:
 
 ```bash
 cd engine
-python3 -m exhibit_a.cli oracle-gap ../data/manifest.json --docker
+python3 -m exhibit_a.cli oracle-gap ../data/manifest.json
 ```
 
 Reports use `oracle-gap/v1`, list every surviving mutation ID, and are private under

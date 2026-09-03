@@ -115,6 +115,12 @@ def test_oracle_gap_cli_writes_private_report(tmp_path: Path):
     )
     output = tmp_path / "reports"
 
-    assert main(["oracle-gap", str(manifest), "--out", str(output), "--reruns", "1"]) == 0
+    assert (
+        main(
+            # Trusted local manifest; no lockfile to pin an image from.
+            ["oracle-gap", str(manifest), "--out", str(output), "--reruns", "1", "--no-sandbox"]
+        )
+        == 0
+    )
     reports = list(output.glob("*.json"))
     assert len(reports) == 1

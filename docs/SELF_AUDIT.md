@@ -14,7 +14,7 @@ From `engine/`:
 
 ```bash
 python3 -m exhibit_a.cli self-audit ../fixtures/refactor_corpus --offline
-python3 -m exhibit_a.cli self-audit ../fixtures/refactor_corpus --docker
+python3 -m exhibit_a.cli self-audit ../fixtures/refactor_corpus
 ```
 
 The first command is a fast plumbing check with the deterministic stub. The second uses

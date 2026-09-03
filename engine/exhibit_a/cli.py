@@ -68,6 +68,16 @@ from .verdict.flip_check import extract_signature, signatures_match
 from .verdict.refactor_runner import collect_refactor_evidence
 
 
+def _use_sandbox(args: argparse.Namespace) -> bool:
+    """The container sandbox is the default; the host path must be asked for.
+
+    Untrusted checkouts are assumed hostile, and running their suite on the host
+    executes whatever their conftest imports. ``--docker`` stays accepted so existing
+    invocations keep working, but it no longer decides anything.
+    """
+    return not getattr(args, "no_sandbox", False)
+
+
 def _build_engine(
     use_docker: bool,
     offline: bool,
@@ -135,7 +145,7 @@ def cmd_repro(args: argparse.Namespace) -> int:
     event_sink = _print_event if args.events else None
     try:
         engine = _build_engine(
-            use_docker=args.docker,
+            use_docker=_use_sandbox(args),
             offline=args.offline,
             allow_reproduced=args.reproduced,
             event_sink=event_sink,
@@ -156,8 +166,11 @@ def cmd_repro(args: argparse.Namespace) -> int:
             "error: bisect intake cannot be combined with another comparison state", file=sys.stderr
         )
         return 2
-    if args.bad_sha and (not args.docker or not args.reproduced):
-        print("error: bisect intake requires --docker and --reproduced", file=sys.stderr)
+    if args.bad_sha and (not _use_sandbox(args) or not args.reproduced):
+        print(
+            "error: bisect intake requires the sandbox (drop --no-sandbox) and --reproduced",
+            file=sys.stderr,
+        )
         return 2
     if args.fixed and args.base_sha:
         print("error: --fixed cannot be combined with --base-sha/--fix-sha", file=sys.stderr)
@@ -891,7 +904,7 @@ def cmd_study(args: argparse.Namespace) -> int:
     requested_models: list[str | None] = args.models or [None]
 
     def engine_factory(index: int) -> tuple[EvidenceEngine, str]:
-        if args.docker:
+        if _use_sandbox(args):
             from .executor.docker_exec import DockerExecutor
 
             executor = DockerExecutor()
@@ -945,7 +958,7 @@ def cmd_self_audit(args: argparse.Namespace) -> int:
 
     def engine_factory(_pair, _index):
         engine = _build_engine(
-            args.docker,
+            _use_sandbox(args),
             args.offline,
             environment_root=Path(args.out).parent / "environment-attempts",
         )
@@ -982,7 +995,7 @@ def cmd_self_audit(args: argparse.Namespace) -> int:
 
 def cmd_oracle_gap(args: argparse.Namespace) -> int:
     """Measure weak-oracle exposure in resolved benchmark instances."""
-    if args.docker:
+    if _use_sandbox(args):
         from .executor.docker_exec import DockerExecutor
 
         executor = DockerExecutor()
@@ -1027,7 +1040,7 @@ def cmd_environment_summary(args: argparse.Namespace) -> int:
 
 
 def cmd_dedup(args: argparse.Namespace) -> int:
-    if args.docker:
+    if _use_sandbox(args):
         from .executor.docker_exec import DockerExecutor
 
         executor = DockerExecutor()
@@ -1200,7 +1213,12 @@ def main(argv: list[str] | None = None) -> int:
         help="allow the weaker PARTIAL verdict (signature-matched, no pass state) "
         "when there is no fixed state to flip against; requires --expect",
     )
-    p.add_argument("--docker", action="store_true", help="use the Docker executor")
+    p.add_argument("--docker", action="store_true", help=argparse.SUPPRESS)
+    p.add_argument(
+        "--no-sandbox",
+        action="store_true",
+        help="run on the host instead of the container sandbox (trusted checkouts only)",
+    )
     p.add_argument(
         "--offline",
         action="store_true",
@@ -1425,7 +1443,12 @@ def main(argv: list[str] | None = None) -> int:
         action="append",
         help="Codex model variant; repeat to cycle models across samples",
     )
-    study.add_argument("--docker", action="store_true", help="use the Docker executor")
+    study.add_argument("--docker", action="store_true", help=argparse.SUPPRESS)
+    study.add_argument(
+        "--no-sandbox",
+        action="store_true",
+        help="run on the host instead of the container sandbox (trusted checkouts only)",
+    )
     study.add_argument(
         "--offline",
         action="store_true",
@@ -1444,7 +1467,12 @@ def main(argv: list[str] | None = None) -> int:
         help="measure false convictions on behavior-preserving refactors",
     )
     audit.add_argument("corpus", help="versioned refactor corpus directory")
-    audit.add_argument("--docker", action="store_true", help="use the Docker executor")
+    audit.add_argument("--docker", action="store_true", help=argparse.SUPPRESS)
+    audit.add_argument(
+        "--no-sandbox",
+        action="store_true",
+        help="run on the host instead of the container sandbox (trusted checkouts only)",
+    )
     audit.add_argument(
         "--offline",
         action="store_true",
@@ -1463,7 +1491,12 @@ def main(argv: list[str] | None = None) -> int:
         help="measure mutants surviving official tests on resolved benchmark instances",
     )
     oracle.add_argument("manifest", help="versioned resolved-instance manifest")
-    oracle.add_argument("--docker", action="store_true", help="use the Docker executor")
+    oracle.add_argument("--docker", action="store_true", help=argparse.SUPPRESS)
+    oracle.add_argument(
+        "--no-sandbox",
+        action="store_true",
+        help="run on the host instead of the container sandbox (trusted checkouts only)",
+    )
     oracle.add_argument("--reruns", type=int, default=2, help="deterministic runs per mutant")
     oracle.add_argument("--max-mutants", type=int, default=128, help="maximum mutants per instance")
     oracle.add_argument(
@@ -1490,7 +1523,12 @@ def main(argv: list[str] | None = None) -> int:
         "dedup", help="cluster VERIFIED Cases by mutual execution on their fixed states"
     )
     dedup.add_argument("manifest", help="versioned local Case/checkouts manifest")
-    dedup.add_argument("--docker", action="store_true", help="use the Docker executor")
+    dedup.add_argument("--docker", action="store_true", help=argparse.SUPPRESS)
+    dedup.add_argument(
+        "--no-sandbox",
+        action="store_true",
+        help="run on the host instead of the container sandbox (trusted checkouts only)",
+    )
     dedup.add_argument("--reruns", type=int, default=2, help="deterministic cross-runs")
     dedup.add_argument(
         "--out",

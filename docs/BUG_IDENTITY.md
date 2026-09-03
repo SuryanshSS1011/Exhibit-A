@@ -25,7 +25,7 @@ checkouts:
 
 ```bash
 cd engine
-python3 -m exhibit_a.cli dedup ../corpus/manifest.json --docker
+python3 -m exhibit_a.cli dedup ../corpus/manifest.json
 ```
 
 Reports use `bug-identity/v1`. The exact pair matrix is authoritative. Reported clusters

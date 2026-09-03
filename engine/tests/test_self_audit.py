@@ -136,6 +136,7 @@ def test_self_audit_cli_writes_rate_and_confidence_interval(tmp_path: Path, caps
             "self-audit",
             str(CORPUS),
             "--offline",
+            "--no-sandbox",  # trusted in-repo corpus; no lockfile to pin an image from
             "--out",
             str(tmp_path),
         ]
