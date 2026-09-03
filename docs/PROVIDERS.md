@@ -140,3 +140,18 @@ Anthropic uses the same proposer-only role boundary and an environment-named cre
   "roles": {"proposer": "claude"}
 }
 ```
+
+## Retry policy
+
+HTTP adapters retry a refusal the server can recover from — 408, 409, 429, and the 5xx
+family including Anthropic's 529 overload — up to three attempts total. Every other
+status is a decision the server already made and is surfaced immediately; a 4xx is never
+re-sent. Connection failures are retried on the same budget.
+
+Backoff is exponential from one second, capped at thirty, and jittered so concurrent
+investigations do not retry in lockstep. A numeric `Retry-After` is honored in place of
+backoff and clamped to the same cap; the HTTP-date form falls back to backoff.
+
+`max_attempts=1` disables retrying. Retrying changes how hard the engine asks for a
+proposal, never what the judge admits: a retried proposal clears the same gates as any
+other, and a provider that eventually answers has proven nothing by persisting.

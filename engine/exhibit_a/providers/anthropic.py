@@ -17,6 +17,7 @@ from .base import (
     TokenUsage,
     UnknownModelIdentity,
 )
+from .transport import MAX_ATTEMPTS, request_with_retry
 from .ollama import (
     _NoRedirectHandler,
     _optional_int,
@@ -52,6 +53,7 @@ class AnthropicProvider:
         timeout_s: float = 120,
         max_response_bytes: int = _MAX_RESPONSE_BYTES,
         max_context_bytes: int = _MAX_CONTEXT_BYTES,
+        max_attempts: int = MAX_ATTEMPTS,
     ):
         if not isinstance(model, str) or not model.strip():
             raise ValueError("Anthropic model must not be empty")
@@ -61,12 +63,17 @@ class AnthropicProvider:
         _validate_limit(timeout_s, "timeout", _MAX_TIMEOUT_S, allow_float=True)
         _validate_limit(max_response_bytes, "response limit", _MAX_RESPONSE_BYTES)
         _validate_limit(max_context_bytes, "context limit", _MAX_CONTEXT_BYTES)
+        if not isinstance(max_attempts, int) or isinstance(max_attempts, bool):
+            raise ValueError("Anthropic retry attempts must be an integer")
+        if not 1 <= max_attempts <= MAX_ATTEMPTS:
+            raise ValueError("Anthropic retry attempts are out of range")
         self.model = model.strip()
         self.api_key_env = api_key_env
         self.max_tokens = max_tokens
         self.timeout_s = timeout_s
         self.max_response_bytes = max_response_bytes
         self.max_context_bytes = max_context_bytes
+        self.max_attempts = max_attempts
         self._opener = urllib.request.build_opener(
             urllib.request.ProxyHandler({}),
             _NoRedirectHandler(),
@@ -114,14 +121,17 @@ class AnthropicProvider:
             method="POST",
         )
 
-        started = time.monotonic()
-        try:
+        def send() -> bytes:
             with self._opener.open(http_request, timeout=self.timeout_s) as response:
-                raw = response.read(self.max_response_bytes + 1)
-        except urllib.error.HTTPError as exc:
-            raise RuntimeError(f"Anthropic returned HTTP {exc.code}") from exc
-        except urllib.error.URLError as exc:
-            raise RuntimeError(f"Anthropic request failed: {exc.reason}") from exc
+                return response.read(self.max_response_bytes + 1)
+
+        started = time.monotonic()
+        raw = request_with_retry(
+            send,
+            status_label="Anthropic",
+            failure_label="Anthropic",
+            max_attempts=self.max_attempts,
+        )
         if len(raw) > self.max_response_bytes:
             raise ValueError("Anthropic response exceeded the configured size limit")
 
