@@ -24,6 +24,7 @@ import tomllib
 import uuid
 from pathlib import Path
 
+from ..replay_environment import PINNED_PYTEST_VERSION
 from .base import (
     EnvironmentSetupError,
     ExecOutcome,
@@ -36,7 +37,6 @@ from .base import (
 
 DEFAULT_IMAGE = "exhibit-a-python-pytest:3.12"
 _BASE_IMAGE = "python:3.12-slim"
-_PYTEST_VERSION = "8.4.1"
 _CLEANUP_TIMEOUT_S = 30
 _PULL_TIMEOUT_S = 600
 _PINNED_REQUIREMENT = re.compile(r"^[A-Za-z0-9_.-]+(?:\[[A-Za-z0-9_,.-]+\])?==[^\s;\\]+")
@@ -341,7 +341,7 @@ def _environment_spec(repo: RepoState, *, base_reference: str) -> _EnvironmentSp
     digest = hashlib.sha256(identity.encode())
     # The base image and pinned pytest are part of what the image *is*, so they belong in
     # the key that decides whether a cached image may be reused.
-    for component in (base_reference, _PYTEST_VERSION):
+    for component in (base_reference, PINNED_PYTEST_VERSION):
         digest.update(b"\0")
         digest.update(component.encode())
     for content in requirements:
@@ -423,7 +423,7 @@ def _dockerfile(requirement_names: list[str], base_reference: str) -> str:
     return (
         f"FROM {base_reference}\n"
         "RUN python -m pip install --disable-pip-version-check --no-cache-dir "
-        f"pytest=={_PYTEST_VERSION}\n"
+        f"pytest=={PINNED_PYTEST_VERSION}\n"
         f"{copies}\n{installs}\n"
         "USER 65534:65534\n"
     )

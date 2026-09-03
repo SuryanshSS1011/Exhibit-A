@@ -37,6 +37,7 @@ from .executor.base import ExecOutcome
 from .models.case import Verdict, normalize_case_payload, normalize_verdict
 from .release_evidence import validate_release_evidence
 from .replay_environment import (
+    PINNED_PYTEST_VERSION,
     ReplayEnvironment,
     inspect_local_replay_image,
     parse_replay_environment,
@@ -1040,7 +1041,8 @@ def _dockerfile(argv: list[str], environment: ReplayEnvironment | None = None) -
         )
     return (
         "FROM python:3.12-slim\n"
-        "RUN python -m pip install --disable-pip-version-check --no-cache-dir pytest==8.4.1\n"
+        "RUN python -m pip install --disable-pip-version-check --no-cache-dir "
+        f"pytest=={PINNED_PYTEST_VERSION}\n"
         "ARG STATE\n"
         "WORKDIR /work\n"
         "COPY sources/${STATE}/ /work/\n"

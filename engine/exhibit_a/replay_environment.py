@@ -11,6 +11,10 @@ from typing import Any
 
 
 SCHEMA_VERSION = "eef-replay-environment/v1"
+# The pytest a replay image is built with. Its failure renderer ends up inside the signed
+# log, so a bump changes archived evidence and must be deliberate and made in one place.
+# (The dogfood generators pin their own, separate pytest for the suite they archive.)
+PINNED_PYTEST_VERSION = "8.4.1"
 PYTEST_VERSION_LABEL = "dev.exhibit-a.pytest.version"
 PYTEST_ARTIFACT_LABEL = "dev.exhibit-a.pytest.artifact-sha256"
 _DIGEST = re.compile(r"sha256:[0-9a-f]{64}\Z")
@@ -97,7 +101,7 @@ def parse_replay_environment(value: object) -> ReplayEnvironment:
         or not (variant is None or isinstance(variant, str) and _PLATFORM_VALUE.fullmatch(variant))
     ):
         raise ValueError("EEF replay platform is invalid")
-    if pytest_version != "8.4.1":
+    if pytest_version != PINNED_PYTEST_VERSION:
         raise ValueError("EEF replay pytest version is unsupported")
     if not isinstance(artifact, str) or not _DIGEST.fullmatch(artifact):
         raise ValueError("EEF replay pytest artifact digest is invalid")

@@ -50,7 +50,11 @@ from .passport import create_passport, create_public_passport
 from .passport_html import create_html_passport, create_public_html_passport
 from .providers import ProviderRole, load_provider_config
 from .release_evidence import create_release_record, parse_policy_document
-from .replay_environment import inspect_local_replay_image, parse_replay_environment
+from .replay_environment import (
+    PINNED_PYTEST_VERSION,
+    inspect_local_replay_image,
+    parse_replay_environment,
+)
 from .store.json_store import JsonCaseStore
 from .store.research import ResearchStore
 from .store.suite_gap import SuiteGapStore
@@ -355,7 +359,7 @@ def cmd_lock_replay_environment(args: argparse.Namespace) -> int:
                 },
                 "pytest": {
                     "artifactSha256": args.pytest_artifact_sha256,
-                    "version": "8.4.1",
+                    "version": PINNED_PYTEST_VERSION,
                 },
                 "schemaVersion": "eef-replay-environment/v1",
             }
@@ -1278,7 +1282,7 @@ def main(argv: list[str] | None = None) -> int:
     lock_environment.add_argument(
         "--pytest-artifact-sha256",
         required=True,
-        help="sha256 digest of the pytest 8.4.1 artifact embedded in the image",
+        help=f"sha256 digest of the pytest {PINNED_PYTEST_VERSION} artifact in the image",
     )
     lock_environment.add_argument("--docker-bin", default="docker", help=argparse.SUPPRESS)
     lock_environment.add_argument("--out", required=True, help="output environment JSON")
