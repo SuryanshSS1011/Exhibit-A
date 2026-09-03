@@ -16,6 +16,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import uuid
 import zipfile
 from datetime import datetime
 from pathlib import Path
@@ -50,6 +51,7 @@ from .passport import create_passport, create_public_passport
 from .passport_html import create_html_passport, create_public_html_passport
 from .providers import ProviderRole, load_provider_config
 from .release_evidence import create_release_record, parse_policy_document
+from .observability import LOG_LEVEL_ENV, configure as configure_logging, run_context
 from .replay_environment import (
     PINNED_PYTEST_VERSION,
     inspect_local_replay_image,
@@ -1181,6 +1183,13 @@ def _load_replay(path: Path) -> dict[str, Any]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="exhibit-a", description=__doc__)
+    # Logs go to stderr. Stdout carries --json and --events, which the web route parses
+    # line by line, so a log line there would corrupt the protocol.
+    parser.add_argument(
+        "--log-level",
+        choices=["debug", "info", "warning", "error"],
+        help=f"operational logging on stderr (or set {LOG_LEVEL_ENV})",
+    )
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("repro", help="reproduce a bug into a verified failing test")
@@ -1610,7 +1619,9 @@ def main(argv: list[str] | None = None) -> int:
     property_parser.set_defaults(func=cmd_property)
 
     args = parser.parse_args(argv)
-    return args.func(args)
+    configure_logging(args.log_level)
+    with run_context(uuid.uuid4().hex[:12]):
+        return args.func(args)
 
 
 class _FrozenGenerator:

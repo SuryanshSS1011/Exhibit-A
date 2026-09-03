@@ -12,6 +12,7 @@ test files leak into later runs).
 
 from __future__ import annotations
 
+import logging
 import os
 import shlex
 import shutil
@@ -29,6 +30,8 @@ from .base import (
     SourceMutation,
     apply_source_mutation,
 )
+
+logger = logging.getLogger(__name__)
 
 _KILL_TIMEOUT_S = 10
 
@@ -129,6 +132,7 @@ def _run_capped(
     try:
         stdout, stderr = process.communicate(timeout=timeout_s)
     except subprocess.TimeoutExpired:
+        logger.warning("run exceeded %ss on the host; killing its process group", timeout_s)
         _kill_process_group(process)
         return ExecOutcome(
             exit_code=124,

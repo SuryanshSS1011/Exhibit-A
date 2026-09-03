@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 import shutil
 import socket
@@ -15,6 +16,8 @@ from typing import Iterator
 from urllib.parse import urlsplit
 
 from ..executor.base import RepoState
+
+logger = logging.getLogger(__name__)
 
 _SHA_RE = re.compile(r"^[0-9a-fA-F]{7,40}$")
 _HOOKS_DISABLED = ["-c", "core.hooksPath=/dev/null"]
@@ -31,6 +34,7 @@ def checkout(repo_url: str, sha: str) -> RepoState:
     validate_repo_url(repo_url)
     validate_sha(sha)
 
+    logger.info("cloning %s at %s", repo_url, sha)
     scratch = Path(tempfile.mkdtemp(prefix="exhibit-a-git-"))
     repo_path = scratch / "repo"
     try:

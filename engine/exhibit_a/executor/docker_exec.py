@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import re
 import shlex
 import shutil
@@ -36,6 +37,8 @@ from .base import (
 )
 
 DEFAULT_IMAGE = "exhibit-a-python-pytest:3.12"
+logger = logging.getLogger(__name__)
+
 _BASE_IMAGE = "python:3.12-slim"
 _CLEANUP_TIMEOUT_S = 30
 _PULL_TIMEOUT_S = 600
@@ -64,6 +67,11 @@ class DockerExecutor(Executor):
             text=True,
         )
         if inspect.returncode != 0:
+            logger.info(
+                "building pinned environment %s from %s",
+                environment.image,
+                environment.base_reference,
+            )
             with tempfile.TemporaryDirectory(prefix="exhibit-a-env-") as tmp:
                 context = Path(tmp)
                 requirement_names = []
@@ -179,6 +187,7 @@ class DockerExecutor(Executor):
                 )
             except subprocess.TimeoutExpired as e:
                 # Killing the client leaves the container running past its budget.
+                logger.warning("run exceeded %ss; removing container %s", spec.timeout_s, container)
                 _remove_container(self.docker_bin, container)
                 return ExecOutcome(
                     exit_code=124,
@@ -249,6 +258,9 @@ class DockerExecutor(Executor):
                 )
             except subprocess.TimeoutExpired:
                 # Killing the client leaves the container running past its budget.
+                logger.warning(
+                    "existing suite exceeded %ss; removing container %s", timeout_s, container
+                )
                 _remove_container(self.docker_bin, container)
                 return ExecOutcome(
                     exit_code=124,

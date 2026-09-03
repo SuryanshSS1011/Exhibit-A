@@ -40,3 +40,26 @@ does not commit it, push it, or turn it into an automatic patch. A maintainer fi
 reviews the deterministic delta and the separately labeled intent assessment, then
 decides whether the behavior is a regression and who owns the test. Only after that
 human decision should the test enter the repository alongside its fix.
+
+## Logging
+
+`--log-level debug|info|warning|error` (or `EXHIBIT_A_LOG_LEVEL`) turns on operational
+logging; `EXHIBIT_A_LOG_FORMAT=json` emits one JSON object per line. Every line carries a
+run identifier so a single investigation can be followed across clone, build, execution,
+and provider calls.
+
+**Logs go to stderr, always.** Stdout carries `--json` and `--events`, which the web route
+parses line by line; a log line there would corrupt the stream. The package logger does
+not propagate, so a root handler installed by an embedding host cannot capture it onto
+stdout either.
+
+Logs describe what the engine *did* — which image it built, which remote it cloned, when a
+provider was throttled, what a timeout killed. They never carry a verdict. The judge stays
+pure and records its reasoning in the Case's `silence_reason`, which is the artifact meant
+to be audited; a log line may be sampled, filtered, or switched off entirely, and nothing
+about a verdict may depend on one existing.
+
+Values of environment variables named like credentials (`*_API_KEY`, `*_TOKEN`, `*_SECRET`,
+`*_PASSWORD`, `*_CREDENTIAL`) are scrubbed from every line as a backstop, so an exception
+carrying a key cannot write it to disk.
+

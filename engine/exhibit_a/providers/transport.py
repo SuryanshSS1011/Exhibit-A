@@ -9,10 +9,13 @@ proposes only; retrying changes how hard the engine tries to ask, never what is 
 
 from __future__ import annotations
 
+import logging
 import random
 import time
 import urllib.error
 from typing import Callable
+
+logger = logging.getLogger(__name__)
 
 # 408 request timeout, 409 conflict, 429 rate limit, and the 5xx family a server may
 # recover from. 529 is Anthropic's documented overload status.
@@ -41,10 +44,26 @@ def request_with_retry(
             if exc.code not in RETRYABLE_STATUS or attempt == max_attempts:
                 raise RuntimeError(f"{status_label} returned HTTP {exc.code}") from exc
             delay = _delay(attempt, exc, jitter)
+            logger.warning(
+                "%s returned HTTP %d; retrying in %.1fs (attempt %d of %d)",
+                status_label,
+                exc.code,
+                delay,
+                attempt,
+                max_attempts,
+            )
         except urllib.error.URLError as exc:
             if attempt == max_attempts:
                 raise RuntimeError(f"{failure_label} request failed: {exc.reason}") from exc
             delay = _delay(attempt, None, jitter)
+            logger.warning(
+                "%s request failed (%s); retrying in %.1fs (attempt %d of %d)",
+                failure_label,
+                exc.reason,
+                delay,
+                attempt,
+                max_attempts,
+            )
         sleep(delay)
     raise AssertionError("unreachable: the final attempt either returns or raises")
 
