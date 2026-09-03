@@ -10,12 +10,28 @@ from exhibit_a.intake import git_checkout
 REPO_URL = "https://github.com/example/project.git"
 SHA = "abc1234def567890"
 PUBLIC_ADDRESS = "140.82.121.4"
+# Captured before the autouse fixture replaces it, so a test can opt back into the real one.
+_REAL_RESOLVE_HEAD = git_checkout._resolve_head
+
+
+def _full(sha: str) -> str:
+    """The 40-character commit an abbreviation would resolve to."""
+    return (sha.lower() + "0" * 40)[:40]
+
+
+def _clone_only(argv: list[str]) -> None:
+    """Materialise the checkout directory; every other git call is a no-op."""
+    if "clone" in argv:
+        Path(argv[-1]).mkdir()
 
 
 @pytest.fixture(autouse=True)
 def offline_resolver(monkeypatch: pytest.MonkeyPatch):
     """Keep the suite offline; tests that care about resolution override this."""
     monkeypatch.setattr(git_checkout, "_resolve", lambda hostname: [PUBLIC_ADDRESS])
+    monkeypatch.setattr(
+        git_checkout, "_resolve_head", lambda repo_path, requested: _full(requested)
+    )
 
 
 def test_checkout_rejects_untrusted_sha_before_git(monkeypatch: pytest.MonkeyPatch):
@@ -56,7 +72,7 @@ def test_checkout_uses_argv_disables_hooks_and_fetches_only_sha(
 
     state = git_checkout.checkout(REPO_URL, SHA)
     try:
-        assert state.commit == SHA
+        assert state.commit == _full(SHA)
         assert state.label == "checkout"
         assert len(calls) == 3
         assert calls[0][:4] == ["git", "-c", "core.hooksPath=/dev/null", "clone"]
@@ -163,3 +179,35 @@ def test_git_commands_carry_a_wall_clock_timeout(monkeypatch: pytest.MonkeyPatch
 
     assert seen == [git_checkout._GIT_TIMEOUT_S]
     assert git_checkout._GIT_TIMEOUT_S > 0
+
+
+def test_an_abbreviated_sha_is_resolved_to_the_full_commit(monkeypatch: pytest.MonkeyPatch):
+    """An abbreviation is not a stable identifier, so evidence must not carry one."""
+    monkeypatch.setattr(git_checkout, "_run_git", _clone_only)
+    monkeypatch.setattr(git_checkout, "_resolve_head", _REAL_RESOLVE_HEAD)
+    monkeypatch.setattr(git_checkout, "_git_output", lambda argv: _full("abc1234"))
+
+    state = git_checkout.checkout(REPO_URL, "abc1234")
+    try:
+        assert state.commit == _full("abc1234")
+        assert len(state.commit) == 40
+    finally:
+        git_checkout.cleanup(state)
+
+
+def test_a_checkout_that_lands_elsewhere_is_refused(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(git_checkout, "_run_git", _clone_only)
+    monkeypatch.setattr(git_checkout, "_resolve_head", _REAL_RESOLVE_HEAD)
+    monkeypatch.setattr(git_checkout, "_git_output", lambda argv: _full("9999999"))
+
+    with pytest.raises(ValueError, match="does not match the requested"):
+        git_checkout.checkout(REPO_URL, "abc1234")
+
+
+def test_a_head_that_is_not_a_commit_is_refused(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(git_checkout, "_run_git", _clone_only)
+    monkeypatch.setattr(git_checkout, "_resolve_head", _REAL_RESOLVE_HEAD)
+    monkeypatch.setattr(git_checkout, "_git_output", lambda argv: "HEAD -> refs/heads/main")
+
+    with pytest.raises(ValueError, match="not a commit"):
+        git_checkout.checkout(REPO_URL, "abc1234")

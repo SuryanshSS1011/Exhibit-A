@@ -49,8 +49,9 @@ These are deliberate, documented, and worth knowing before deploying anything.
 - **The SSRF guard resolves once.** A name is checked against the addresses it resolves
   to at validation time; `git` resolves again when it connects. A DNS rebind between the
   two is not prevented. An egress policy is the real fix for a hostile network.
-- **Commit SHAs are accepted abbreviated** (7–40 hex) at intake, while release policy
-  requires the full 40. An abbreviation is not a stable identifier as a repository grows.
+- **Commit SHAs may be abbreviated at intake** (7–40 hex). The checkout resolves them to
+  the full 40 characters before they reach a Case, and refuses a checkout that lands on a
+  commit not matching the request, so evidence never carries an abbreviation.
 - **The tamper and vacuous-test detectors are heuristics.** They are regex checks over
   candidate source and are bypassable by construction; they exist to catch obvious
   gaming cheaply. The container is the real enforcement, which is why it is the default.

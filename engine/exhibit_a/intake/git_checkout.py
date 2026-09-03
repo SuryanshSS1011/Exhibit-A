@@ -20,6 +20,7 @@ from ..executor.base import RepoState
 logger = logging.getLogger(__name__)
 
 _SHA_RE = re.compile(r"^[0-9a-fA-F]{7,40}$")
+_FULL_SHA_RE = re.compile(r"[0-9a-f]{40}")
 _HOOKS_DISABLED = ["-c", "core.hooksPath=/dev/null"]
 _GIT_TIMEOUT_S = 300
 
@@ -77,10 +78,11 @@ def checkout(repo_url: str, sha: str) -> RepoState:
                 sha,
             ]
         )
+        resolved = _resolve_head(repo_path, sha)
     except Exception:
         shutil.rmtree(scratch, ignore_errors=True)
         raise
-    return RepoState(path=str(repo_path), label="checkout", commit=sha, source=repo_url)
+    return RepoState(path=str(repo_path), label="checkout", commit=resolved, source=repo_url)
 
 
 def cleanup(state: RepoState) -> None:
@@ -119,6 +121,23 @@ def checkout_triplet(
     with checkout_pair(repo_url, base_sha, fix_sha) as (buggy, fixed):
         with checkout_context(repo_url, control_sha, label="control") as control:
             yield buggy, fixed, control
+
+
+def _resolve_head(repo_path: Path, requested: str) -> str:
+    """Return the full 40-character SHA the checkout actually landed on.
+
+    An abbreviation is convenient to type and is not a stable identifier: the same prefix
+    can resolve differently as a repository grows. Evidence should name the commit, so the
+    abbreviation is accepted at intake and resolved here, before it reaches a Case.
+    """
+    resolved = _git_output(["git", "-C", str(repo_path), *_HOOKS_DISABLED, "rev-parse", "HEAD"])
+    if not _FULL_SHA_RE.fullmatch(resolved):
+        raise ValueError(f"git resolved HEAD to something that is not a commit: {resolved!r}")
+    if not resolved.startswith(requested.lower()):
+        raise ValueError(
+            f"checkout landed on {resolved} which does not match the requested {requested}"
+        )
+    return resolved
 
 
 def validate_sha(sha: str) -> None:
@@ -184,3 +203,11 @@ def _is_public(address: IPv4Address | IPv6Address) -> bool:
 def _run_git(argv: list[str]) -> None:
     """Run one fixed-shape Git command without a shell."""
     subprocess.run(argv, check=True, capture_output=True, text=True, timeout=_GIT_TIMEOUT_S)
+
+
+def _git_output(argv: list[str]) -> str:
+    """Run one fixed-shape Git command and return its trimmed stdout."""
+    result = subprocess.run(
+        argv, check=True, capture_output=True, text=True, timeout=_GIT_TIMEOUT_S
+    )
+    return result.stdout.strip()
