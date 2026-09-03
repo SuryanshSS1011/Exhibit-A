@@ -11,4 +11,4 @@ Public surface:
 from .engine import EngineConfig, EvidenceEngine
 
 __all__ = ["EvidenceEngine", "EngineConfig"]
-__version__ = "0.0.1"
+__version__ = "0.1.0"
