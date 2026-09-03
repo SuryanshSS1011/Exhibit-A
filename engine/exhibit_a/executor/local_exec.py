@@ -12,8 +12,10 @@ test files leak into later runs).
 
 from __future__ import annotations
 
+import os
 import shlex
 import shutil
+import signal
 import subprocess
 import tempfile
 import time
@@ -27,6 +29,8 @@ from .base import (
     SourceMutation,
     apply_source_mutation,
 )
+
+_KILL_TIMEOUT_S = 10
 
 
 class LocalExecutor(Executor):
@@ -68,29 +72,12 @@ class LocalExecutor(Executor):
             test_abs.parent.mkdir(parents=True, exist_ok=True)
             test_abs.write_text(spec.test_code)
 
-            start = time.monotonic()
-            try:
-                proc = subprocess.run(
-                    shlex.split(spec.command),
-                    cwd=work,
-                    capture_output=True,
-                    text=True,
-                    timeout=spec.timeout_s,
-                )
-                return ExecOutcome(
-                    exit_code=proc.returncode,
-                    stdout=proc.stdout,
-                    stderr=proc.stderr,
-                    duration_s=time.monotonic() - start,
-                )
-            except subprocess.TimeoutExpired:
-                return ExecOutcome(
-                    exit_code=124,
-                    stdout="",
-                    stderr="TIMEOUT: exceeded per-run wall-clock budget",
-                    timed_out=True,
-                    duration_s=time.monotonic() - start,
-                )
+            return _run_capped(
+                shlex.split(spec.command),
+                cwd=work,
+                timeout_s=spec.timeout_s,
+                timeout_message="TIMEOUT: exceeded per-run wall-clock budget",
+            )
         finally:
             shutil.rmtree(workdir, ignore_errors=True)
 
@@ -107,28 +94,64 @@ class LocalExecutor(Executor):
         try:
             work = workdir / "repo"
             shutil.copytree(src, work, ignore=shutil.ignore_patterns("__pycache__", ".git"))
-            start = time.monotonic()
-            try:
-                proc = subprocess.run(
-                    argv,
-                    cwd=work,
-                    capture_output=True,
-                    text=True,
-                    timeout=timeout_s,
-                )
-                return ExecOutcome(
-                    exit_code=proc.returncode,
-                    stdout=proc.stdout,
-                    stderr=proc.stderr,
-                    duration_s=time.monotonic() - start,
-                )
-            except subprocess.TimeoutExpired:
-                return ExecOutcome(
-                    exit_code=124,
-                    stdout="",
-                    stderr="TIMEOUT: existing suite exceeded wall-clock budget",
-                    timed_out=True,
-                    duration_s=time.monotonic() - start,
-                )
+            return _run_capped(
+                argv,
+                cwd=work,
+                timeout_s=timeout_s,
+                timeout_message="TIMEOUT: existing suite exceeded wall-clock budget",
+            )
         finally:
             shutil.rmtree(workdir, ignore_errors=True)
+
+
+def _run_capped(
+    argv: list[str],
+    *,
+    cwd: Path,
+    timeout_s: int,
+    timeout_message: str,
+) -> ExecOutcome:
+    """Run one command in its own process group so a timeout stops the whole tree.
+
+    ``subprocess.run(timeout=...)`` signals only the direct child, so a runner that
+    spawned workers leaves them running past the budget. The candidate test is
+    untrusted, so the budget has to bind everything it started, not just pytest.
+    """
+    start = time.monotonic()
+    process = subprocess.Popen(
+        argv,
+        cwd=cwd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        start_new_session=True,
+    )
+    try:
+        stdout, stderr = process.communicate(timeout=timeout_s)
+    except subprocess.TimeoutExpired:
+        _kill_process_group(process)
+        return ExecOutcome(
+            exit_code=124,
+            stdout="",
+            stderr=timeout_message,
+            timed_out=True,
+            duration_s=time.monotonic() - start,
+        )
+    return ExecOutcome(
+        exit_code=process.returncode,
+        stdout=stdout,
+        stderr=stderr,
+        duration_s=time.monotonic() - start,
+    )
+
+
+def _kill_process_group(process: subprocess.Popen[str]) -> None:
+    """Kill the group; killing the child alone orphans whatever it spawned."""
+    try:
+        os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+    except OSError:
+        process.kill()
+    try:
+        process.communicate(timeout=_KILL_TIMEOUT_S)
+    except subprocess.TimeoutExpired:
+        pass

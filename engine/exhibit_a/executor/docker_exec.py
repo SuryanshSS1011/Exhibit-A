@@ -21,6 +21,7 @@ import subprocess
 import tempfile
 import time
 import tomllib
+import uuid
 from pathlib import Path
 
 from .base import (
@@ -34,6 +35,7 @@ from .base import (
 )
 
 DEFAULT_IMAGE = "exhibit-a-python-pytest:3.12"
+_CLEANUP_TIMEOUT_S = 30
 _PINNED_REQUIREMENT = re.compile(r"^[A-Za-z0-9_.-]+(?:\[[A-Za-z0-9_,.-]+\])?==[^\s;\\]+")
 
 
@@ -117,10 +119,13 @@ class DockerExecutor(Executor):
             test_abs.write_text(spec.test_code)
 
             image = spec.image or self.prepare(repo) or self.base_image
+            container = f"exhibit-a-run-{uuid.uuid4().hex}"
             argv = [
                 self.docker_bin,
                 "run",
                 "--rm",
+                "--name",
+                container,
                 "--network",
                 "none" if not spec.network else "bridge",
                 "--cap-drop",
@@ -164,6 +169,8 @@ class DockerExecutor(Executor):
                     duration_s=time.monotonic() - start,
                 )
             except subprocess.TimeoutExpired as e:
+                # Killing the client leaves the container running past its budget.
+                _remove_container(self.docker_bin, container)
                 return ExecOutcome(
                     exit_code=124,
                     stdout=e.stdout or "" if isinstance(e.stdout, str) else "",
@@ -188,10 +195,13 @@ class DockerExecutor(Executor):
         try:
             shutil.copytree(src, work, ignore=shutil.ignore_patterns("__pycache__", ".git"))
             resolved_image = image or self.prepare(repo) or self.base_image
+            container = f"exhibit-a-suite-{uuid.uuid4().hex}"
             docker_argv = [
                 self.docker_bin,
                 "run",
                 "--rm",
+                "--name",
+                container,
                 "--network",
                 "none",
                 "--cap-drop",
@@ -229,6 +239,8 @@ class DockerExecutor(Executor):
                     duration_s=time.monotonic() - start,
                 )
             except subprocess.TimeoutExpired:
+                # Killing the client leaves the container running past its budget.
+                _remove_container(self.docker_bin, container)
                 return ExecOutcome(
                     exit_code=124,
                     stdout="",
@@ -238,6 +250,19 @@ class DockerExecutor(Executor):
                 )
         finally:
             shutil.rmtree(workdir, ignore_errors=True)
+
+
+def _remove_container(docker_bin: str, name: str) -> None:
+    """Stop the container itself; a killed client leaves it running on the daemon."""
+    try:
+        subprocess.run(
+            [docker_bin, "rm", "--force", name],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=_CLEANUP_TIMEOUT_S,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        pass
 
 
 class _EnvironmentSpec:
