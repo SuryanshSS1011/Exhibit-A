@@ -10,6 +10,7 @@ from exhibit_a.executor.base import EnvironmentSetupError, ExecSpec, RepoState, 
 from exhibit_a.executor.docker_exec import (
     DockerExecutor,
     _base_reference,
+    _carries_hashes,
     _dockerfile,
     _environment_spec,
 )
@@ -210,3 +211,27 @@ def test_base_reference_fails_closed_when_the_image_cannot_be_resolved(
 
     with pytest.raises(EnvironmentSetupError, match="could not be pulled"):
         _base_reference("docker")
+
+
+def test_hashes_are_enforced_when_the_lockfile_ships_them():
+    """Ignoring pinned hashes would accept an index serving different bytes."""
+    hashed = _dockerfile(["requirements-0.txt"], BASE_DIGEST, (True,))
+    plain = _dockerfile(["requirements-0.txt"], BASE_DIGEST, (False,))
+
+    assert "--require-hashes --requirement /tmp/locks/requirements-0.txt" in hashed
+    assert "--require-hashes" not in plain
+
+
+def test_hash_enforcement_is_decided_per_lockfile():
+    dockerfile = _dockerfile(
+        ["requirements-0.txt", "requirements-1.txt"], BASE_DIGEST, (False, True)
+    )
+
+    assert "--no-cache-dir --requirement /tmp/locks/requirements-0.txt" in dockerfile
+    assert "--require-hashes --requirement /tmp/locks/requirements-1.txt" in dockerfile
+
+
+def test_carries_hashes_detects_both_layouts():
+    assert _carries_hashes("requests==2.32.4 --hash=sha256:abc\n")
+    assert _carries_hashes("requests==2.32.4 \\\n    --hash=sha256:abc\n")
+    assert not _carries_hashes("requests==2.32.4\n")

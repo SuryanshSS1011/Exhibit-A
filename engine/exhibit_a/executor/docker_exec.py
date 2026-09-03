@@ -72,7 +72,11 @@ class DockerExecutor(Executor):
                     (context / name).write_text(content)
                     requirement_names.append(name)
                 (context / "Dockerfile").write_text(
-                    _dockerfile(requirement_names, environment.base_reference)
+                    _dockerfile(
+                        requirement_names,
+                        environment.base_reference,
+                        tuple(_carries_hashes(c) for c in environment.requirements),
+                    )
                 )
                 build = subprocess.run(
                     [
@@ -413,12 +417,26 @@ def _validate_pinned_requirements(content: str, name: str) -> None:
             )
 
 
-def _dockerfile(requirement_names: list[str], base_reference: str) -> str:
+def _carries_hashes(content: str) -> bool:
+    """True when a lockfile ships artifact hashes, so pip can be told to demand them."""
+    return "--hash=" in content
+
+
+def _dockerfile(
+    requirement_names: list[str],
+    base_reference: str,
+    hashed: tuple[bool, ...] | None = None,
+) -> str:
+    flags = hashed or (False,) * len(requirement_names)
     copies = "\n".join(f"COPY {name} /tmp/locks/{name}" for name in requirement_names)
     installs = "\n".join(
         "RUN python -m pip install --disable-pip-version-check --no-cache-dir "
-        f"--requirement /tmp/locks/{name}"
-        for name in requirement_names
+        # A lockfile that went to the trouble of pinning hashes should have them
+        # enforced, not silently ignored. pip demands all-or-nothing, so a file with
+        # partial hashes fails the build rather than installing the unhashed remainder.
+        + ("--require-hashes " if carries else "")
+        + f"--requirement /tmp/locks/{name}"
+        for name, carries in zip(requirement_names, flags, strict=True)
     )
     return (
         f"FROM {base_reference}\n"
