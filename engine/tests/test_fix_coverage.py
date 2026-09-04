@@ -20,6 +20,7 @@ from exhibit_a.studies.fix_coverage import (
     FixInstance,
     RunConfig,
     WorkerResult,
+    classify_environment_install_failure,
     classify_worker_result,
     create_public_fix_coverage_report,
     load_fix_corpus,
@@ -201,6 +202,26 @@ def test_failure_taxonomy(result: WorkerResult, expected: str) -> None:
     assert classify_worker_result(result)[0] == expected
 
 
+@pytest.mark.parametrize(
+    ("reason", "expected"),
+    [
+        ("package requires a different Python: 3.13", "python_version_incompatible"),
+        ("No matching distribution found for pinned==1", "pinned_distribution_unavailable"),
+        ("ResolutionImpossible: conflicting dependencies", "dependency_resolution_conflict"),
+        ("THESE PACKAGES DO NOT MATCH THE HASHES", "artifact_hash_or_integrity_failure"),
+        ("certificate verify failed while downloading", "package_index_or_network_failure"),
+        ("Failed building wheel for native", "native_distribution_build_failure"),
+        (
+            "metadata-generation-failed: pyproject.toml did not run successfully",
+            "package_build_backend_or_metadata_failure",
+        ),
+        ("dependency image failed for an unrecognized reason", "other_install_failure"),
+    ],
+)
+def test_environment_install_failure_taxonomy(reason: str, expected: str) -> None:
+    assert classify_environment_install_failure(reason) == expected
+
+
 def test_study_keeps_partial_separate_and_resumes(tmp_path: Path) -> None:
     instances = (_instance(), replace(_instance(), id="owner-repo-pr-2", fix_sha="3" * 40))
     corpus = FixCorpus(
@@ -276,6 +297,47 @@ def test_study_keeps_partial_separate_and_resumes(tmp_path: Path) -> None:
     assert public_taxonomy["timed_out"] == 0
     assert "PRIVATE EXECUTION LOG" not in json.dumps(public)
     assert corpus.path not in json.dumps(public)
+
+
+def test_report_breaks_down_dependency_install_failures_without_public_raw_reason(
+    tmp_path: Path,
+) -> None:
+    corpus = FixCorpus(
+        path=str(tmp_path / "corpus.json"),
+        sha256="f" * 64,
+        preregistration={},
+        selection={},
+        exclusions=(),
+        instances=(_instance(),),
+    )
+    private_reason = (
+        "could not build environment: pinned dependency image failed to build; "
+        "No matching distribution found for private-package==1"
+    )
+    report = run_fix_coverage_study(
+        corpus=corpus,
+        output_root=tmp_path / "run",
+        config=_config(),
+        runner=lambda instance, root, timeout: _result(
+            case=_uncertain(silence_reason=private_reason)
+        ),
+    )
+
+    breakdown = report["environment_dependency_install_breakdown"]
+    assert breakdown["total"] == 1
+    assert breakdown["categories"][0] == {
+        "category": "pinned_distribution_unavailable",
+        "count": 1,
+        "fraction_of_dependency_install_failures": 1.0,
+    }
+    public = create_public_fix_coverage_report(
+        corpus=corpus,
+        private_root=tmp_path / "run",
+        output=tmp_path / "public.json",
+        execution_source_revision="a" * 40,
+    )
+    assert private_reason not in json.dumps(public)
+    assert public["items"][0]["environment_install_category"] == ("pinned_distribution_unavailable")
 
 
 def test_resume_rejects_parameter_drift(tmp_path: Path) -> None:

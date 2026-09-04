@@ -1033,6 +1033,10 @@ def cmd_fix_coverage(args: argparse.Namespace) -> int:
         headline = report["headline"]
         print(f"study file: {Path(args.out).resolve() / 'report.json'}")
         print(
+            f"REACHED JUDGE: {headline['judged_denominator']}/{headline['denominator']} "
+            f"({headline['reached_judge_fraction']:.1%})"
+        )
+        print(
             f"VERIFIED: {headline['verified']}/{headline['denominator']} "
             f"({headline['verified_fraction']:.1%})"
         )
@@ -1044,6 +1048,8 @@ def cmd_fix_coverage(args: argparse.Namespace) -> int:
             f"completed: {report['completed_instances']}/{report['requested_instances']}; "
             f"active wall time: {report['active_wall_time_s']:.1f}s"
         )
+        if report["halted_reason"]:
+            print(f"halted: {report['halted_reason']}; resume keeps the instance unattempted")
         for item in report["failure_taxonomy"]:
             print(f"{item['category']}: {item['count']}")
     return 0 if report["remaining_instances"] == 0 else 1

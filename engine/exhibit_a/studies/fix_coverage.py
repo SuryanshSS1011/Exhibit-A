@@ -30,8 +30,20 @@ REPORT_SCHEMA = "fix-coverage-study/v1"
 CHECKPOINT_SCHEMA = "fix-coverage-instance/v1"
 WORKER_SCHEMA = "fix-coverage-worker/v1"
 RUN_STATE_SCHEMA = "fix-coverage-run-state/v1"
-TAXONOMY_SCHEMA = "fix-coverage-failure-taxonomy/v2"
-PUBLIC_REPORT_SCHEMA = "fix-coverage-public-report/v1"
+TAXONOMY_SCHEMA = "fix-coverage-failure-taxonomy/v3"
+PUBLIC_REPORT_SCHEMA = "fix-coverage-public-report/v2"
+ENVIRONMENT_INSTALL_TAXONOMY_SCHEMA = "fix-coverage-environment-install-taxonomy/v1"
+
+_ENVIRONMENT_INSTALL_CATEGORIES = (
+    "python_version_incompatible",
+    "pinned_distribution_unavailable",
+    "dependency_resolution_conflict",
+    "artifact_hash_or_integrity_failure",
+    "package_index_or_network_failure",
+    "native_distribution_build_failure",
+    "package_build_backend_or_metadata_failure",
+    "other_install_failure",
+)
 
 _PUBLIC_FAILURE_CATEGORIES = (
     "environment_no_supported_lockfile",
@@ -304,6 +316,10 @@ def create_public_fix_coverage_report(
             "wall_time_s": result.wall_time_s,
             "model_calls": (len(case.get("proposal_runs", [])) if isinstance(case, dict) else 0),
         }
+        if category == "environment_dependency_install_failed":
+            item["environment_install_category"] = classify_environment_install_failure(
+                checkpoint.get("failure_reason")
+            )
         if isinstance(case, dict) and case.get("verdict") == "VERIFIED":
             evidence = case.get("evidence") or {}
             artifact = case.get("test_file") or {}
@@ -342,6 +358,8 @@ def create_public_fix_coverage_report(
             "engine_version": private["engine_version"],
             "execution_source_revision": revision,
             "run_id": private["id"],
+            "complete": private.get("complete", True),
+            "halted_reason": private.get("halted_reason"),
             "started_at": private["started_at"],
             "finished_at": private["updated_at"],
             "active_wall_time_s": private["active_wall_time_s"],
@@ -364,6 +382,9 @@ def create_public_fix_coverage_report(
                     key=lambda item: (-item[1], item[0]),
                 )
             ],
+            "environment_dependency_install_breakdown": (
+                _environment_install_breakdown(records.values())
+            ),
             "selection": {
                 "repositories_scanned": corpus.selection.get("repositories_scanned"),
                 "environment_eligible_repositories": corpus.selection.get(
@@ -468,6 +489,91 @@ def classify_worker_result(result: WorkerResult) -> tuple[str | None, str | None
     if any(marker in reason_text for marker in ("test path", "run command", "outside")):
         return "candidate_policy_rejection", reasons or silence
     return "candidate_other_rejection", reasons or silence or "unclassified rejection"
+
+
+def classify_environment_install_failure(reason: object) -> str:
+    """Classify a private dependency-build reason into a publishable stable category."""
+    text = str(reason or "").lower()
+    if any(
+        marker in text
+        for marker in (
+            "requires-python",
+            "requires a different python",
+            "require a different python",
+            "python_requires",
+            "does not support python",
+        )
+    ):
+        return "python_version_incompatible"
+    if any(
+        marker in text
+        for marker in (
+            "resolutionimpossible",
+            "conflicting dependencies",
+            "dependency conflict",
+        )
+    ):
+        return "dependency_resolution_conflict"
+    if any(
+        marker in text
+        for marker in (
+            "no matching distribution found",
+            "could not find a version that satisfies",
+        )
+    ):
+        return "pinned_distribution_unavailable"
+    if any(
+        marker in text
+        for marker in (
+            "do not match the hashes",
+            "hash mismatch",
+            "hashes are required",
+            "these packages do not match the hashes",
+        )
+    ):
+        return "artifact_hash_or_integrity_failure"
+    if any(
+        marker in text
+        for marker in (
+            "temporary failure in name resolution",
+            "connection error",
+            "connection reset",
+            "read timed out",
+            "certificate verify failed",
+            "too many 5",
+            "network is unreachable",
+        )
+    ):
+        return "package_index_or_network_failure"
+    if any(
+        marker in text
+        for marker in (
+            "failed building wheel",
+            "fatal error:",
+            "cmake error",
+            "rust compiler",
+            "can't find rust compiler",
+            "command 'gcc'",
+            'command "gcc"',
+            "command 'clang'",
+            'command "clang"',
+            "pkg-config",
+        )
+    ):
+        return "native_distribution_build_failure"
+    if any(
+        marker in text
+        for marker in (
+            "metadata-generation-failed",
+            "subprocess-exited-with-error",
+            "backendunavailable",
+            "pyproject.toml did not run successfully",
+            "getting requirements to build wheel did not run successfully",
+            "preparing metadata",
+        )
+    ):
+        return "package_build_backend_or_metadata_failure"
+    return "other_install_failure"
 
 
 class SubprocessTrialRunner:
@@ -654,6 +760,39 @@ def _load_checkpoints(directory: Path, corpus: FixCorpus, config_sha: str) -> di
     return records
 
 
+def _environment_install_breakdown(records) -> dict:
+    categories = Counter(
+        classify_environment_install_failure(item.get("failure_reason"))
+        for item in records
+        if item.get("failure_category") == "environment_dependency_install_failed"
+    )
+    total = sum(categories.values())
+    other_fraction = categories["other_install_failure"] / total if total else 0.0
+    return {
+        "schema_version": ENVIRONMENT_INSTALL_TAXONOMY_SCHEMA,
+        "total": total,
+        "categories": [
+            {
+                "category": category,
+                "count": categories[category],
+                "fraction_of_dependency_install_failures": (
+                    categories[category] / total if total else None
+                ),
+            }
+            for category in sorted(
+                _ENVIRONMENT_INSTALL_CATEGORIES,
+                key=lambda category: (-categories[category], category),
+            )
+        ],
+        "other_fraction": other_fraction,
+        "warning": (
+            "other_install_failure exceeds 20%; refine before interpreting constraints"
+            if other_fraction > 0.2
+            else None
+        ),
+    }
+
+
 def _aggregate(corpus: FixCorpus, config: RunConfig, state: dict, records: dict[str, dict]) -> dict:
     ordered = [records[item.id] for item in corpus.instances if item.id in records]
     verdicts = Counter(
@@ -716,6 +855,11 @@ def _aggregate(corpus: FixCorpus, config: RunConfig, state: dict, records: dict[
                 "commit_date": checkpoint["instance"]["commit_date"],
                 "verdict": case.get("verdict") if isinstance(case, dict) else None,
                 "failure_category": checkpoint.get("failure_category"),
+                "environment_install_category": (
+                    classify_environment_install_failure(checkpoint.get("failure_reason"))
+                    if checkpoint.get("failure_category") == "environment_dependency_install_failed"
+                    else None
+                ),
                 "failure_reason": checkpoint.get("failure_reason"),
                 "wall_time_s": result["wall_time_s"],
                 "timed_out": result["timed_out"],
@@ -772,6 +916,7 @@ def _aggregate(corpus: FixCorpus, config: RunConfig, state: dict, records: dict[
             }
             for category, count in sorted(failures.items(), key=lambda item: (-item[1], item[0]))
         ],
+        "environment_dependency_install_breakdown": _environment_install_breakdown(ordered),
         "taxonomy_catch_all_fraction": catch_all / failure_total if failure_total else 0.0,
         "taxonomy_warning": (
             "catch-all categories exceed 20% of failures; refine before interpreting constraints"

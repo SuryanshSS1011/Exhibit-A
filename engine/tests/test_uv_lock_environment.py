@@ -8,6 +8,7 @@ environments while carrying more pinning information than any format already acc
 from __future__ import annotations
 
 import textwrap
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -18,6 +19,7 @@ from exhibit_a.executor.docker_exec import (
     _environment_spec,
     _requirements_from_uv,
 )
+from exhibit_a.studies.fix_corpus import _validate_environment_tree
 
 BASE = "python@sha256:" + "a" * 64
 WHEEL = "sha256:" + "1" * 64
@@ -173,6 +175,36 @@ def test_a_repository_with_only_a_uv_lock_is_now_eligible(tmp_path: Path):
 
     assert spec.image.startswith("exhibit-a-env:")
     assert "certifi==2026.1.1" in spec.requirements[0]
+
+
+def test_fix_coverage_selector_copies_a_uv_lock_from_the_git_tree(tmp_path: Path):
+    """Selection must exercise the same lockfile support as execution."""
+    (tmp_path / "uv.lock").write_text(_lock(REGISTRY_PACKAGE))
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "add", "uv.lock"], check=True)
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(tmp_path),
+            "-c",
+            "user.name=Exhibit A",
+            "-c",
+            "user.email=exhibit-a@example.invalid",
+            "commit",
+            "-qm",
+            "Add lock",
+        ],
+        check=True,
+    )
+    revision = subprocess.run(
+        ["git", "-C", str(tmp_path), "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+    _validate_environment_tree(tmp_path, revision, "https://example.invalid/repo")
 
 
 def test_uv_lock_wins_over_a_looser_lockfile(tmp_path: Path):

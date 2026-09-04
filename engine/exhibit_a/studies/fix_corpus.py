@@ -444,7 +444,7 @@ def _validate_environment_tree(clone: Path, sha: str, source: str) -> None:
     lock_names = [
         name
         for name in names
-        if name in {"poetry.lock", "Pipfile.lock"}
+        if name in {"uv.lock", "poetry.lock", "Pipfile.lock"}
         or (name.startswith("requirements") and name.endswith(".txt"))
     ]
     with tempfile.TemporaryDirectory(prefix="exhibit-a-selection-") as temporary:
