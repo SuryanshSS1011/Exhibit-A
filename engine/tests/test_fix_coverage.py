@@ -6,7 +6,9 @@ from pathlib import Path
 
 import pytest
 
+from exhibit_a.studies import fix_corpus
 from exhibit_a.studies.fix_corpus import (
+    GitHubClient,
     _candidate_prs,
     _date,
     _is_production_python,
@@ -334,3 +336,34 @@ def test_candidate_rule_accepts_exact_bug_label_or_fix_title() -> None:
     assert [candidate["number"] for candidate in candidates] == [2, 1]
     assert candidates[0]["selection_basis"] == ["fix_title_prefix"]
     assert candidates[1]["selection_basis"] == ["exact_bug_label"]
+
+
+def test_github_client_retries_transient_transport_errors(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    attempts = 0
+    sleeps = []
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return b'{"ok": true}'
+
+    def open_request(request: object, timeout: int) -> Response:
+        nonlocal attempts
+        attempts += 1
+        if attempts < 3:
+            raise fix_corpus.urllib.error.URLError("no route to host")
+        return Response()
+
+    monkeypatch.setattr(fix_corpus.urllib.request, "urlopen", open_request)
+    monkeypatch.setattr(fix_corpus.time, "sleep", sleeps.append)
+
+    assert GitHubClient(tmp_path).get("https://api.github.test/data") == {"ok": True}
+    assert attempts == 3
+    assert sleeps == [1, 2]

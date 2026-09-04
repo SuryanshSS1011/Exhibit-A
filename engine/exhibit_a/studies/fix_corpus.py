@@ -50,6 +50,7 @@ class GitHubClient:
             if not isinstance(payload, dict):
                 raise TypeError(f"cached GitHub response is not an object: {path}")
             return payload
+        transport_attempt = 0
         while True:
             headers = {
                 "Accept": "application/vnd.github+json",
@@ -69,6 +70,11 @@ class GitHubClient:
                 reset = int(exc.headers.get("X-RateLimit-Reset", "0") or 0)
                 delay = max(1, min(90, reset - int(time.time()) + 1))
                 time.sleep(delay)
+            except (urllib.error.URLError, TimeoutError):
+                transport_attempt += 1
+                if transport_attempt >= 5:
+                    raise
+                time.sleep(2 ** (transport_attempt - 1))
         if not isinstance(payload, dict):
             raise TypeError(f"GitHub response is not an object: {url}")
         _atomic_json(path, payload)
@@ -235,6 +241,9 @@ def select_fix_corpus(
         "selection": {
             "selected_at": selected_at,
             "source": "GitHub REST API and Git smart HTTP",
+            "github_transport_retry": (
+                "five attempts for URL/timeout failures with 1,2,4,8 second backoff"
+            ),
             "repository_query": "language:Python fork:false archived:false",
             "repository_order": "stars descending at selection time",
             "repository_count": repository_count,

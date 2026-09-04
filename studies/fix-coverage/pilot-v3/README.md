@@ -12,3 +12,4 @@ V3 selected 16 instances before a transient network outage caused 50 candidate-d
 requests to fail. The shortfall and all exclusions are preserved in
 [`selection-report.md`](./selection-report.md) and [`corpus.json`](./corpus.json); no
 included instance was executed.
+The transport-only amendment is preserved under [`../pilot-v4/`](../pilot-v4/).
