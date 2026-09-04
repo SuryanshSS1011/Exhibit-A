@@ -1,0 +1,77 @@
+{
+  "schema_version": "fix-coverage-preregistration/v1",
+  "registered_at": "2026-09-04T04:40:36Z",
+  "parent_engine_commit": "d635480fa73489a73bd3e9f028922a42eb368dc6",
+  "research_question": "What fraction of mechanically selected real Python bug fixes reaches Exhibit A VERIFIED evidence under the current sandbox and proposer?",
+  "selection": {
+    "source": "GitHub public repositories and pull requests",
+    "repository_query": "language:Python fork:false archived:false",
+    "repository_order": "stargazers_count descending at selection time",
+    "repository_count": 50,
+    "repository_eligibility": "The default branch must contain a root poetry.lock, Pipfile.lock, or requirements*.txt accepted as fully pinned by the current Docker executor.",
+    "pull_request_rule": "Merged PRs with an exact case-insensitive bug label, merged from 2026-02-17 through 2026-08-31 inclusive.",
+    "claim_rule": "Use the PR title verbatim. Do not rewrite it or add an expected failure signature.",
+    "revision_rule": "The recorded fix is GitHub's merge_commit_sha and the buggy revision is its first parent.",
+    "instance_eligibility": [
+      "The fixing commit timestamp is inside the registered date window.",
+      "At least one production Python file changed; paths under test, tests, testing, docs, documentation, examples, or benchmarks do not count.",
+      "Both buggy and fixed revisions have a root pinned dependency input accepted by the current Docker executor.",
+      "Both revisions and their relationship resolve through Git without manual repair."
+    ],
+    "candidate_order": "Within each repository, merged_at ascending; then round-robin by repository star rank.",
+    "per_repository_cap": 5,
+    "target_instances": 30,
+    "stopping_rule": "Stop at 30 included instances, or report that the mechanically selected universe was exhausted.",
+    "exclusions": "Record every repository-level and PR-level exclusion, including candidates outside the per-repository cap or target sample. No outcome-based exclusion is allowed."
+  },
+  "model": {
+    "requested_model": "gpt-5.6-sol",
+    "provider": "codex_cli",
+    "training_cutoff_preference": "Only commits after the documented 2026-02-16 knowledge cutoff are eligible.",
+    "identity_rule": "Record requested_model and the provider-reported confirmed identity. Codex CLI absence of telemetry remains the explicit unknown_cli_no_telemetry value.",
+    "source": "https://developers.openai.com/api/docs/models/gpt-5.6-sol",
+    "pricing_snapshot": "2026-09-04: USD 4.00/M input tokens, USD 0.40/M cached input tokens, and USD 20.00/M output tokens; promotional pricing was documented through at least 2026-11-21."
+  },
+  "execution": {
+    "mode": "detective with the buggy first parent as target and the fixing commit as base",
+    "sandbox": "Docker executor; source runs from a disposable copy, network disabled, credentials unavailable, unprivileged container",
+    "existing_suite_preflight": true,
+    "reruns": 5,
+    "max_refine": 3,
+    "execution_timeout_seconds": 120,
+    "per_instance_wall_clock_ceiling_seconds": 720,
+    "total_active_wall_clock_ceiling_seconds": 21600,
+    "minimize_verified": false,
+    "score_evidence_strength": false,
+    "outcome_retry_rule": "One completed attempt per instance. Resume skips completed checkpoints. An interrupted attempt may be resumed once the interruption remains recorded; never retry merely to seek a better verdict."
+  },
+  "analysis": {
+    "headline": "VERIFIED divided by all included corpus instances, including build, service, proposal, execution, flake, rejection, and timeout failures.",
+    "partial": "Report PARTIAL as its own numerator and fraction; never merge it with VERIFIED.",
+    "confidence_interval": "Two-sided 95% Wilson score interval for the VERIFIED fraction.",
+    "failure_taxonomy": [
+      "environment_no_supported_lockfile",
+      "environment_dependency_install_failed",
+      "environment_other_setup_failed",
+      "suite_requires_unavailable_services",
+      "existing_suite_failed",
+      "suite_infrastructure_failure",
+      "no_candidate_proposed",
+      "candidate_wrong_failure_signature",
+      "candidate_infrastructure_failure",
+      "candidate_vacuous",
+      "candidate_tamper",
+      "candidate_flaky",
+      "candidate_did_not_fail_on_buggy",
+      "candidate_failed_on_fixed",
+      "candidate_policy_rejection",
+      "timed_out",
+      "checkout_failed",
+      "candidate_other_rejection",
+      "study_error"
+    ],
+    "taxonomy_refinement_rule": "If candidate_other_rejection plus study_error exceeds 20% of failures, refine classification without changing any underlying Case, commit the change with its reason, and report both the preregistered and refined views.",
+    "cost_rule": "Report active wall time and provider-reported model spend. If any model call lacks billable usage or cost telemetry, actual model spend is unavailable rather than zero or an invented estimate.",
+    "interpretation_rule": "State the observed fraction, uncertainty, exclusions, and dominant constraints before making a qualitative product-versus-research-instrument judgment. Do not alter the corpus after observing outcomes."
+  }
+}

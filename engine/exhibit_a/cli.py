@@ -62,6 +62,13 @@ from .store.research import ResearchStore
 from .store.suite_gap import SuiteGapStore
 from .studies.archaeology import run_archaeology, save_archaeology_report
 from .studies.bug_identity import run_bug_identity, save_bug_identity_report
+from .studies.fix_corpus import select_fix_corpus
+from .studies.fix_coverage import (
+    RunConfig as FixCoverageRunConfig,
+    SubprocessTrialRunner,
+    load_fix_corpus,
+    run_fix_coverage_study,
+)
 from .studies.oracle_gap import run_oracle_gap, save_oracle_gap_report
 from .studies.property_escalation import run_property_escalation, save_property_report
 from .studies.reproducibility import (
@@ -959,6 +966,87 @@ def cmd_study(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_select_fix_corpus(args: argparse.Namespace) -> int:
+    """Select the preregistered corpus without executing any study instance."""
+    try:
+        corpus = select_fix_corpus(
+            output=args.out,
+            preregistration=args.preregistration,
+            cache=args.cache,
+            date_from=args.date_from,
+            date_to=args.date_to,
+            repository_count=args.repositories,
+            target_instances=args.instances,
+            per_repository_cap=args.per_repository_cap,
+            token_env=args.github_token_env,
+        )
+    except (OSError, RuntimeError, TypeError, ValueError, subprocess.SubprocessError) as exc:
+        print(f"error: fix-coverage corpus selection failed: {exc}", file=sys.stderr)
+        return 2
+    print(f"corpus file: {Path(args.out).resolve()}")
+    print(f"included instances: {len(corpus['instances'])}")
+    print(f"excluded candidates: {len(corpus['exclusions'])}")
+    return 0 if len(corpus["instances"]) == args.instances else 1
+
+
+def cmd_fix_coverage(args: argparse.Namespace) -> int:
+    """Measure VERIFIED coverage across a preregistered real-fix corpus."""
+    try:
+        provider_config = (
+            str(Path(args.provider_config).resolve(strict=True))
+            if args.provider_config is not None
+            else None
+        )
+        requested_model = args.model
+        if provider_config is not None:
+            provider = load_provider_config(provider_config).provider_for(ProviderRole.PROPOSER)
+            provider_model = str(getattr(provider, "model", ""))
+            if requested_model is not None and requested_model != provider_model:
+                raise ValueError(
+                    f"--model {requested_model!r} disagrees with provider model {provider_model!r}"
+                )
+            requested_model = provider_model
+        config = FixCoverageRunConfig(
+            requested_model=requested_model or "gpt-5.6-sol",
+            provider_config=provider_config,
+            instance_timeout_s=args.instance_timeout_s,
+            total_ceiling_s=args.total_ceiling_s,
+            execution_timeout_s=args.execution_timeout_s,
+            reruns=args.reruns,
+            max_refine=args.max_refine,
+        )
+        corpus = load_fix_corpus(args.manifest)
+        report = run_fix_coverage_study(
+            corpus=corpus,
+            output_root=args.out,
+            config=config,
+            runner=SubprocessTrialRunner(config),
+        )
+    except (OSError, RuntimeError, TypeError, ValueError, subprocess.SubprocessError) as exc:
+        print(f"error: fix-coverage study failed: {exc}", file=sys.stderr)
+        return 2
+    if args.json:
+        print(json.dumps(report, indent=2, default=str))
+    else:
+        headline = report["headline"]
+        print(f"study file: {Path(args.out).resolve() / 'report.json'}")
+        print(
+            f"VERIFIED: {headline['verified']}/{headline['denominator']} "
+            f"({headline['verified_fraction']:.1%})"
+        )
+        print(
+            f"PARTIAL: {headline['partial']}/{headline['denominator']} "
+            f"({headline['partial_fraction']:.1%}); never merged with VERIFIED"
+        )
+        print(
+            f"completed: {report['completed_instances']}/{report['requested_instances']}; "
+            f"active wall time: {report['active_wall_time_s']:.1f}s"
+        )
+        for item in report["failure_taxonomy"]:
+            print(f"{item['category']}: {item['count']}")
+    return 0 if report["remaining_instances"] == 0 else 1
+
+
 def cmd_self_audit(args: argparse.Namespace) -> int:
     """Measure false convictions on a validated behavior-preserving corpus."""
 
@@ -1438,6 +1526,64 @@ def main(argv: list[str] | None = None) -> int:
     observe.add_argument("--upstream-sha", required=True, help="pinned current upstream SHA")
     observe.add_argument("--out", default=".exhibit-a/research", help="private research root")
     observe.set_defaults(func=cmd_observe)
+
+    select_corpus = sub.add_parser(
+        "select-fix-corpus",
+        help="mechanically select a preregistered real-fix corpus from GitHub",
+    )
+    select_corpus.add_argument("--preregistration", required=True)
+    select_corpus.add_argument("--date-from", required=True, help="inclusive YYYY-MM-DD")
+    select_corpus.add_argument("--date-to", required=True, help="inclusive YYYY-MM-DD")
+    select_corpus.add_argument("--repositories", type=int, default=50)
+    select_corpus.add_argument("--instances", type=int, default=30)
+    select_corpus.add_argument("--per-repository-cap", type=int, default=5)
+    select_corpus.add_argument(
+        "--github-token-env",
+        default="GITHUB_TOKEN",
+        help="optional environment variable containing a GitHub token",
+    )
+    select_corpus.add_argument(
+        "--cache",
+        default=".exhibit-a/research/fix-coverage-selection-cache",
+        help="private API and repository cache",
+    )
+    select_corpus.add_argument("--out", required=True, help="corpus manifest path")
+    select_corpus.set_defaults(func=cmd_select_fix_corpus)
+
+    coverage = sub.add_parser(
+        "fix-coverage",
+        help="measure VERIFIED coverage over a preregistered real-fix corpus",
+    )
+    coverage.add_argument("manifest", help="versioned fix-coverage corpus manifest")
+    coverage.add_argument("--model", help="requested proposer model")
+    coverage.add_argument("--provider-config", help="strict provider configuration JSON")
+    coverage.add_argument(
+        "--instance-timeout-s",
+        type=float,
+        default=720,
+        help="wall-clock ceiling for each instance",
+    )
+    coverage.add_argument(
+        "--total-ceiling-s",
+        type=float,
+        default=21600,
+        help="cumulative instance-time ceiling for this resumable run",
+    )
+    coverage.add_argument(
+        "--execution-timeout-s",
+        type=int,
+        default=120,
+        help="ceiling for each test or suite execution",
+    )
+    coverage.add_argument("--reruns", type=int, default=5)
+    coverage.add_argument("--max-refine", type=int, default=3)
+    coverage.add_argument(
+        "--out",
+        default=".exhibit-a/research/fix-coverage",
+        help="private resumable study directory",
+    )
+    coverage.add_argument("--json", action="store_true", help="print the full report JSON")
+    coverage.set_defaults(func=cmd_fix_coverage)
 
     study = sub.add_parser(
         "study",

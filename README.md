@@ -248,7 +248,8 @@ Beyond `repro`, the CLI exposes the research surface as opt-in subcommands. Thes
 `passport` and `passport-html` for credential-free public trust artifacts,
 `release-evidence` for a pinned CI-policy EEF plus JSON/HTML passport, `study` for
 reproducibility, `self-audit` for the false-conviction rate on innocent refactors, and
-`oracle-gap` for benchmark oracle strength. See the
+`fix-coverage` for the fraction of mechanically selected real fixes the engine can prove,
+and `oracle-gap` for benchmark oracle strength. See the
 [documentation site](https://suryanshss1011.github.io/Exhibit-A/) for each.
 
 ### Dogfooded on Exhibit A's own history
@@ -323,6 +324,7 @@ Deep-dives live in [`docs/`](./docs/), also published as a
 - [Self-audit](./docs/SELF_AUDIT.md)
 - [Oracle-gap probe](./docs/ORACLE_GAP.md)
 - [Reproducibility study](./docs/REPRODUCIBILITY_STUDY.md)
+- [Real-fix coverage study](./docs/FIX_COVERAGE_STUDY.md)
 - [Research assets](./docs/RESEARCH_ASSETS.md)
 - [Bug identity](./docs/BUG_IDENTITY.md)
 - [Archaeology](./docs/ARCHAEOLOGY.md)

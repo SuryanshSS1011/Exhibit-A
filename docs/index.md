@@ -41,6 +41,7 @@ setup instructions, and Codex usage.
 
 ## Research instruments
 
+- [Real-fix coverage study](./FIX_COVERAGE_STUDY.html)
 - [Reproducibility-of-reproduction study](./REPRODUCIBILITY_STUDY.html)
 - [Adversarial self-audit](./SELF_AUDIT.html)
 - [Oracle-gap probe](./ORACLE_GAP.html)
