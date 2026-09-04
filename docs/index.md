@@ -13,6 +13,12 @@ prove developer intent, complete program correctness, universal causality, or th
 candidate repair should be merged. Research scores and study reports are descriptive.
 They never override the deterministic flip check.
 
+![Two real sealed Case replays: inventory_proven ends VERIFIED, while inventory_silence ends UNCERTAIN.](./assets/verdict-pair.png)
+
+Produced by `python3 -m exhibit_a.cli repro --replay` on the checked-in
+`inventory_proven.json` and `inventory_silence.json` Cases. Replay makes no model call and
+executes no repository code. See the [exact commands and capture record](./MEDIA_PROVENANCE.html#verdict-pair).
+
 Read the [project overview](./overview.html) for the full product pitch, architecture,
 setup instructions, and Codex usage.
 
@@ -31,6 +37,7 @@ setup instructions, and Codex usage.
 - [Executable Evidence Format](./EEF.html)
 - [Public evidence passport](./PASSPORT.html)
 - [Private research assets](./RESEARCH_ASSETS.html)
+- [Media provenance and authenticity](./MEDIA_PROVENANCE.html)
 
 ## Research instruments
 

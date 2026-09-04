@@ -8,7 +8,9 @@
 
 *Every proof it produces is also open data for AI-for-software-engineering (AI4SE) research.*
 
-![Exhibit A sealed Case replay: a VERIFIED regression and an honest-silence verdict, replayed deterministically with no model call.](./assets/sealed-replays.gif)
+![Two real sealed Case replays: inventory_proven ends VERIFIED, while inventory_silence ends UNCERTAIN.](./docs/assets/verdict-pair.png)
+
+<sub>Real output from <code>python3 -m exhibit_a.cli repro --replay</code> on the two checked-in inventory Cases. No model or code execution. <a href="./docs/MEDIA_PROVENANCE.md#verdict-pair">Commands and capture provenance</a></sub>
 
 </div>
 
@@ -61,6 +63,18 @@ claim + code state(s)
     -> VERIFIED Case File   or   UNCERTAIN (Silence Log)
 ```
 
+### See a real investigation
+
+The recording below is a current-code provider run from claim to deterministic verdict.
+It checks the existing suite, asks the provider for a test, observes five matching failures
+on the reported state and a pass on the fixed state, minimizes the evidence, and ends
+`VERIFIED`. The first candidate cleared the gate, so this run did not need a rejection or
+retry.
+
+![Animated terminal recording of a real provider investigation ending VERIFIED after target failures, a base pass, and evidence minimization.](./docs/assets/investigation-real-provider.svg)
+
+<sub>Command: <code>/opt/homebrew/bin/python3 -m exhibit_a.cli repro /tmp/ea/t --fixed /tmp/ea/b --claim 'stock_for should return 0 for a missing SKU, not KeyError' --expect KeyError --out /tmp/ea/c --no-sandbox --events</code>. The inputs were byte-for-byte temporary copies of the checked-in inventory fixtures. One provider wait was capped at 15 seconds in playback, and the recording was trimmed only after the verdict, before the final Case JSON. <a href="./docs/MEDIA_PROVENANCE.md#real-provider-investigation">Full provenance</a></sub>
+
 ## What it proves, and what it does not
 
 The flip check proves that behavior **changed** between two states. It does not prove the
@@ -104,8 +118,9 @@ evidence-backed `FAILED` rather than being confused with infrastructure failure.
   training set.
 - **Signed, replayable evidence bundles.** A Case can be exported as a self-contained
   bundle (pinned commits, the test, the run command, logs, and content hashes) that anyone
-  can re-execute and verify offline. EEF v2 supports both bug-flip Cases and repeated
-  before/after refactor evidence while retaining v1 bug-bundle verification. See
+  can re-execute and verify offline. The versioned EEF supports bug-flip and repeated
+  before/after refactor claims, claim-bound remote receipts, and an optional public-key
+  signature profile while retaining verification for earlier archives. See
   [`docs/EEF.md`](./docs/EEF.md).
 - **Negative results as a dataset.** The Silence Ledger records what the engine suspected
   but could not prove. Nobody publishes what reproduction tools fail to reproduce, which
@@ -154,7 +169,13 @@ fixtures/                       tiny buggy/fixed repo pairs for offline runs
 
 ## Setup
 
-**Requirements:** Python 3.11+, Node 18+, and Docker. Runs are sandboxed by default; `--no-sandbox` trades that for host execution and is only for checkouts you trust. Replaying a sealed Case needs neither Docker nor a model.
+**Just evaluating?** The images and recordings above need only a browser. The checked-in
+HTML passports below are standalone, credential-free files. Replaying a sealed Case needs
+Python, but neither Docker nor a model.
+
+**For a full local run:** Python 3.11+, Node 18+ for the web UI, and Docker for sandboxed
+execution. `--no-sandbox` trades containment for host execution and is only for checkouts
+you trust.
 
 ### Engine
 
@@ -188,7 +209,7 @@ how much work one caller can start.
 ```bash
 cd engine
 
-# 1) Local buggy/fixed checkouts produce a full VERIFIED flip
+# 1) Run a live investigation against local buggy/fixed checkouts
 python3 -m exhibit_a.cli repro ../fixtures/buggy_inventory \
   --fixed ../fixtures/fixed_inventory \
   --claim "stock_for should return zero for an unknown SKU instead of raising KeyError" \
@@ -210,10 +231,17 @@ python3 -m exhibit_a.cli repro ../fixtures/buggy_slice \
 `--no-sandbox` appears only on the in-repo fixtures: they are trusted, and carry no
 lockfile for the pinned-image path to build from. Real repositories run sandboxed.
 
+The `--offline` example is a pipeline smoke test, not a VERIFIED demo. Its deterministic
+stub cannot import or exercise the code under test, so the expected result is `UNCERTAIN`
+with an explicit silence reason. Use the sealed replay or a configured provider to see a
+VERIFIED result.
+
 The web API route `/api/investigate` drives the same engine and **streams each execution
-over SSE**, so the UI shows the agent try, fail, and retry before the terminal Case. The
-interface supports local and two-SHA git intake, the Prosecutor evidence gate, and a
-private Silence Ledger.
+over SSE**, so the UI shows the phases, every execution, any rejected candidate or
+refinement, and the terminal Case. A retry appears only when the provider actually returns
+one. The interface supports local and two-SHA git intake, the Prosecutor evidence gate,
+and a private Silence Ledger. [Watch a real stream](./docs/overview.md#the-web-case-file)
+that rejects a candidate and ends in honest silence.
 
 Beyond `repro`, the CLI exposes the research surface as opt-in subcommands. These include
 `bundle`, `refactor-bundle`, and `verify` for signed, replayable evidence bundles,
@@ -233,6 +261,10 @@ and passes on the fixed snapshot, then the current deterministic judge mints the
 and standalone [HTML passport](./examples/dogfood/timeout_false_verified/timeout_false_verified.passport.html).
 The private source-bearing EEF is intentionally not published.
 
+![Public timeout-verdict passport showing COMPLETED execution, VERIFIED goal truth, and NOT_ASSESSED release truth.](./docs/assets/passport-timeout-verdict.png)
+
+<sub>Rendered directly from the checked-in standalone <a href="./examples/dogfood/timeout_false_verified/timeout_false_verified.passport.html"><code>timeout_false_verified.passport.html</code></a>, with no server or credentials. <a href="./docs/MEDIA_PROVENANCE.md#public-passports">Capture provenance</a></sub>
+
 The checked-in [CI release-truth example](./examples/dogfood/exhibit_a_ci/README.md)
 adds a frozen, normalized GitHub observation for a public Exhibit A commit. Its v2
 [JSON passport](./examples/dogfood/exhibit_a_ci/exhibit_a_ci.passport.json) and standalone
@@ -240,6 +272,10 @@ adds a frozen, normalized GitHub observation for a public Exhibit A commit. Its 
 independent `VERIFIED` bug verdict separate from the bounded `SAFE` result: the latter says
 only that the named `engine` and `web` checks passed at collection time, not that the code
 was correct.
+
+![Public CI release passport showing VERIFIED bug evidence separately from a SAFE result for the named engine and web checks.](./docs/assets/passport-ci-release-truth.png)
+
+<sub>Rendered directly from the checked-in standalone <a href="./examples/dogfood/exhibit_a_ci/exhibit_a_ci.passport.html"><code>exhibit_a_ci.passport.html</code></a>, with no server or credentials. <a href="./docs/MEDIA_PROVENANCE.md#public-passports">Capture provenance</a></sub>
 
 ## How Codex and GPT-5.6 were used
 
@@ -293,6 +329,7 @@ Deep-dives live in [`docs/`](./docs/), also published as a
 - [Triangulation](./docs/TRIANGULATION.md)
 - [Property escalation](./docs/PROPERTY_ESCALATION.md)
 - [Environment dataset](./docs/ENVIRONMENT_DATASET.md)
+- [Media provenance](./docs/MEDIA_PROVENANCE.md)
 
 [`AGENTS.md`](./AGENTS.md) is the contract for the Codex-driven generator.
 

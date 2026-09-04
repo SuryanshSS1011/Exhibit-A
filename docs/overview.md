@@ -53,6 +53,49 @@ claim + code state(s)
     -> VERIFIED Case File   or   UNCERTAIN (Silence Log)
 ```
 
+## See it run
+
+### A real provider investigation
+
+This current-code run checks the existing suite, asks the configured provider for a test,
+observes five matching failures on the reported state and a pass on the fixed state,
+minimizes the evidence, and ends `VERIFIED`. The first candidate cleared the gate, so this
+particular run had no rejection or retry.
+
+![Animated terminal recording of a real provider investigation ending VERIFIED after target failures, a base pass, and evidence minimization.](./assets/investigation-real-provider.svg)
+
+Command: `/opt/homebrew/bin/python3 -m exhibit_a.cli repro /tmp/ea/t --fixed /tmp/ea/b
+--claim 'stock_for should return 0 for a missing SKU, not KeyError' --expect KeyError --out
+/tmp/ea/c --no-sandbox --events`. The two inputs were byte-for-byte temporary copies of
+the checked-in inventory fixtures. One provider wait is capped at 15 seconds in playback;
+the only tail trim removes output after the real verdict, before the final Case JSON. No
+events were rewritten, reordered, or spliced. See the [capture record](./MEDIA_PROVENANCE.html#real-provider-investigation).
+
+### The web case file
+
+The video is one continuous final minute of a genuine 108.5-second SSE investigation at
+`http://127.0.0.1:3000/`. A deliberately incorrect claim is tested five times against two
+identical fixture states. It fails on both, so the deterministic judge rejects it as
+fail-to-fail; the provider offers no refined candidate, and the UI ends `UNCERTAIN` with a
+Silence Log. There is no retry to show because none happened.
+
+<video controls muted playsinline preload="metadata" poster="{{ '/assets/web-case-file.png' | relative_url }}" width="1280" style="width: 100%; max-width: 1280px" aria-label="Real web investigation stream ending in an UNCERTAIN verdict">
+  <source src="{{ '/assets/web-investigation-stream.mp4' | relative_url }}" type="video/mp4">
+  Your browser cannot play the embedded video. <a href="{{ '/assets/web-investigation-stream.mp4' | relative_url }}">Open the MP4 directly.</a>
+</video>
+
+Capture input: claim `stock_for should return one for an unknown SKU instead of zero`,
+with both reported and fixed paths set to `fixtures/sandbox_smoke`. The first 48.5 seconds
+of initial provider wait were trimmed; the published 59.93 seconds have no internal cut,
+splice, reordered frame, narration, or audio track. See the [capture record](./MEDIA_PROVENANCE.html#web-investigation-stream).
+
+![Completed Exhibit A case-file screen from the sealed proven Case replay, showing a proven-regression stamp, hypothesis, evidence-strength summary, and side-by-side failing and passing logs.](./assets/web-case-file.png)
+
+The still is a separate real run of the UI's **Replay proof** action at
+`http://127.0.0.1:3000/`, using the checked-in `inventory_proven.json` sealed Case. It is a
+no-execution replay for inspecting the finished case-file layout, not a frame from the live
+investigation above.
+
 ## What it proves, and what it does not
 
 The flip check proves that behavior changed between two states. It does not prove the change
@@ -129,7 +172,12 @@ fixtures/                       tiny buggy/fixed repo pairs for offline runs
 
 ## Setup
 
-**Requirements:** Python 3.11+, Node 18+, and Docker. Runs are sandboxed by default; `--no-sandbox` trades that for host execution and is only for checkouts you trust. Replaying a sealed Case needs neither Docker nor a model.
+**Just evaluating?** Every artifact above needs only a browser. Replaying a sealed Case
+needs Python, but neither Docker nor a model.
+
+**For a full local run:** Python 3.11+, Node 18+ for the web UI, and Docker for sandboxed
+execution. `--no-sandbox` trades containment for host execution and is only for checkouts
+you trust.
 
 ```bash
 # Engine
@@ -140,6 +188,8 @@ python3 -m pytest -q             # proves the flip check and verdicts end to end
 # Web UI
 cd web
 npm install
+export EXHIBIT_A_API_TOKEN=$(openssl rand -hex 24)   # required; routes are inert without it
+export EXHIBIT_A_LOCAL_ROOT=$(cd .. && pwd)          # optional; enables local-path intake
 npm run dev                      # http://localhost:3000
 ```
 
@@ -148,7 +198,7 @@ npm run dev                      # http://localhost:3000
 ```bash
 cd engine
 
-# 1) Local buggy/fixed checkouts produce a full VERIFIED flip
+# 1) Run a live investigation against local buggy/fixed checkouts
 python3 -m exhibit_a.cli repro ../fixtures/buggy_inventory \
   --fixed ../fixtures/fixed_inventory \
   --claim "stock_for should return zero for an unknown SKU instead of raising KeyError" \

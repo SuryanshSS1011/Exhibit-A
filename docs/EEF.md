@@ -16,6 +16,20 @@ v1, v2, and v3 archives. EEF v4 adds an optional public-signature path using the
 DSSE/Ed25519 profile and externally anchored trust policy defined by
 [ADR 0001](./adr/0001-eef-v4-public-key-signatures.html).
 
+## See verification fail closed
+
+The recording verifies a real EEF, copies it, changes one byte in the copy's signed
+`attestation.json`, and verifies again. The original exits `0`; the tampered copy is
+refused with `Bad CRC-32` and exits `1`. The order, output, and pauses are one continuous
+current-code terminal run.
+
+![Animated terminal recording in which an EEF archive verifies, a copy has one byte changed, and verification of the copy is refused with a non-zero exit.](./assets/eef-tamper-refusal.svg)
+
+Commands, in order: `exhibit_a.cli verify /tmp/ea/case.eef`; print its exit status; `cp`
+to `/tmp/ea/case-tampered.eef`; flip one byte in the copy with Python; run the same
+`verify` command on the copy; print its exit status. The complete argv and signing-key
+arguments are visible in the recording and transcribed in the [capture record](./MEDIA_PROVENANCE.html#eef-tamper-refusal).
+
 ## Guarantees
 
 - `verify` checks every payload size and SHA-256 hash entirely offline.

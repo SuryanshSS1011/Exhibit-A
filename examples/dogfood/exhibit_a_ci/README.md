@@ -11,6 +11,12 @@ Neither conclusion implies the other. `SAFE` records only that the named checks 
 the policy at collection time. It does not prove that the code is correct, and it does not
 create or strengthen the underlying bug verdict.
 
+![Public CI release passport showing VERIFIED bug evidence separately from a SAFE result for the named engine and web checks.](../../../docs/assets/passport-ci-release-truth.png)
+
+This is a direct 2× browser render of the checked-in standalone
+[`exhibit_a_ci.passport.html`](./exhibit_a_ci.passport.html), with no server or credentials.
+See the [capture record](../../../docs/MEDIA_PROVENANCE.md#public-passports).
+
 ## Pinned inputs
 
 - buggy timeout-verdict revision: `3c3ec8996383750423f6f32d398850cd7af889e5`

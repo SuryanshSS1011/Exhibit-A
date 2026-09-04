@@ -112,7 +112,7 @@ Codex CLI subprocess sandbox applies to them.
 
 ## Exhibit A CI dogfood
 
-The checked-in [`exhibit_a_ci`](../examples/dogfood/exhibit_a_ci/README.md) example pins
+The checked-in [`exhibit_a_ci`](https://github.com/SuryanshSS1011/Exhibit-A/tree/main/examples/dogfood/exhibit_a_ci) example pins
 public revision `de669e7e09aa5694911fe524ab30253f75a6b5cc` and the exact normalized receipt
 collected for it. GitHub reported five completed successful checks; the local policy names
 only `engine` and `web`. The full-fidelity fixture retains all five names so completeness

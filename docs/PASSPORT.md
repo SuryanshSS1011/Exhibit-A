@@ -5,6 +5,19 @@ title: Public Evidence Passport
 
 # Public evidence passports
 
+## See the public artifacts
+
+These are direct browser renders of the two checked-in standalone HTML passports. They
+need no Exhibit A installation, server, model, source checkout, or private EEF.
+
+[![Public timeout-verdict passport showing COMPLETED execution, VERIFIED goal truth, and NOT_ASSESSED release truth.](./assets/passport-timeout-verdict.png)](https://github.com/SuryanshSS1011/Exhibit-A/blob/main/examples/dogfood/timeout_false_verified/timeout_false_verified.passport.html)
+
+Source: [`examples/dogfood/timeout_false_verified/timeout_false_verified.passport.html`](https://github.com/SuryanshSS1011/Exhibit-A/blob/main/examples/dogfood/timeout_false_verified/timeout_false_verified.passport.html), rendered directly as a local file in a light-theme browser at 2× resolution.
+
+[![Public CI release passport showing VERIFIED bug evidence separately from a SAFE result for the named engine and web checks.](./assets/passport-ci-release-truth.png)](https://github.com/SuryanshSS1011/Exhibit-A/blob/main/examples/dogfood/exhibit_a_ci/exhibit_a_ci.passport.html)
+
+Source: [`examples/dogfood/exhibit_a_ci/exhibit_a_ci.passport.html`](https://github.com/SuryanshSS1011/Exhibit-A/blob/main/examples/dogfood/exhibit_a_ci/exhibit_a_ci.passport.html), rendered directly as a local file in a light-theme browser at 2× resolution. The [media record](./MEDIA_PROVENANCE.html#public-passports) lists exact dimensions, byte sizes, and hashes.
+
 The public passport is a deterministic, credential-free JSON projection of a verified
 Executable Evidence Format bundle. `exhibit-a-passport/v1` supports EEF v1/v2
 `bug_flip` and `behavior_preserving_refactor` claims. The versioned

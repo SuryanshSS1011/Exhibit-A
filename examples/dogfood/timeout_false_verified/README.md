@@ -21,6 +21,12 @@ It then feeds those raw outcomes through the current deterministic flip judge, c
 private EEF in a temporary directory, and publishes only its credential-free JSON and
 HTML passports.
 
+![Public timeout-verdict passport showing COMPLETED execution, VERIFIED goal truth, and NOT_ASSESSED release truth.](../../../docs/assets/passport-timeout-verdict.png)
+
+This is a direct 2× browser render of the checked-in standalone
+[`timeout_false_verified.passport.html`](./timeout_false_verified.passport.html), with no
+server or credentials. See the [capture record](../../../docs/MEDIA_PROVENANCE.md#public-passports).
+
 Generation uses Exhibit A's disposable-copy local executor because these two pinned
 snapshots are trusted project history; it does not claim container isolation for this
 run. The generated private EEF retains the network-disabled Docker replay harness, but
