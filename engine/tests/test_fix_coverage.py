@@ -141,6 +141,18 @@ def test_load_fix_corpus_validates_and_hashes_manifest(tmp_path: Path) -> None:
         ),
         (_result(case=_uncertain()), "no_candidate_proposed"),
         (
+            _result(
+                case=_uncertain(
+                    silence_reason="Codex generation failed: You've hit your usage limit"
+                )
+            ),
+            "provider_quota_exhausted",
+        ),
+        (
+            _result(case=_uncertain(silence_reason="Codex generation failed: invalid output")),
+            "provider_generation_failed",
+        ),
+        (
             _result(case=_uncertain(hypotheses=[{"reason": "flaky on target: failed 2/5 reruns"}])),
             "candidate_flaky",
         ),

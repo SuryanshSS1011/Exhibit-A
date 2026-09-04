@@ -30,6 +30,7 @@ REPORT_SCHEMA = "fix-coverage-study/v1"
 CHECKPOINT_SCHEMA = "fix-coverage-instance/v1"
 WORKER_SCHEMA = "fix-coverage-worker/v1"
 RUN_STATE_SCHEMA = "fix-coverage-run-state/v1"
+TAXONOMY_SCHEMA = "fix-coverage-failure-taxonomy/v2"
 
 _ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,79}$")
 _SHA = re.compile(r"^[0-9a-f]{40}$")
@@ -244,6 +245,18 @@ def classify_worker_result(result: WorkerResult) -> tuple[str | None, str | None
 
     hypotheses = case.get("hypotheses")
     if not isinstance(hypotheses, list) or not hypotheses:
+        if any(
+            marker in lowered
+            for marker in (
+                "usage limit",
+                "insufficient_quota",
+                "billing hard limit",
+                "purchase more credits",
+            )
+        ):
+            return "provider_quota_exhausted", silence
+        if "generation failed" in lowered or "provider" in lowered:
+            return "provider_generation_failed", silence
         return "no_candidate_proposed", silence or "the provider proposed no candidate"
     reasons = "\n".join(
         str(item.get("reason") or "") for item in hypotheses if isinstance(item, dict)
@@ -527,6 +540,7 @@ def _aggregate(corpus: FixCorpus, config: RunConfig, state: dict, records: dict[
         )
     return {
         "schema_version": REPORT_SCHEMA,
+        "failure_taxonomy_schema": TAXONOMY_SCHEMA,
         "engine_version": ENGINE_VERSION,
         "id": state["id"],
         "started_at": state["started_at"],
