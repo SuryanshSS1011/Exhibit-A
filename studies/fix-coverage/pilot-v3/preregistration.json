@@ -1,0 +1,67 @@
+{
+  "schema_version": "fix-coverage-preregistration/v3",
+  "registered_at": "2026-09-04T05:16:21Z",
+  "parent_commit": "501918de7cb04843791fc55489ee1f328e136b47",
+  "supersedes_for_future_collection": "studies/fix-coverage/pilot-v2/preregistration.json",
+  "pilot_v2_preregistration_sha256": "ab4a9c7847df3219054e3c207bbf0cac876df88dbea608a40c8203e4fdd3f59f",
+  "pilot_v2_selection_sha256": "d2a4f132be0ade9d89bad9319eade1c1202a554d743ed39002815e2a5d4b0928",
+  "reason_for_amendment": "Pilot v2 produced only five eligible instances, all from one repository. Among the first 50 environment-eligible repositories, 49 had no merged PR carrying an exact bug label in the post-cutoff window. No model, Docker, test, or verdict outcome had been observed.",
+  "observations_available_when_registered": {
+    "exhibit_a_outcomes": 0,
+    "model_calls": 0,
+    "included_but_unexecuted_instances": 5,
+    "repository_screening": {
+      "star_ranked_repositories_screened": 490,
+      "environment_ineligible": 440,
+      "environment_eligible": 50,
+      "eligible_with_exact_bug_label_pr": 1,
+      "eligible_without_exact_bug_label_pr": 49
+    }
+  },
+  "changed_candidate_rule": {
+    "search_frame": "For each of the unchanged first 50 environment-eligible repositories, take GitHub's first 100 merged-PR search results in the date window, sorted by updated ascending.",
+    "bug_indicator": "Include a PR when it has an exact case-insensitive bug label OR its title begins case-insensitively with fix, fixed, fixes, or fixing.",
+    "rationale": "Repositories encode bug-fix intent inconsistently; the title prefix is a mechanical, pre-outcome indicator that preserves the verbatim claim and avoids choosing instances by tractability.",
+    "search_cap": "The first 100 results per repository is a fixed API-bounded frame. Results outside it are not silently substituted."
+  },
+  "unchanged_selection": {
+    "repository_query": "language:Python fork:false archived:false",
+    "repository_order": "stargazers_count descending at selection time",
+    "repository_frame": "The first 50 repositories accepted by the current root pinned-environment parser, scanning no more than the first 1,000 repositories.",
+    "date_window": "2026-02-17 through 2026-08-31 inclusive",
+    "claim_rule": "Use the PR title verbatim; do not add an expected signature.",
+    "revision_rule": "GitHub merge_commit_sha as fixed revision and its first parent as buggy revision.",
+    "instance_checks": "Fix timestamp in range, production Python changed, accepted root pinned environment on both revisions, and resolvable Git relationship.",
+    "candidate_order": "merged_at ascending within repository, round-robin by repository star rank",
+    "per_repository_cap": 5,
+    "target_instances": 30,
+    "exclusion_rule": "Record every exclusion. Never exclude or replace an instance based on an Exhibit A outcome."
+  },
+  "unchanged_model": {
+    "requested_model": "gpt-5.6-sol",
+    "provider": "codex_cli",
+    "knowledge_cutoff": "2026-02-16",
+    "confirmed_identity_rule": "Preserve unknown_cli_no_telemetry when the CLI reports no runtime identity.",
+    "source": "https://developers.openai.com/api/docs/models/gpt-5.6-sol"
+  },
+  "unchanged_execution": {
+    "sandbox": "Docker, unprivileged, network disabled, credentials unavailable",
+    "existing_suite_preflight": true,
+    "reruns": 5,
+    "max_refine": 3,
+    "execution_timeout_seconds": 120,
+    "per_instance_wall_clock_ceiling_seconds": 720,
+    "total_active_wall_clock_ceiling_seconds": 21600,
+    "minimize_verified": false,
+    "score_evidence_strength": false,
+    "outcome_retry_rule": "One completed attempt per instance; resume only unfinished attempts and record them."
+  },
+  "unchanged_analysis": {
+    "headline": "VERIFIED divided by all included instances",
+    "partial": "separate, never merged with VERIFIED",
+    "confidence_interval": "two-sided 95% Wilson score interval",
+    "taxonomy": "pilot-v1 categories with the preregistered 20% catch-all trigger",
+    "cost": "provider-reported spend only; unavailable is not zero",
+    "interpretation": "report exclusions and dominant constraints before product-versus-research judgment"
+  }
+}

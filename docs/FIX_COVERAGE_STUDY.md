@@ -26,16 +26,20 @@ matching PR, and one clone failed. The result is recorded rather than called “
 
 Before any model call or verdict, pilot v2 amended only the repository frame: scan at most
 1,000 star-ranked repositories and retain the first 50 accepted by the current pinned
-environment loader. Corpus selection is executable:
+environment loader. That produced only five candidates, all from one repository, because
+49 of the 50 used no exact PR-level `bug` label. Pilot v3 therefore preregistered one final
+pre-outcome amendment: an exact `bug` label or a title beginning with
+`fix`/`fixed`/`fixes`/`fixing`, within the first 100 date-filtered results per repository.
+Corpus selection is executable:
 
 ```bash
 cd engine
 python3 -m exhibit_a.cli select-fix-corpus \
-  --preregistration ../studies/fix-coverage/pilot-v2/preregistration.json \
+  --preregistration ../studies/fix-coverage/pilot-v3/preregistration.json \
   --date-from 2026-02-17 --date-to 2026-08-31 \
   --repositories 50 --repository-scan-limit 1000 \
   --instances 30 --per-repository-cap 5 \
-  --out ../studies/fix-coverage/pilot-v2/corpus.json
+  --out ../studies/fix-coverage/pilot-v3/corpus.json
 ```
 
 Selection uses GitHub's public API and Git transport. `GITHUB_TOKEN` is optional and is
@@ -48,11 +52,11 @@ Run the registered pilot from `engine/`:
 
 ```bash
 python3 -m exhibit_a.cli fix-coverage \
-  ../studies/fix-coverage/pilot-v2/corpus.json \
+  ../studies/fix-coverage/pilot-v3/corpus.json \
   --model gpt-5.6-sol \
   --instance-timeout-s 720 --total-ceiling-s 21600 \
   --execution-timeout-s 120 --reruns 5 --max-refine 3 \
-  --out ../.exhibit-a/research/fix-coverage/pilot-v2
+  --out ../.exhibit-a/research/fix-coverage/pilot-v3
 ```
 
 Each instance runs in a separate process group. A hard per-instance ceiling can terminate
@@ -83,7 +87,7 @@ explicit `unknown_cli_no_telemetry` value.
 
 ## Pilot result
 
-Pilot v1 stopped at selection with 0 included instances, so no VERIFIED fraction exists.
-No Exhibit A outcome belonged here when pilot v2 was preregistered. Its corpus, aggregate,
-and interpretation are added after the run without rewriting either fact or dropping
-failed instances.
+Pilot v1 stopped at selection with zero instances; pilot v2 stopped with five rather than
+30. No Exhibit A outcome belonged here when pilot v3 was preregistered. Its corpus,
+aggregate, and interpretation are added after the run without rewriting those facts or
+dropping failed instances.

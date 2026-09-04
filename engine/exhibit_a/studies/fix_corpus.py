@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -21,6 +22,7 @@ from ..executor.docker_exec import _environment_spec
 from .fix_coverage import CORPUS_SCHEMA, _atomic_json
 
 _API = "https://api.github.com"
+_FIX_TITLE = re.compile(r"^fix(?:e[ds]?|ing)?(?:\b|\s|[:([])", re.IGNORECASE)
 _PRODUCTION_EXCLUDED_PARTS = {
     "benchmarks",
     "docs",
@@ -243,8 +245,11 @@ def select_fix_corpus(
             "repositories_scanned": len(repository_records),
             "environment_eligible_repositories": environment_eligible,
             "pull_request_rule": (
-                f"merged {date_from}..{date_to}, exact case-insensitive label bug"
+                f"first 100 GitHub results merged {date_from}..{date_to}, sorted by "
+                "updated ascending; exact case-insensitive bug label or title beginning "
+                "fix/fixed/fixes/fixing"
             ),
+            "pull_request_search_cap_per_repository": 100,
             "candidate_order": (
                 "merged_at ascending within repository, then round-robin by repository rank"
             ),
@@ -296,44 +301,48 @@ def _candidate_prs(
     date_to: str,
 ) -> list[dict]:
     candidates = []
-    page = 1
-    while True:
-        query = urllib.parse.urlencode(
-            {
-                "q": (f"repo:{full_name} is:pr is:merged label:bug merged:{date_from}..{date_to}"),
-                "sort": "updated",
-                "order": "asc",
-                "per_page": 100,
-                "page": page,
-            }
+    query = urllib.parse.urlencode(
+        {
+            "q": f"repo:{full_name} is:pr is:merged merged:{date_from}..{date_to}",
+            "sort": "updated",
+            "order": "asc",
+            "per_page": 100,
+            "page": 1,
+        }
+    )
+    payload = api.get(f"{_API}/search/issues?{query}")
+    items = payload.get("items")
+    if not isinstance(items, list):
+        raise TypeError(f"GitHub PR search for {full_name} returned invalid items")
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        labels = item.get("labels", [])
+        title = str(item.get("title", ""))
+        exact_bug_label = any(
+            isinstance(label, dict) and str(label.get("name", "")).casefold() == "bug"
+            for label in labels
         )
-        payload = api.get(f"{_API}/search/issues?{query}")
-        items = payload.get("items")
-        if not isinstance(items, list):
-            raise TypeError(f"GitHub PR search for {full_name} returned invalid items")
-        for item in items:
-            if not isinstance(item, dict):
-                continue
-            labels = item.get("labels", [])
-            if not any(
-                isinstance(label, dict) and str(label.get("name", "")).casefold() == "bug"
-                for label in labels
-            ):
-                continue
-            pull = item.get("pull_request")
-            merged_at = pull.get("merged_at") if isinstance(pull, dict) else None
-            if merged_at:
-                candidates.append(
-                    {
-                        "number": int(item["number"]),
-                        "title": str(item["title"]),
-                        "html_url": str(item["html_url"]),
-                        "merged_at": str(merged_at),
-                    }
-                )
-        if len(items) < 100:
-            break
-        page += 1
+        fix_title = _FIX_TITLE.match(title) is not None
+        if not exact_bug_label and not fix_title:
+            continue
+        pull = item.get("pull_request")
+        merged_at = pull.get("merged_at") if isinstance(pull, dict) else None
+        if merged_at:
+            basis = []
+            if exact_bug_label:
+                basis.append("exact_bug_label")
+            if fix_title:
+                basis.append("fix_title_prefix")
+            candidates.append(
+                {
+                    "number": int(item["number"]),
+                    "title": title,
+                    "html_url": str(item["html_url"]),
+                    "merged_at": str(merged_at),
+                    "selection_basis": basis,
+                }
+            )
     return sorted(candidates, key=lambda item: (item["merged_at"], item["number"]))
 
 
@@ -392,6 +401,7 @@ def _resolve_candidate(
         "claim": str(pull["title"]).strip(),
         "commit_date": timestamp.astimezone(timezone.utc).isoformat(),
         "source_url": str(pull["html_url"]),
+        "selection_basis": candidate["selection_basis"],
     }
 
 

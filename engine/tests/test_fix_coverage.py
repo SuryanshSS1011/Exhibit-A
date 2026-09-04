@@ -6,7 +6,12 @@ from pathlib import Path
 
 import pytest
 
-from exhibit_a.studies.fix_corpus import _date, _is_production_python, _top_repositories
+from exhibit_a.studies.fix_corpus import (
+    _candidate_prs,
+    _date,
+    _is_production_python,
+    _top_repositories,
+)
 from exhibit_a.studies.fix_coverage import (
     CORPUS_SCHEMA,
     FixCorpus,
@@ -292,3 +297,40 @@ def test_repository_search_paginates_in_stable_star_order() -> None:
     assert len(client.calls) == 2
     assert "page=1" in client.calls[0]
     assert "page=2" in client.calls[1]
+
+
+def test_candidate_rule_accepts_exact_bug_label_or_fix_title() -> None:
+    class Client:
+        def get(self, url: str) -> dict:
+            assert "label%3Abug" not in url
+            return {
+                "items": [
+                    {
+                        "number": 1,
+                        "title": "Feature: add a mode",
+                        "html_url": "https://example.test/1",
+                        "labels": [{"name": "bug"}],
+                        "pull_request": {"merged_at": "2026-03-03T00:00:00Z"},
+                    },
+                    {
+                        "number": 2,
+                        "title": "Fixed parser bounds",
+                        "html_url": "https://example.test/2",
+                        "labels": [],
+                        "pull_request": {"merged_at": "2026-03-02T00:00:00Z"},
+                    },
+                    {
+                        "number": 3,
+                        "title": "Prefix cache keys",
+                        "html_url": "https://example.test/3",
+                        "labels": [],
+                        "pull_request": {"merged_at": "2026-03-01T00:00:00Z"},
+                    },
+                ]
+            }
+
+    candidates = _candidate_prs(Client(), "owner/repo", "2026-02-17", "2026-08-31")
+
+    assert [candidate["number"] for candidate in candidates] == [2, 1]
+    assert candidates[0]["selection_basis"] == ["fix_title_prefix"]
+    assert candidates[1]["selection_basis"] == ["exact_bug_label"]

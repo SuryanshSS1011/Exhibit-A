@@ -13,3 +13,4 @@ been observed.
 V2 produced only five eligible instances, all from one repository, and therefore was not
 executed as the 30-instance pilot. See [`selection-report.md`](./selection-report.md) and
 [`corpus.json`](./corpus.json). No model or verdict outcome informed the next amendment.
+That amendment is preserved under [`../pilot-v3/`](../pilot-v3/).
