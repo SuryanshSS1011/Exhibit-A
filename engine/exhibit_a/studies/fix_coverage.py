@@ -60,6 +60,19 @@ _PUBLIC_FAILURE_CATEGORIES = (
 _ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,79}$")
 _SHA = re.compile(r"^[0-9a-f]{40}$")
 _CATCH_ALL = frozenset({"candidate_other_rejection", "study_error"})
+# A candidate existed and was executed, so the deterministic judge actually ruled on
+# evidence. Every other failure stopped the pipeline before the judge got a turn, and
+# counting those against the judge conflates plumbing with judgement.
+# `candidate_other_rejection` is deliberately excluded: it is the catch-all for a reason
+# we could not classify, and an unclassified reason is not evidence that the judge ruled.
+_JUDGED_FAILURE_CATEGORIES = (
+    frozenset(name for name in _PUBLIC_FAILURE_CATEGORIES if name.startswith("candidate_"))
+    - _CATCH_ALL
+)
+# The provider never answered, so the instance was not attempted in any meaningful sense.
+_PROVIDER_UNAVAILABLE_CATEGORIES = frozenset(
+    {"provider_quota_exhausted", "provider_generation_failed"}
+)
 _SERVICE_PATTERNS = (
     re.compile(r"connection (?:was )?refused"),
     re.compile(r"could not connect to (?:database|server)"),
@@ -677,6 +690,8 @@ def _aggregate(corpus: FixCorpus, config: RunConfig, state: dict, records: dict[
     catch_all = sum(failures[name] for name in _CATCH_ALL)
     failure_total = sum(failures.values())
     interval = _wilson(verified, requested)
+    judged = verified + partial + sum(failures[name] for name in _JUDGED_FAILURE_CATEGORIES)
+    provider_unavailable = sum(failures[name] for name in _PROVIDER_UNAVAILABLE_CATEGORIES)
     items = []
     for checkpoint in ordered:
         result = checkpoint["result"]
@@ -724,6 +739,18 @@ def _aggregate(corpus: FixCorpus, config: RunConfig, state: dict, records: dict[
             "partial_fraction": partial / requested,
             "attempted_denominator": completed,
             "verified_fraction_of_attempted": verified / completed if completed else None,
+            # Conditional on the judge having ruled at all. The headline above measures the
+            # whole pipeline; this measures the judge. A low headline with a high
+            # `reached_judge_fraction` means the judge is weak; a low headline with a low
+            # one means the plumbing never let it decide, which is a different problem.
+            "judged_denominator": judged,
+            "reached_judge_fraction": judged / requested if requested else None,
+            "verified_fraction_of_judged": verified / judged if judged else None,
+            "verified_judged_wilson_95": list(_wilson(verified, judged)) if judged else None,
+            "provider_unavailable": provider_unavailable,
+            # Surfaced rather than folded into either side: a large value here means the
+            # split above is less trustworthy than it looks.
+            "unclassified": catch_all,
         },
         "verdict_counts": dict(sorted(verdicts.items())),
         "failure_taxonomy": [

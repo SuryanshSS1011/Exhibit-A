@@ -397,3 +397,121 @@ def test_github_client_retries_transient_transport_errors(
     assert GitHubClient(tmp_path).get("https://api.github.test/data") == {"ok": True}
     assert attempts == 3
     assert sleeps == [1, 2]
+
+
+def _corpus_of(tmp_path: Path, count: int) -> FixCorpus:
+    return FixCorpus(
+        path=str(tmp_path / "corpus.json"),
+        sha256="f" * 64,
+        preregistration={"path": "preregistration.json"},
+        selection={"rule": "mechanical"},
+        exclusions=(),
+        instances=tuple(
+            replace(_instance(), id=f"owner-repo-pr-{n}", fix_sha=f"{n:040d}")
+            for n in range(1, count + 1)
+        ),
+    )
+
+
+def _silent(reason: str) -> dict:
+    return {
+        "verdict": "UNCERTAIN",
+        "hypotheses": [{"reason": reason}],
+        "evidence": {},
+        "proposal_runs": [],
+    }
+
+
+def test_judged_denominator_separates_the_judge_from_the_plumbing(tmp_path: Path) -> None:
+    """A low headline means nothing until you know whether the judge ever ruled.
+
+    Two instances are judged -- one verified, one rejected for not failing on the buggy
+    state -- and two never produce a classified candidate. The headline is 1/4; the judge
+    ruled twice and was right once.
+    """
+    corpus = _corpus_of(tmp_path, 4)
+    scripted = [
+        {
+            "verdict": "VERIFIED",
+            "hypotheses": [{"reason": None}],
+            "evidence": {},
+            "proposal_runs": [],
+        },
+        _silent("test does not fail on the target (buggy) state"),
+        _silent("pinned dependency image failed to build: could not install numpy"),
+        _silent("Codex generation failed: usage limit reached"),
+    ]
+    calls = []
+
+    def runner(instance: FixInstance, root: Path, timeout_s: float) -> WorkerResult:
+        case = scripted[len(calls)]
+        calls.append(instance.id)
+        return replace(_result(case=case), instance_id=instance.id)
+
+    report = run_fix_coverage_study(
+        corpus=corpus, output_root=tmp_path / "run", config=_config(), runner=runner
+    )
+    headline = report["headline"]
+
+    assert headline["denominator"] == 4
+    assert headline["verified"] == 1
+    assert headline["judged_denominator"] == 2
+    assert headline["reached_judge_fraction"] == 0.5
+    assert headline["verified_fraction_of_judged"] == 0.5
+
+
+def test_an_unclassified_rejection_is_not_counted_as_judged(tmp_path: Path) -> None:
+    """The catch-all means the reason was not understood, which is not proof of a ruling."""
+    corpus = _corpus_of(tmp_path, 2)
+    scripted = [
+        {
+            "verdict": "VERIFIED",
+            "hypotheses": [{"reason": None}],
+            "evidence": {},
+            "proposal_runs": [],
+        },
+        _silent("something the classifier has never seen before"),
+    ]
+    calls = []
+
+    def runner(instance: FixInstance, root: Path, timeout_s: float) -> WorkerResult:
+        case = scripted[len(calls)]
+        calls.append(instance.id)
+        return replace(_result(case=case), instance_id=instance.id)
+
+    report = run_fix_coverage_study(
+        corpus=corpus, output_root=tmp_path / "run", config=_config(), runner=runner
+    )
+    headline = report["headline"]
+
+    assert headline["judged_denominator"] == 1
+    assert headline["unclassified"] == 1, "the catch-all must stay visible, not be absorbed"
+
+
+def test_a_rejected_candidate_counts_as_judged(tmp_path: Path) -> None:
+    """A candidate the judge refused is evidence the judge worked, not that it failed."""
+    corpus = _corpus_of(tmp_path, 2)
+    scripted = [
+        {
+            "verdict": "VERIFIED",
+            "hypotheses": [{"reason": None}],
+            "evidence": {},
+            "proposal_runs": [],
+        },
+        _silent("test does not fail on the target (buggy) state"),
+    ]
+    calls = []
+
+    def runner(instance: FixInstance, root: Path, timeout_s: float) -> WorkerResult:
+        case = scripted[len(calls)]
+        calls.append(instance.id)
+        return replace(_result(case=case), instance_id=instance.id)
+
+    report = run_fix_coverage_study(
+        corpus=corpus, output_root=tmp_path / "run", config=_config(), runner=runner
+    )
+    headline = report["headline"]
+
+    assert headline["judged_denominator"] == 2, "both instances produced a ruling"
+    assert headline["reached_judge_fraction"] == 1.0
+    assert headline["verified_fraction_of_judged"] == 0.5
