@@ -216,6 +216,7 @@ def run_fix_coverage_study(
 
     records = _load_checkpoints(checkpoints, corpus, state["config_sha256"])
     active_s = sum(float(record["result"]["wall_time_s"]) for record in records.values())
+    halted: str | None = None
     for instance in corpus.instances:
         if instance.id in records:
             continue
@@ -224,6 +225,14 @@ def run_fix_coverage_study(
             break
         result = runner(instance, root, min(config.instance_timeout_s, remaining_s))
         category, reason = classify_worker_result(result)
+        if category == "provider_quota_exhausted":
+            # The provider never answered, so this outcome says nothing about the instance.
+            # Deliberately not checkpointed: recording it would spend a corpus row on an
+            # account limit and bake that into the denominator, which is how a throttled
+            # run comes to look like a measurement of the engine. The instance stays
+            # unattempted, so resuming after the quota resets picks it up unchanged.
+            halted = "provider_quota_exhausted"
+            break
         checkpoint = {
             "schema_version": CHECKPOINT_SCHEMA,
             "engine_version": ENGINE_VERSION,
@@ -240,6 +249,8 @@ def run_fix_coverage_study(
         _atomic_json(root / "report.json", _aggregate(corpus, config, state, records))
 
     report = _aggregate(corpus, config, state, records)
+    report["halted_reason"] = halted
+    report["complete"] = halted is None and not report["remaining_instances"]
     _atomic_json(root / "report.json", report)
     return report
 

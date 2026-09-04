@@ -413,6 +413,17 @@ def _corpus_of(tmp_path: Path, count: int) -> FixCorpus:
     )
 
 
+def _quota_exhausted() -> dict:
+    """The shape the real pilot saw: no hypothesis at all, and a usage-limit silence."""
+    return {
+        "verdict": "UNCERTAIN",
+        "hypotheses": [],
+        "silence_reason": "Codex generation failed: usage limit reached",
+        "evidence": {},
+        "proposal_runs": [],
+    }
+
+
 def _silent(reason: str) -> dict:
     return {
         "verdict": "UNCERTAIN",
@@ -439,7 +450,7 @@ def test_judged_denominator_separates_the_judge_from_the_plumbing(tmp_path: Path
         },
         _silent("test does not fail on the target (buggy) state"),
         _silent("pinned dependency image failed to build: could not install numpy"),
-        _silent("Codex generation failed: usage limit reached"),
+        _quota_exhausted(),
     ]
     calls = []
 
@@ -515,3 +526,73 @@ def test_a_rejected_candidate_counts_as_judged(tmp_path: Path) -> None:
     assert headline["judged_denominator"] == 2, "both instances produced a ruling"
     assert headline["reached_judge_fraction"] == 1.0
     assert headline["verified_fraction_of_judged"] == 0.5
+
+
+def test_quota_exhaustion_halts_instead_of_spending_the_corpus(tmp_path: Path) -> None:
+    """A throttled run must not masquerade as a measurement of the engine.
+
+    Recording a quota failure would consume a corpus row and put it in the denominator,
+    which is exactly how pilot v4 came to report six instances the provider never answered.
+    """
+    corpus = _corpus_of(tmp_path, 4)
+    scripted = [
+        {
+            "verdict": "VERIFIED",
+            "hypotheses": [{"reason": None}],
+            "evidence": {},
+            "proposal_runs": [],
+        },
+        _quota_exhausted(),
+    ]
+    calls = []
+
+    def runner(instance: FixInstance, root: Path, timeout_s: float) -> WorkerResult:
+        case = scripted[min(len(calls), len(scripted) - 1)]
+        calls.append(instance.id)
+        return replace(_result(case=case), instance_id=instance.id)
+
+    report = run_fix_coverage_study(
+        corpus=corpus, output_root=tmp_path / "run", config=_config(), runner=runner
+    )
+
+    assert len(calls) == 2, "the run stops at the quota wall rather than burning instances"
+    assert report["halted_reason"] == "provider_quota_exhausted"
+    assert report["complete"] is False
+    assert report["completed_instances"] == 1, "the quota instance is not checkpointed"
+    assert report["headline"]["denominator"] == 4
+    assert report["headline"]["provider_unavailable"] == 0
+
+
+def test_resuming_after_a_quota_halt_retries_the_unattempted_instance(tmp_path: Path) -> None:
+    corpus = _corpus_of(tmp_path, 3)
+    quota_until = {"calls": 0}
+
+    def runner(instance: FixInstance, root: Path, timeout_s: float) -> WorkerResult:
+        quota_until["calls"] += 1
+        exhausted = quota_until["calls"] <= 1
+        case = (
+            _quota_exhausted()
+            if exhausted
+            else {
+                "verdict": "VERIFIED",
+                "hypotheses": [{"reason": None}],
+                "evidence": {},
+                "proposal_runs": [],
+            }
+        )
+        return replace(_result(case=case), instance_id=instance.id)
+
+    first = run_fix_coverage_study(
+        corpus=corpus, output_root=tmp_path / "run", config=_config(), runner=runner
+    )
+    assert first["completed_instances"] == 0
+    assert first["halted_reason"] == "provider_quota_exhausted"
+
+    resumed = run_fix_coverage_study(
+        corpus=corpus, output_root=tmp_path / "run", config=_config(), runner=runner
+    )
+
+    assert resumed["halted_reason"] is None
+    assert resumed["complete"] is True
+    assert resumed["completed_instances"] == 3, "every instance is measured after the reset"
+    assert resumed["headline"]["verified"] == 3
