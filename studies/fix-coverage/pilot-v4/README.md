@@ -10,3 +10,9 @@ container, test, or verdict outcome.
 
 The resulting 30-instance corpus was frozen before execution. See
 [`selection-report.md`](./selection-report.md) and [`corpus.json`](./corpus.json).
+
+The completed run reached **1/30 VERIFIED (3.3%)** and **0/30 PARTIAL**. The checked-in
+[`public-report.json`](./public-report.json) contains log-free per-instance outcomes and
+both the preregistered and refined taxonomies. The detailed interpretation is in
+[`docs/FIX_COVERAGE_RESULTS.md`](../../../docs/FIX_COVERAGE_RESULTS.md). Raw Cases and logs
+remain private.

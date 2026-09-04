@@ -31,6 +31,31 @@ CHECKPOINT_SCHEMA = "fix-coverage-instance/v1"
 WORKER_SCHEMA = "fix-coverage-worker/v1"
 RUN_STATE_SCHEMA = "fix-coverage-run-state/v1"
 TAXONOMY_SCHEMA = "fix-coverage-failure-taxonomy/v2"
+PUBLIC_REPORT_SCHEMA = "fix-coverage-public-report/v1"
+
+_PUBLIC_FAILURE_CATEGORIES = (
+    "environment_no_supported_lockfile",
+    "environment_dependency_install_failed",
+    "environment_other_setup_failed",
+    "suite_requires_unavailable_services",
+    "existing_suite_failed",
+    "suite_infrastructure_failure",
+    "provider_quota_exhausted",
+    "provider_generation_failed",
+    "no_candidate_proposed",
+    "candidate_wrong_failure_signature",
+    "candidate_infrastructure_failure",
+    "candidate_vacuous",
+    "candidate_tamper",
+    "candidate_flaky",
+    "candidate_did_not_fail_on_buggy",
+    "candidate_failed_on_fixed",
+    "candidate_policy_rejection",
+    "timed_out",
+    "checkout_failed",
+    "candidate_other_rejection",
+    "study_error",
+)
 
 _ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,79}$")
 _SHA = re.compile(r"^[0-9a-f]{40}$")
@@ -204,6 +229,141 @@ def run_fix_coverage_study(
     report = _aggregate(corpus, config, state, records)
     _atomic_json(root / "report.json", report)
     return report
+
+
+def create_public_fix_coverage_report(
+    *,
+    corpus: FixCorpus,
+    private_root: str | Path,
+    output: str | Path,
+    execution_source_revision: str | None = None,
+) -> dict:
+    """Export aggregate and per-instance outcomes without tests, logs, or local paths."""
+    root = Path(private_root).resolve(strict=True)
+    report_path = root / "report.json"
+    report_bytes = report_path.read_bytes()
+    private = json.loads(report_bytes)
+    state = json.loads((root / "state.json").read_text())
+    if private.get("schema_version") != REPORT_SCHEMA:
+        raise ValueError("private fix-coverage report has an incompatible schema")
+    if private.get("manifest_sha256") != corpus.sha256:
+        raise ValueError("private report does not belong to this corpus")
+    if private.get("completed_instances") != len(corpus.instances):
+        raise ValueError("cannot publish an incomplete fix-coverage report")
+    revision = execution_source_revision or state.get("source_revision")
+    if not isinstance(revision, str) or not _SHA.fullmatch(revision):
+        raise ValueError("public report requires the full execution source revision")
+
+    records = _load_checkpoints(root / "checkpoints", corpus, state["config_sha256"])
+    failures: Counter[str] = Counter()
+    failure_repositories: dict[str, set[str]] = {}
+    items = []
+    for instance in corpus.instances:
+        checkpoint = records[instance.id]
+        result = WorkerResult(**checkpoint["result"])
+        category, _reason = classify_worker_result(result)
+        if category is not None:
+            failures[category] += 1
+            failure_repositories.setdefault(category, set()).add(instance.repository)
+        case = result.case
+        item = {
+            "id": instance.id,
+            "repository": instance.repository,
+            "source_url": instance.source_url,
+            "buggy_sha": instance.buggy_sha,
+            "fix_sha": instance.fix_sha,
+            "claim": instance.claim,
+            "commit_date": instance.commit_date,
+            "verdict": case.get("verdict") if isinstance(case, dict) else None,
+            "failure_category": category,
+            "preregistered_failure_category": checkpoint.get("failure_category"),
+            "wall_time_s": result.wall_time_s,
+            "model_calls": (len(case.get("proposal_runs", [])) if isinstance(case, dict) else 0),
+        }
+        if isinstance(case, dict) and case.get("verdict") == "VERIFIED":
+            evidence = case.get("evidence") or {}
+            artifact = case.get("test_file") or {}
+            item["verified_evidence"] = {
+                "hypothesis": case.get("root_cause_narrative"),
+                "test_path": artifact.get("path"),
+                "failure_signature": evidence.get("fail_signature"),
+                "reruns": evidence.get("reruns"),
+                "deterministic": evidence.get("deterministic"),
+                "run_outcomes": [
+                    {
+                        "state": run.get("state"),
+                        "exit_code": run.get("exit_code"),
+                        "passed": run.get("passed"),
+                        "duration_s": run.get("duration_s"),
+                    }
+                    for run in evidence.get("runs", [])
+                    if isinstance(run, dict)
+                ],
+            }
+        items.append(item)
+
+    repository_exclusions = Counter(
+        str(item.get("reason_code", "included"))
+        for item in corpus.selection.get("repositories", [])
+        if isinstance(item, dict) and item.get("reason_code")
+    )
+    unknown_categories = set(failures) - set(_PUBLIC_FAILURE_CATEGORIES)
+    if unknown_categories:
+        raise ValueError(f"unregistered public failure categories: {sorted(unknown_categories)}")
+    refined_total = sum(failures.values())
+    return _save_public_report(
+        output,
+        {
+            "schema_version": PUBLIC_REPORT_SCHEMA,
+            "engine_version": private["engine_version"],
+            "execution_source_revision": revision,
+            "run_id": private["id"],
+            "started_at": private["started_at"],
+            "finished_at": private["updated_at"],
+            "active_wall_time_s": private["active_wall_time_s"],
+            "corpus_manifest_sha256": corpus.sha256,
+            "private_report_sha256": hashlib.sha256(report_bytes).hexdigest(),
+            "preregistration": corpus.preregistration,
+            "headline": private["headline"],
+            "verdict_counts": private["verdict_counts"],
+            "preregistered_failure_taxonomy": private["failure_taxonomy"],
+            "refined_failure_taxonomy_schema": TAXONOMY_SCHEMA,
+            "refined_failure_taxonomy": [
+                {
+                    "category": category,
+                    "count": count,
+                    "unique_repositories": len(failure_repositories.get(category, set())),
+                    "fraction_of_failures": count / refined_total if refined_total else None,
+                }
+                for category, count in sorted(
+                    ((category, failures[category]) for category in _PUBLIC_FAILURE_CATEGORIES),
+                    key=lambda item: (-item[1], item[0]),
+                )
+            ],
+            "selection": {
+                "repositories_scanned": corpus.selection.get("repositories_scanned"),
+                "environment_eligible_repositories": corpus.selection.get(
+                    "environment_eligible_repositories"
+                ),
+                "repository_exclusion_counts": dict(sorted(repository_exclusions.items())),
+                "included_instances": len(corpus.instances),
+                "represented_repositories": len(
+                    {instance.repository for instance in corpus.instances}
+                ),
+                "candidate_exclusion_counts": private["selection"]["exclusion_counts"],
+                "eligibility_exclusions": private["selection"]["eligibility_exclusions"],
+                "unselected_eligible_candidates": private["selection"][
+                    "unselected_eligible_candidates"
+                ],
+                "screened_candidates": private["selection"]["screened_candidates"],
+                "end_to_end_verified_fraction": private["selection"][
+                    "end_to_end_verified_fraction"
+                ],
+            },
+            "model_telemetry": private["model_telemetry"],
+            "items": items,
+        },
+    )
 
 
 def classify_worker_result(result: WorkerResult) -> tuple[str | None, str | None]:
@@ -675,6 +835,11 @@ def _atomic_json(path: Path, payload: dict) -> None:
     temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
     temporary.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
     os.replace(temporary, path)
+
+
+def _save_public_report(path: str | Path, payload: dict) -> dict:
+    _atomic_json(Path(path).resolve(), payload)
+    return payload
 
 
 def _load_worker_result(path: Path) -> WorkerResult:

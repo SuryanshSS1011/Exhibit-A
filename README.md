@@ -16,6 +16,12 @@
 
 ---
 
+> **Measured real-fix coverage (September 2026): 1/30 VERIFIED (3.3%), 0/30
+> PARTIAL.** The 95% Wilson interval is 0.6%–16.7%; dependency-image failures blocked
+> 17/30 instances. The current implementation should be treated as a **research
+> instrument**, not a broad-coverage product. [Read the complete preregistered pilot and
+> exclusions.](./docs/FIX_COVERAGE_RESULTS.md)
+
 ## The problem
 
 AI code reviewers have a trust problem. They cry wolf. A bot that flags ten "issues" with
@@ -91,9 +97,11 @@ Verdicts are tiered so the tool never overclaims:
 | `FAILED` | Reserved for deterministic evidence that disproves the stated goal; the bug-repro judge does not emit it yet. |
 | `UNCERTAIN` | Nothing cleared the gate. Honest silence. |
 
-**Scope:** deterministic functional bugs in Python repos that build in a sandbox. It
-cannot speak to race conditions, performance regressions, or most security issues, and it
-stays silent instead of guessing.
+**Intended scope:** deterministic functional bugs in Python repositories that build in a
+sandbox. The first real-fix pilot proved 1/30 and found that current environment support is
+the dominant practical limit, so this remains an empirical target rather than a demonstrated
+coverage claim. It cannot speak to race conditions, performance regressions, or most
+security issues, and it stays silent instead of guessing.
 
 ## Open science
 
@@ -304,8 +312,9 @@ execution is allowed to speak.
 
 ## Status
 
-This is a working, verified system. The engine and typed web test suites are green in CI,
-which runs engine lint, format, and tests alongside the web build.
+This is a working research prototype with a verified deterministic core, not yet a
+broad-coverage product. The engine and typed web test suites are green in CI, which runs
+engine lint, format, and tests alongside the web build.
 The deterministic verdict core, Docker sandboxing, two-SHA git intake, git-bisect culprit
 attribution, mutation scoring, evidence minimization, and a full research-instrumentation
 layer are implemented and tested.
@@ -325,6 +334,7 @@ Deep-dives live in [`docs/`](./docs/), also published as a
 - [Oracle-gap probe](./docs/ORACLE_GAP.md)
 - [Reproducibility study](./docs/REPRODUCIBILITY_STUDY.md)
 - [Real-fix coverage study](./docs/FIX_COVERAGE_STUDY.md)
+- [Real-fix coverage pilot results](./docs/FIX_COVERAGE_RESULTS.md)
 - [Research assets](./docs/RESEARCH_ASSETS.md)
 - [Bug identity](./docs/BUG_IDENTITY.md)
 - [Archaeology](./docs/ARCHAEOLOGY.md)

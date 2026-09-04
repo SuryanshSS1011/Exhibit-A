@@ -86,11 +86,28 @@ categories and warns if catch-all categories exceed the preregistered 20% thresh
 Provider cost is reported only when every model call reports billable cost. The Codex CLI
 does not currently expose that telemetry, so its honest spend result is **unavailable**,
 not `$0`. Requested identity is still recorded, while confirmed identity remains the
-explicit `unknown_cli_no_telemetry` value.
+explicit `unknown_no_telemetry` value.
+
+After a completed run, export the reviewed, log-free public record separately from the
+private checkpoints:
+
+```bash
+python3 -m exhibit_a.cli fix-coverage-report \
+  ../studies/fix-coverage/pilot-v4/corpus.json \
+  ../.exhibit-a/research/fix-coverage/pilot-v4 \
+  --execution-source-revision d37312c82b4f38f49254787deb0a0a316ed83c64 \
+  --out ../studies/fix-coverage/pilot-v4/public-report.json
+```
+
+The exporter requires a complete run and matching corpus hash. It carries aggregate and
+per-instance outcomes, selection losses, both failure taxonomies, run dates, engine/source
+versions, and provider identity telemetry. It deliberately omits generated test bodies,
+execution logs, provider diagnostics, and private filesystem locations.
 
 ## Pilot result
 
 Pilot v1 stopped at selection with zero instances, pilot v2 stopped with five, and pilot
 v3 stopped with 16 after a transport outage. No Exhibit A outcome belonged here when
-pilot v4 was preregistered. Its corpus, aggregate, and interpretation are added after the
-run without rewriting those facts or dropping failed instances.
+pilot v4 was preregistered. The completed frozen pilot reached **1/30 VERIFIED (3.3%)** and
+**0/30 PARTIAL**, with a 95% Wilson interval of **0.6%–16.7%**. Read the
+[complete result, ranked taxonomy, constraints, and limitations](./FIX_COVERAGE_RESULTS.html).

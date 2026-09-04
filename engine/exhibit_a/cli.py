@@ -66,6 +66,7 @@ from .studies.fix_corpus import select_fix_corpus
 from .studies.fix_coverage import (
     RunConfig as FixCoverageRunConfig,
     SubprocessTrialRunner,
+    create_public_fix_coverage_report,
     load_fix_corpus,
     run_fix_coverage_study,
 )
@@ -1048,6 +1049,23 @@ def cmd_fix_coverage(args: argparse.Namespace) -> int:
     return 0 if report["remaining_instances"] == 0 else 1
 
 
+def cmd_fix_coverage_report(args: argparse.Namespace) -> int:
+    """Export a safe public summary from a completed private coverage run."""
+    try:
+        report = create_public_fix_coverage_report(
+            corpus=load_fix_corpus(args.manifest),
+            private_root=args.private_root,
+            output=args.out,
+            execution_source_revision=args.execution_source_revision,
+        )
+    except (OSError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        print(f"error: cannot export fix-coverage report: {exc}", file=sys.stderr)
+        return 2
+    print(f"public report: {Path(args.out).resolve()}")
+    print(f"VERIFIED: {report['headline']['verified']}/{report['headline']['denominator']}")
+    return 0
+
+
 def cmd_self_audit(args: argparse.Namespace) -> int:
     """Measure false convictions on a validated behavior-preserving corpus."""
 
@@ -1586,6 +1604,20 @@ def main(argv: list[str] | None = None) -> int:
     )
     coverage.add_argument("--json", action="store_true", help="print the full report JSON")
     coverage.set_defaults(func=cmd_fix_coverage)
+
+    coverage_report = sub.add_parser(
+        "fix-coverage-report",
+        help="export a log-free public report from a completed private coverage run",
+    )
+    coverage_report.add_argument("manifest", help="frozen corpus manifest")
+    coverage_report.add_argument("private_root", help="private completed study directory")
+    coverage_report.add_argument(
+        "--execution-source-revision",
+        required=True,
+        help="full Git revision used for the completed run",
+    )
+    coverage_report.add_argument("--out", required=True, help="public JSON report path")
+    coverage_report.set_defaults(func=cmd_fix_coverage_report)
 
     study = sub.add_parser(
         "study",

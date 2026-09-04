@@ -21,6 +21,7 @@ from exhibit_a.studies.fix_coverage import (
     RunConfig,
     WorkerResult,
     classify_worker_result,
+    create_public_fix_coverage_report,
     load_fix_corpus,
     run_fix_coverage_study,
 )
@@ -220,6 +221,7 @@ def test_study_keeps_partial_separate_and_resumes(tmp_path: Path) -> None:
                 case={
                     "verdict": verdict,
                     "hypotheses": [{"reason": None}],
+                    "evidence": {"fail_log": "PRIVATE EXECUTION LOG"},
                     "proposal_runs": [
                         {
                             "provider": "codex_cli",
@@ -258,6 +260,22 @@ def test_study_keeps_partial_separate_and_resumes(tmp_path: Path) -> None:
     assert report["model_telemetry"]["actual_model_spend_usd"] is None
     assert "unavailable" in report["model_telemetry"]["spend_basis"]
     assert resumed["completed_instances"] == 2
+
+    public = create_public_fix_coverage_report(
+        corpus=corpus,
+        private_root=tmp_path / "run",
+        output=tmp_path / "public.json",
+        execution_source_revision="a" * 40,
+    )
+    assert public["headline"]["verified"] == 1
+    assert public["execution_source_revision"] == "a" * 40
+    public_taxonomy = {
+        item["category"]: item["count"] for item in public["refined_failure_taxonomy"]
+    }
+    assert public_taxonomy["candidate_flaky"] == 0
+    assert public_taxonomy["timed_out"] == 0
+    assert "PRIVATE EXECUTION LOG" not in json.dumps(public)
+    assert corpus.path not in json.dumps(public)
 
 
 def test_resume_rejects_parameter_drift(tmp_path: Path) -> None:

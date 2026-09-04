@@ -1,0 +1,704 @@
+{
+  "active_wall_time_s": 1571.906144,
+  "corpus_manifest_sha256": "b293d97d3a3f786339bc964460562b0824aec960323c6f8fe84406bddae26cd4",
+  "engine_version": "0.1.0",
+  "execution_source_revision": "d37312c82b4f38f49254787deb0a0a316ed83c64",
+  "finished_at": "2026-09-04T06:39:19.616960+00:00",
+  "headline": {
+    "attempted_denominator": 30,
+    "denominator": 30,
+    "partial": 0,
+    "partial_fraction": 0.0,
+    "verified": 1,
+    "verified_fraction": 0.03333333333333333,
+    "verified_fraction_of_attempted": 0.03333333333333333,
+    "verified_wilson_95": [
+      0.005908590382,
+      0.166703909914
+    ]
+  },
+  "items": [
+    {
+      "buggy_sha": "06602cb0798841dca8ff8336d59e2057b87c1ec4",
+      "claim": "fix: use target downside deviation in Sortino ratio",
+      "commit_date": "2026-03-08T20:41:33+00:00",
+      "failure_category": null,
+      "fix_sha": "e6a2a8785957ab152d83051e67666dd2c80e6c0b",
+      "id": "virattt-ai-hedge-fund-pr-502",
+      "model_calls": 2,
+      "preregistered_failure_category": null,
+      "repository": "https://github.com/virattt/ai-hedge-fund.git",
+      "source_url": "https://github.com/virattt/ai-hedge-fund/pull/502",
+      "verdict": "VERIFIED",
+      "verified_evidence": {
+        "deterministic": true,
+        "failure_signature": "AssertionError: Sortino ratio must use target downside deviation over all periods",
+        "hypothesis": "PerformanceMetricsCalculator computes the Sortino denominator as target downside deviation: the root mean square of below-target shortfalls across all periods, with above-target periods contributing zero.",
+        "reruns": 5,
+        "run_outcomes": [
+          {
+            "duration_s": 6.837773000006564,
+            "exit_code": 1,
+            "passed": false,
+            "state": "target"
+          },
+          {
+            "duration_s": 6.468639750004513,
+            "exit_code": 1,
+            "passed": false,
+            "state": "target"
+          },
+          {
+            "duration_s": 6.574251500001992,
+            "exit_code": 1,
+            "passed": false,
+            "state": "target"
+          },
+          {
+            "duration_s": 6.268679667002289,
+            "exit_code": 1,
+            "passed": false,
+            "state": "target"
+          },
+          {
+            "duration_s": 6.195590167000773,
+            "exit_code": 1,
+            "passed": false,
+            "state": "target"
+          },
+          {
+            "duration_s": 6.552428833005251,
+            "exit_code": 0,
+            "passed": true,
+            "state": "base"
+          }
+        ],
+        "test_path": "tests/backtesting/test_sortino_target_downside.py"
+      },
+      "wall_time_s": 523.129518
+    },
+    {
+      "buggy_sha": "5020dc9dd4ea5ff997fb4f1e773157056c5253a0",
+      "claim": "fix: resolve CUDA OOM in train_grpo.py on GPUs with <=8GB VRAM",
+      "commit_date": "2026-05-06T07:00:17+00:00",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "e73a407f7abcfe7d6fd4c660592b6ed7a0fbc059",
+      "id": "jingyaogong-minimind-pr-759",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/jingyaogong/minimind.git",
+      "source_url": "https://github.com/jingyaogong/minimind/pull/759",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 114.596797
+    },
+    {
+      "buggy_sha": "366f5d2850a328648f2703d264020c81665c136a",
+      "claim": "fix: icon image positioning within node",
+      "commit_date": "2026-05-19T13:17:19+00:00",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "6053165368db2abfe47202162155db3e9d38b360",
+      "id": "mingrammer-diagrams-pr-1179",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/mingrammer/diagrams.git",
+      "source_url": "https://github.com/mingrammer/diagrams/pull/1179",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 12.236695
+    },
+    {
+      "buggy_sha": "8801668562cda5fd396b11ae4be05af2abfca83d",
+      "claim": "Fix list literal spacing to use [ x, y ] style",
+      "commit_date": "2026-02-18T08:18:03+00:00",
+      "failure_category": "suite_infrastructure_failure",
+      "fix_sha": "c7976ec9d4de0a6bc5b499fc8ba3df6b850349cb",
+      "id": "facefusion-facefusion-pr-1044",
+      "model_calls": 0,
+      "preregistered_failure_category": "suite_infrastructure_failure",
+      "repository": "https://github.com/facefusion/facefusion.git",
+      "source_url": "https://github.com/facefusion/facefusion/pull/1044",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 102.569634
+    },
+    {
+      "buggy_sha": "af6e18b7d45a316c1fa13c22557dd7ab40e4918d",
+      "claim": "Fixes #21371: Fix Webhook Event Rules for Job lifecycle events missing username",
+      "commit_date": "2026-02-17T13:15:58+00:00",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "bdd23f3d1776adcecd2285835cda228159adedbb",
+      "id": "netbox-community-netbox-pr-21447",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/netbox-community/netbox.git",
+      "source_url": "https://github.com/netbox-community/netbox/pull/21447",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 25.206599
+    },
+    {
+      "buggy_sha": "adca49c7e43438e26f581d83e9c811e3131cf866",
+      "claim": "Fix MCP service teardown when replacing services",
+      "commit_date": "2026-03-13T07:30:42+00:00",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "e2149090842fdee07346e0508a27a8faa9eb8f23",
+      "id": "emcie-co-parlant-pr-751",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/emcie-co/parlant.git",
+      "source_url": "https://github.com/emcie-co/parlant/pull/751",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 32.741315
+    },
+    {
+      "buggy_sha": "d029d4fcb4e146c787f3ed3541bdc5bd0c30d480",
+      "claim": "fix: \u4fee\u590d\u57f9\u517b\u76ee\u6807\u65e0\u6cd5\u6b63\u786e\u8bc6\u522b\u62df\u9020\u82b1\u843c\u91d1\u7684\u95ee\u9898",
+      "commit_date": "2026-02-18T03:48:36+00:00",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "d6648e498ae0bd538d2193efcf56d58775aceeba",
+      "id": "moesnow-march7thassistant-pr-888",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/moesnow/March7thAssistant.git",
+      "source_url": "https://github.com/moesnow/March7thAssistant/pull/888",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 98.826772
+    },
+    {
+      "buggy_sha": "03acc9e625362e05731c2955e62b97d71851da44",
+      "claim": "Fix native build Python selection",
+      "commit_date": "2026-08-13T20:17:00+00:00",
+      "failure_category": "existing_suite_failed",
+      "fix_sha": "a94b1d666cff71dcca7ea2555413fdf10fd57f20",
+      "id": "maurosoria-dirsearch-pr-1577",
+      "model_calls": 0,
+      "preregistered_failure_category": "existing_suite_failed",
+      "repository": "https://github.com/maurosoria/dirsearch.git",
+      "source_url": "https://github.com/maurosoria/dirsearch/pull/1577",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 20.010748
+    },
+    {
+      "buggy_sha": "395fe480b9f5aa4288fa818d5cbe9fbe19299d33",
+      "claim": "Fix Windows multiprocessing support",
+      "commit_date": "2026-02-17T17:27:13+00:00",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "47c0c805e6e2c8899d22781fbf9181e4e51d97c1",
+      "id": "plasma-umass-scalene-pr-1005",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/plasma-umass/scalene.git",
+      "source_url": "https://github.com/plasma-umass/scalene/pull/1005",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 10.720022
+    },
+    {
+      "buggy_sha": "e4524e119ab453024afe26f6f42609d43f83fd5b",
+      "claim": "Fix Profile API by migrating to GraphQL endpoints",
+      "commit_date": "2026-03-21T21:00:18+00:00",
+      "failure_category": "provider_quota_exhausted",
+      "fix_sha": "78bbd697cd96219d17ac6ae46852bbcc912e18ab",
+      "id": "instaloader-instaloader-pr-2652",
+      "model_calls": 0,
+      "preregistered_failure_category": "no_candidate_proposed",
+      "repository": "https://github.com/instaloader/instaloader.git",
+      "source_url": "https://github.com/instaloader/instaloader/pull/2652",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 161.92851
+    },
+    {
+      "buggy_sha": "7799a8251ae28a2d54e527f2751be042b209e0c3",
+      "claim": "fix(terraform): return inner module path when dest_dir already exists on Linux",
+      "commit_date": "2026-02-23T11:59:36+00:00",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "8204ba06028cc60588963db06e004d4bc66a6a8c",
+      "id": "bridgecrewio-checkov-pr-7436",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/bridgecrewio/checkov.git",
+      "source_url": "https://github.com/bridgecrewio/checkov/pull/7436",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 39.899083
+    },
+    {
+      "buggy_sha": "59ed733f3a621949c0385ce765d84595086ba2d8",
+      "claim": "fix: harden share expiry, download token, quota SQL, and CORS",
+      "commit_date": "2026-07-23T11:41:40+00:00",
+      "failure_category": "suite_infrastructure_failure",
+      "fix_sha": "ae7702603a99dc77b9b48e78746058b2a74b0bf5",
+      "id": "vastsa-filecodebox-pr-496",
+      "model_calls": 0,
+      "preregistered_failure_category": "suite_infrastructure_failure",
+      "repository": "https://github.com/vastsa/FileCodeBox.git",
+      "source_url": "https://github.com/vastsa/FileCodeBox/pull/496",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 23.369001
+    },
+    {
+      "buggy_sha": "51098c553dd886e046ce38bc5436c1035cbcbc6e",
+      "claim": "Fix Typer Context initialization crashing the CLI and missing clicker\u2026",
+      "commit_date": "2026-06-02T06:53:10+00:00",
+      "failure_category": "suite_infrastructure_failure",
+      "fix_sha": "154412831ecedeecaf17458da92493763ab2ee41",
+      "id": "christianlempa-boilerplates-pr-1796",
+      "model_calls": 0,
+      "preregistered_failure_category": "suite_infrastructure_failure",
+      "repository": "https://github.com/ChristianLempa/boilerplates.git",
+      "source_url": "https://github.com/ChristianLempa/boilerplates/pull/1796",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 9.794794
+    },
+    {
+      "buggy_sha": "e6a2a8785957ab152d83051e67666dd2c80e6c0b",
+      "claim": "Fix short position cash check to use available cash (margin-aware)",
+      "commit_date": "2026-03-09T23:58:31+00:00",
+      "failure_category": "provider_quota_exhausted",
+      "fix_sha": "9be9ecfd74bd09c255d92a34809ddecf3cae0d36",
+      "id": "virattt-ai-hedge-fund-pr-499",
+      "model_calls": 0,
+      "preregistered_failure_category": "no_candidate_proposed",
+      "repository": "https://github.com/virattt/ai-hedge-fund.git",
+      "source_url": "https://github.com/virattt/ai-hedge-fund/pull/499",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 12.596032
+    },
+    {
+      "buggy_sha": "bee77909b90783a3af996044c2ab732b9b353ba0",
+      "claim": "fix(sessions): avoid agent state truncation crash on non-agent traces",
+      "commit_date": "2026-04-09T07:14:37+00:00",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "87eecf55b02a1ef2ddcd4fe97fd682997ebd48fd",
+      "id": "emcie-co-parlant-pr-771",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/emcie-co/parlant.git",
+      "source_url": "https://github.com/emcie-co/parlant/pull/771",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 31.978437
+    },
+    {
+      "buggy_sha": "a74060e9bd366471893949d910de8d5f40ea6508",
+      "claim": "Fix: \u7cfb\u7edf\u4f11\u7720\u540e\u5faa\u73af\u6a21\u5f0f\u672a\u6309\u65f6\u6267\u884c\u7684\u95ee\u9898",
+      "commit_date": "2026-02-21T11:06:52+00:00",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "d2e8b82e21c0200de0ffc8d2792115ba7b7f13e2",
+      "id": "moesnow-march7thassistant-pr-898",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/moesnow/March7thAssistant.git",
+      "source_url": "https://github.com/moesnow/March7thAssistant/pull/898",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 39.065761
+    },
+    {
+      "buggy_sha": "ca4a68281e7001b9c6b163f60713c52d443b2651",
+      "claim": "Fix Windows timer thread shutdown (#991)",
+      "commit_date": "2026-03-04T04:10:14+00:00",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "1fa9b410355f7dc99ac1b4bfcfe69f6f3587a24a",
+      "id": "plasma-umass-scalene-pr-1012",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/plasma-umass/scalene.git",
+      "source_url": "https://github.com/plasma-umass/scalene/pull/1012",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 10.051929
+    },
+    {
+      "buggy_sha": "d3cd63978976cc6c5a1a7685f1f4edaf6f018774",
+      "claim": "Fix profile metadata GraphQL query flags",
+      "commit_date": "2026-07-05T18:49:03+00:00",
+      "failure_category": "provider_quota_exhausted",
+      "fix_sha": "b79a0a1e8b08adf9fd03376f7ef532ca101d83b3",
+      "id": "instaloader-instaloader-pr-2696",
+      "model_calls": 0,
+      "preregistered_failure_category": "no_candidate_proposed",
+      "repository": "https://github.com/instaloader/instaloader.git",
+      "source_url": "https://github.com/instaloader/instaloader/pull/2696",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 7.552431
+    },
+    {
+      "buggy_sha": "0bf73124da2423ee3a359db5d3cacf67154f265f",
+      "claim": "fix(prometheus): always set value/instance/job as \"\" when absent",
+      "commit_date": "2026-02-23T16:50:48+00:00",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "c648e482f92590897dd61c2073e38cf4ab2d8f34",
+      "id": "keephq-keep-pr-5669",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/keephq/keep.git",
+      "source_url": "https://github.com/keephq/keep/pull/5669",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 36.508089
+    },
+    {
+      "buggy_sha": "d175b3722045457e23d2701a1ab15ee8f4634f47",
+      "claim": "fix(secrets): add _thread_safe_transient_settings( to secret runner",
+      "commit_date": "2026-03-05T15:01:27+00:00",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "d1a89f110a3bfb3adc88bd623afc1cdbce3b4809",
+      "id": "bridgecrewio-checkov-pr-7455",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/bridgecrewio/checkov.git",
+      "source_url": "https://github.com/bridgecrewio/checkov/pull/7455",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 39.382482
+    },
+    {
+      "buggy_sha": "c11059b851b61de9ab9ae853d64d20b84b2d5b09",
+      "claim": "fix: magic-byte file checks, admin login rate limit, non-root Docker",
+      "commit_date": "2026-07-23T14:23:11+00:00",
+      "failure_category": "suite_infrastructure_failure",
+      "fix_sha": "0ee2f046dd057fecceaee1059d72d67de3038f19",
+      "id": "vastsa-filecodebox-pr-498",
+      "model_calls": 0,
+      "preregistered_failure_category": "suite_infrastructure_failure",
+      "repository": "https://github.com/vastsa/FileCodeBox.git",
+      "source_url": "https://github.com/vastsa/FileCodeBox/pull/498",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 5.54139
+    },
+    {
+      "buggy_sha": "a0d8a02b948271a2b369f7d65f28805189a22970",
+      "claim": "fix: disable ph telemetry still calls posthog",
+      "commit_date": "2026-03-03T22:25:34+00:00",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "34c797d2850c33b45ec28d6f8748bda05473b637",
+      "id": "mem0ai-mem0-pr-4203",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/mem0ai/mem0.git",
+      "source_url": "https://github.com/mem0ai/mem0/pull/4203",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 12.258527
+    },
+    {
+      "buggy_sha": "9be9ecfd74bd09c255d92a34809ddecf3cae0d36",
+      "claim": "fix: raise ValueError for unsupported providers and remove duplicate import",
+      "commit_date": "2026-03-13T09:35:22+00:00",
+      "failure_category": "provider_quota_exhausted",
+      "fix_sha": "1152ab810ac0eda7f99e92fd5d6beb95a34f638e",
+      "id": "virattt-ai-hedge-fund-pr-531",
+      "model_calls": 0,
+      "preregistered_failure_category": "no_candidate_proposed",
+      "repository": "https://github.com/virattt/ai-hedge-fund.git",
+      "source_url": "https://github.com/virattt/ai-hedge-fund/pull/531",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 11.200281
+    },
+    {
+      "buggy_sha": "7300104cea5d658324b9aba4873e9b867de0b9c1",
+      "claim": "Fixes #21407: Enable Ruff isort rules for consistent import ordering",
+      "commit_date": "2026-02-18T16:41:51+00:00",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "945e7ade0a8b98e81e9bc4b29746b04552c2114c",
+      "id": "netbox-community-netbox-pr-21458",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/netbox-community/netbox.git",
+      "source_url": "https://github.com/netbox-community/netbox/pull/21458",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 24.834847
+    },
+    {
+      "buggy_sha": "b6101f497d2fcbb29722f8e3b26b8da24aeb7d45",
+      "claim": "fix(api): preserve falsy values in session patch",
+      "commit_date": "2026-04-10T10:53:45+00:00",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "907ea8ea7a0a9f009743041b8b90183df8a87dbc",
+      "id": "emcie-co-parlant-pr-774",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/emcie-co/parlant.git",
+      "source_url": "https://github.com/emcie-co/parlant/pull/774",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 31.573088
+    },
+    {
+      "buggy_sha": "0711fffe70d495573d4d41be931f49e6369ffeb6",
+      "claim": "fix: \u4fee\u590d\u961f\u4f0d\u6709\u7a7a\u4f4d\u65f6\u4f7f\u7528\u652f\u63f4\u89d2\u8272\u8bef\u79fb\u9664\u6700\u540e\u4e00\u4f4d\u89d2\u8272\u7684\u95ee\u9898",
+      "commit_date": "2026-02-28T07:43:43+00:00",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "19fea0ca30f8472590e3e14beb5e926ec9dcec5d",
+      "id": "moesnow-march7thassistant-pr-900",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/moesnow/March7thAssistant.git",
+      "source_url": "https://github.com/moesnow/March7thAssistant/pull/900",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 85.249473
+    },
+    {
+      "buggy_sha": "6d685189ed7f3871ab02ca2ce9c3d326fa457b27",
+      "claim": "Fix async shutdown task cleanup",
+      "commit_date": "2026-08-21T01:51:37+00:00",
+      "failure_category": "provider_quota_exhausted",
+      "fix_sha": "1e6977a082f29a5faefa84ba8c8ec80bcf206a16",
+      "id": "maurosoria-dirsearch-pr-1597",
+      "model_calls": 0,
+      "preregistered_failure_category": "no_candidate_proposed",
+      "repository": "https://github.com/maurosoria/dirsearch.git",
+      "source_url": "https://github.com/maurosoria/dirsearch/pull/1597",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 12.733602
+    },
+    {
+      "buggy_sha": "1fa9b410355f7dc99ac1b4bfcfe69f6f3587a24a",
+      "claim": "Fix subprocess profiling with Python interpreter flags (#863)",
+      "commit_date": "2026-03-05T17:05:47+00:00",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "260955158aee2c694ed4f86856f94efbe3915bc2",
+      "id": "plasma-umass-scalene-pr-1013",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/plasma-umass/scalene.git",
+      "source_url": "https://github.com/plasma-umass/scalene/pull/1013",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 9.731489
+    },
+    {
+      "buggy_sha": "297a88f25210096a7bae599c22c1e76b0499c7b7",
+      "claim": "Fix caption mentions being missed after a newline",
+      "commit_date": "2026-07-13T18:48:06+00:00",
+      "failure_category": "provider_quota_exhausted",
+      "fix_sha": "ad03b392db9a965d1ece316ececab82b242cdad6",
+      "id": "instaloader-instaloader-pr-2712",
+      "model_calls": 0,
+      "preregistered_failure_category": "no_candidate_proposed",
+      "repository": "https://github.com/instaloader/instaloader.git",
+      "source_url": "https://github.com/instaloader/instaloader/pull/2712",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 6.921389
+    },
+    {
+      "buggy_sha": "29bae30b77242cb1a4727aa386ad91afe6a6d574",
+      "claim": "fix(secrets): eliminate race condition in secrets scanner when running concurrently with other scanners",
+      "commit_date": "2026-03-08T07:31:25+00:00",
+      "failure_category": "checkout_failed",
+      "fix_sha": "e99bc8653bee197560ff14b1a4039d9661da710f",
+      "id": "bridgecrewio-checkov-pr-7456",
+      "model_calls": 0,
+      "preregistered_failure_category": "checkout_failed",
+      "repository": "https://github.com/bridgecrewio/checkov.git",
+      "source_url": "https://github.com/bridgecrewio/checkov/pull/7456",
+      "verdict": null,
+      "wall_time_s": 19.697409
+    }
+  ],
+  "model_telemetry": {
+    "actual_model_spend_usd": null,
+    "calls": 2,
+    "identities": [
+      {
+        "calls": 2,
+        "confirmed_model": "unknown_no_telemetry",
+        "confirmed_version": "unknown_no_telemetry",
+        "provider": "openai-codex-cli",
+        "requested_model": "gpt-5.6-sol"
+      }
+    ],
+    "input_tokens": {
+      "reported_calls": 0,
+      "total": null
+    },
+    "output_tokens": {
+      "reported_calls": 0,
+      "total": null
+    },
+    "reported_cost_calls": 0,
+    "reported_cost_usd": null,
+    "spend_basis": "unavailable: at least one model call did not report billable cost",
+    "total_tokens": {
+      "reported_calls": 0,
+      "total": null
+    }
+  },
+  "preregistered_failure_taxonomy": [
+    {
+      "category": "environment_dependency_install_failed",
+      "count": 17,
+      "fraction_of_failures": 0.5862068965517241
+    },
+    {
+      "category": "no_candidate_proposed",
+      "count": 6,
+      "fraction_of_failures": 0.20689655172413793
+    },
+    {
+      "category": "suite_infrastructure_failure",
+      "count": 4,
+      "fraction_of_failures": 0.13793103448275862
+    },
+    {
+      "category": "checkout_failed",
+      "count": 1,
+      "fraction_of_failures": 0.034482758620689655
+    },
+    {
+      "category": "existing_suite_failed",
+      "count": 1,
+      "fraction_of_failures": 0.034482758620689655
+    }
+  ],
+  "preregistration": {
+    "path": "../studies/fix-coverage/pilot-v4/preregistration.json",
+    "sha256": "668aa21913acb096fceab310f896728097c0f31684a5c30e89c297cabe3ed86a"
+  },
+  "private_report_sha256": "eed8281f3c631e4cdcaa578d95dbae6bd8066a5c79188d3e202f3e3437a7bce3",
+  "refined_failure_taxonomy": [
+    {
+      "category": "environment_dependency_install_failed",
+      "count": 17,
+      "fraction_of_failures": 0.5862068965517241,
+      "unique_repositories": 9
+    },
+    {
+      "category": "provider_quota_exhausted",
+      "count": 6,
+      "fraction_of_failures": 0.20689655172413793,
+      "unique_repositories": 3
+    },
+    {
+      "category": "suite_infrastructure_failure",
+      "count": 4,
+      "fraction_of_failures": 0.13793103448275862,
+      "unique_repositories": 3
+    },
+    {
+      "category": "checkout_failed",
+      "count": 1,
+      "fraction_of_failures": 0.034482758620689655,
+      "unique_repositories": 1
+    },
+    {
+      "category": "existing_suite_failed",
+      "count": 1,
+      "fraction_of_failures": 0.034482758620689655,
+      "unique_repositories": 1
+    },
+    {
+      "category": "candidate_did_not_fail_on_buggy",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "candidate_failed_on_fixed",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "candidate_flaky",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "candidate_infrastructure_failure",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "candidate_other_rejection",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "candidate_policy_rejection",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "candidate_tamper",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "candidate_vacuous",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "candidate_wrong_failure_signature",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "environment_no_supported_lockfile",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "environment_other_setup_failed",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "no_candidate_proposed",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "provider_generation_failed",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "study_error",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "suite_requires_unavailable_services",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "timed_out",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    }
+  ],
+  "refined_failure_taxonomy_schema": "fix-coverage-failure-taxonomy/v2",
+  "run_id": "9c1050764d2c",
+  "schema_version": "fix-coverage-public-report/v1",
+  "selection": {
+    "candidate_exclusion_counts": {
+      "no_production_python_change": 11,
+      "per_repository_cap": 360,
+      "sample_size_reached": 31,
+      "unsupported_or_invalid_pinned_environment": 9
+    },
+    "eligibility_exclusions": 20,
+    "end_to_end_verified_fraction": 0.02,
+    "environment_eligible_repositories": 50,
+    "included_instances": 30,
+    "repositories_scanned": 490,
+    "repository_exclusion_counts": {
+      "repository_no_matching_bug_prs": 31,
+      "repository_no_supported_pinned_lock": 440
+    },
+    "represented_repositories": 15,
+    "screened_candidates": 50,
+    "unselected_eligible_candidates": 391
+  },
+  "started_at": "2026-09-04T06:12:59.592734+00:00",
+  "verdict_counts": {
+    "ERROR": 1,
+    "UNCERTAIN": 28,
+    "VERIFIED": 1
+  }
+}
