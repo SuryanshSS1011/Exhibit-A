@@ -233,7 +233,10 @@ def test_study_keeps_partial_separate_and_resumes(tmp_path: Path) -> None:
         sha256="f" * 64,
         preregistration={"path": "preregistration.json"},
         selection={"rule": "mechanical"},
-        exclusions=({"reason_code": "no_production_python_change"},),
+        exclusions=(
+            {"reason_code": "no_production_python_change"},
+            {"reason_code": "prior_corpus_member"},
+        ),
         instances=instances,
     )
     calls = []
@@ -282,6 +285,9 @@ def test_study_keeps_partial_separate_and_resumes(tmp_path: Path) -> None:
     assert report["headline"]["partial"] == 1
     assert report["headline"]["denominator"] == 2
     assert report["selection"]["screened_candidates"] == 3
+    assert report["selection"]["eligibility_exclusions"] == 1
+    assert report["selection"]["prior_corpus_exclusions"] == 1
+    assert report["selection"]["unselected_eligible_candidates"] == 0
     assert report["model_telemetry"]["actual_model_spend_usd"] is None
     assert "unavailable" in report["model_telemetry"]["spend_basis"]
     assert resumed["completed_instances"] == 2
@@ -294,6 +300,7 @@ def test_study_keeps_partial_separate_and_resumes(tmp_path: Path) -> None:
     )
     assert public["headline"]["verified"] == 1
     assert public["execution_source_revision"] == "a" * 40
+    assert public["selection"]["prior_corpus_exclusions"] == 1
     assert public["execution_source_revisions"] == ["a" * 40]
     assert public["execution_segments"] == [
         {

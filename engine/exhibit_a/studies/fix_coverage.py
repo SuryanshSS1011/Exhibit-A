@@ -406,6 +406,7 @@ def create_public_fix_coverage_report(
                 ),
                 "candidate_exclusion_counts": private["selection"]["exclusion_counts"],
                 "eligibility_exclusions": private["selection"]["eligibility_exclusions"],
+                "prior_corpus_exclusions": private["selection"]["prior_corpus_exclusions"],
                 "unselected_eligible_candidates": private["selection"][
                     "unselected_eligible_candidates"
                 ],
@@ -885,7 +886,8 @@ def _aggregate(corpus: FixCorpus, config: RunConfig, state: dict, records: dict[
     sampling_exclusions = sum(
         exclusion_counts[reason] for reason in ("per_repository_cap", "sample_size_reached")
     )
-    eligibility_exclusions = len(corpus.exclusions) - sampling_exclusions
+    prior_corpus_exclusions = exclusion_counts["prior_corpus_member"]
+    eligibility_exclusions = len(corpus.exclusions) - sampling_exclusions - prior_corpus_exclusions
     provider_runs = [
         proposal
         for item in ordered
@@ -1001,6 +1003,7 @@ def _aggregate(corpus: FixCorpus, config: RunConfig, state: dict, records: dict[
             "excluded_candidates": len(corpus.exclusions),
             "exclusion_counts": dict(sorted(exclusion_counts.items())),
             "eligibility_exclusions": eligibility_exclusions,
+            "prior_corpus_exclusions": prior_corpus_exclusions,
             "unselected_eligible_candidates": sampling_exclusions,
             "screened_candidates": requested + eligibility_exclusions,
             "end_to_end_verified_fraction": (
