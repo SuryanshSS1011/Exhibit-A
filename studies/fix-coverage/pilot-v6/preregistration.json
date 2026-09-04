@@ -1,0 +1,99 @@
+{
+  "schema_version": "fix-coverage-preregistration/v6",
+  "registered_at": "2026-09-04T20:59:25Z",
+  "parent_commit": "cb7674e03bb0d7dd3d51ccca5ea544bbaeab6293",
+  "supersedes_for_future_collection": "studies/fix-coverage/pilot-v5/preregistration.json",
+  "pilot_v5_preregistration_sha256": "aa89f9072931c30811aaeff114023c791d4cb64c1e7f82731b6d1ff493d34aa5",
+  "pilot_v5_corpus_sha256": "b95789fa86a7c26268d8b237e9fe6656a77e661525536abecc332fcbbe653f58",
+  "pilot_v5_public_report_sha256": "2cebce394f47ade35dfdd71c6026ac4f04507e63a944b770d67dbfa1b6841ed2",
+  "reason_for_new_pilot": "Pilot v5 flattened uv.lock into an unconditional package list. The v6 parent commit computes reachability from workspace roots, preserves dependency-edge markers, applies package resolution-markers, and records the host plus Docker sandbox platform. Pilot v6 selects a new corpus under that corrected eligibility rule rather than rerunning the frozen v5 manifest.",
+  "selection": {
+    "repository_query": "language:Python fork:false archived:false",
+    "repository_order": "stargazers_count descending in the cached v5 source frame",
+    "source_frame": "Reuse the public GitHub metadata and clone cache used for v5 where present, so the repository frame is held constant; rerun every environment eligibility decision with the v6 code and fetch only missing metadata under the registered retry rule.",
+    "repository_frame": "First 50 repositories accepted by the current root pinned-environment parser, scanning at most 1,000.",
+    "accepted_root_environment_sources_in_precedence_order": [
+      "uv.lock",
+      "poetry.lock",
+      "Pipfile.lock",
+      "requirements*.txt"
+    ],
+    "uv_lock_rule": "Start from uv.lock workspace roots; retain only registry packages reachable through production and development dependency edges; conjoin markers along each path and disjoin across paths; apply package resolution-markers; accept retained packages only when exactly versioned and carrying a sha256 artifact hash; skip local project entries; reject reachable git, URL, directory, editable, missing-version, or missing-hash entries. If no root can be identified, retain the previous conservative all-package behavior rather than silently constructing an empty environment.",
+    "candidate_search": "First 100 merged-PR results per retained repository in the date window, sorted updated ascending.",
+    "bug_indicator": "Exact case-insensitive bug label OR title beginning fix, fixed, fixes, or fixing.",
+    "date_window": "2026-02-17 through 2026-08-31 inclusive",
+    "claim": "Verbatim PR title with no added expected signature.",
+    "revisions": "GitHub merge_commit_sha and its first parent.",
+    "instance_checks": "Commit date, production Python diff, accepted pinned environment on both revisions, and resolvable Git relationship.",
+    "candidate_order": "merged_at ascending within repository, round-robin by repository star rank.",
+    "per_repository_cap": 5,
+    "target_instances": 30,
+    "fresh_corpus_rule": "Run the mechanical selector again and freeze a new manifest. Do not force inclusion, exclusion, or disjointness based on v5 membership; report overlap after the v6 corpus is fixed.",
+    "github_transport_attempts": 5,
+    "github_transport_backoff_seconds": [1, 2, 4, 8],
+    "outcome_based_exclusions": "forbidden"
+  },
+  "model": {
+    "requested_model": "gpt-5.6-sol",
+    "provider": "codex_cli",
+    "knowledge_cutoff": "2026-02-16",
+    "confirmed_identity_rule": "Record backend telemetry when present; otherwise preserve unknown_no_telemetry explicitly.",
+    "source": "https://developers.openai.com/api/docs/models/gpt-5.6-sol"
+  },
+  "execution": {
+    "sandbox": "Docker, unprivileged, network disabled during test execution, credentials unavailable.",
+    "platform_rule": "Record host machine/system and Docker daemon OS/architecture. The Docker fields describe the dependency-build sandbox and must remain null rather than falling back to host values when the daemon cannot be identified.",
+    "existing_suite_preflight": true,
+    "reruns": 5,
+    "max_refine": 3,
+    "execution_timeout_seconds": 120,
+    "per_instance_wall_clock_ceiling_seconds": 720,
+    "total_active_wall_clock_ceiling_seconds": 21600,
+    "minimize_verified": false,
+    "score_evidence_strength": false,
+    "outcome_retry_rule": "One completed attempt per instance. Resume skips completed checkpoints. An interrupted attempt may be resumed only while its incomplete attempt remains recorded; never retry merely to seek a better verdict.",
+    "provider_quota_rule": "An explicit quota or usage-limit response halts the study immediately and is not checkpointed. The affected instance remains unattempted and is the first instance on resume after quota capacity returns.",
+    "completion_rule": "Do not publish a final v6 result until complete is true, halted_reason is null, and all 30 instances have completed checkpoints. Intermediate halted reports remain private operational state."
+  },
+  "analysis": {
+    "primary_metric": "reached_judge_fraction = judged_denominator / all 30 included instances; report this first.",
+    "judged_definition": "VERIFIED, PARTIAL, or a classified candidate rejection produced after a candidate was executed by the deterministic judge. Plumbing failures, proposal silence, provider unavailability, and catch-all rejections are not judged.",
+    "conditional_verification": "Report VERIFIED / judged_denominator and its two-sided 95% Wilson interval immediately after judge reach.",
+    "whole_pipeline_headline": "Report VERIFIED / all 30 included instances and PARTIAL separately; never merge PARTIAL into VERIFIED.",
+    "provider_unavailable": "Report separately and do not absorb it into judged or proposal silence.",
+    "failure_taxonomy": "fix-coverage-failure-taxonomy/v3 with the 20% catch-all refinement trigger; preserve both preregistered and any refined view without changing Cases or verdicts.",
+    "runtime_platform": "Publish the recorded host and Docker sandbox platform immediately beside the environment dependency-install breakdown.",
+    "environment_dependency_install_breakdown": {
+      "schema_version": "fix-coverage-environment-install-taxonomy/v1",
+      "raw_reason_policy": "Raw environment diagnostics remain private. Publish only the per-instance category and aggregate counts.",
+      "categories": [
+        "python_version_incompatible",
+        "pinned_distribution_unavailable",
+        "dependency_resolution_conflict",
+        "artifact_hash_or_integrity_failure",
+        "package_index_or_network_failure",
+        "native_distribution_build_failure",
+        "package_build_backend_or_metadata_failure",
+        "other_install_failure"
+      ],
+      "classification_precedence": "The category order above is binding; first matching category wins.",
+      "refinement_rule": "If other_install_failure exceeds 20% of dependency-install failures, refine the classifier after outcomes without changing the corpus, Cases, verdicts, or raw reasons; commit the reason and report both views."
+    },
+    "marker_fix_comparison": {
+      "v5_baseline": {
+        "denominator": 30,
+        "dependency_install_failures": 24,
+        "pinned_distribution_unavailable": 7,
+        "dependency_resolution_conflict": 4,
+        "combined_marker_sensitive_count": 11,
+        "combined_fraction_of_all_instances": 0.36666666666666664,
+        "combined_fraction_of_dependency_install_failures": 0.4583333333333333
+      },
+      "fall_definition": "Because both pilots target 30 included instances, a category falls only if its v6 count is below its v5 count. Also report its share of all 30 and of dependency-install failures. If pinned_distribution_unavailable is at least 7, dependency_resolution_conflict is at least 4, or their combined count is at least 11, say plainly that the corresponding marker-sensitive failure did not fall.",
+      "causal_limit": "V6 is a fresh mechanically selected corpus, not a paired rerun. A change is descriptive and cannot by itself be attributed causally to the marker implementation."
+    },
+    "selection_exclusions": "Report repository exclusions, revision/environment eligibility exclusions, and sampling-boundary exclusions separately.",
+    "cost": "Report active and calendar wall time plus provider-reported spend only. Unavailable model telemetry is not zero and must not be estimated from incomplete data.",
+    "interpretation": "Rank the constraints and make a product-versus-research-instrument judgment without changing the corpus or rerunning completed outcomes."
+  }
+}
