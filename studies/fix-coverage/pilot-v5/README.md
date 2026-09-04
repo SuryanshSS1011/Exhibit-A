@@ -10,5 +10,7 @@ provider reports exhausted quota, and publishes a category-only breakdown of dep
 installation failures. Raw reasons, Cases, generated tests, and logs remain private.
 
 The preregistration was committed before selection, model calls, container builds, test
-executions, or v5 verdicts. The frozen corpus and selection report are added only after the
-mechanical selector reaches its registered stopping condition.
+executions, or v5 verdicts. The mechanical selector then reached the registered 30-instance
+target. The new hash-pinned [`corpus.json`](./corpus.json) and
+[`selection-report.md`](./selection-report.md) record that result without any execution
+outcome.
