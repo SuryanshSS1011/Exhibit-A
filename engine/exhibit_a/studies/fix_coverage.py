@@ -585,9 +585,9 @@ class SubprocessTrialRunner:
     def __call__(self, instance: FixInstance, root: Path, timeout_s: float) -> WorkerResult:
         workers = root / "workers" / instance.id
         workers.mkdir(parents=True, exist_ok=True)
-        complete = sorted(workers.glob("attempt-*/result.json"))
-        if complete:
-            return _load_worker_result(complete[0])
+        reusable, quota_attempts = _worker_attempt_history(workers)
+        if reusable is not None:
+            return reusable
         incomplete = [
             path for path in workers.glob("attempt-*") if not (path / "result.json").is_file()
         ]
@@ -600,7 +600,7 @@ class SubprocessTrialRunner:
             "instance": asdict(instance),
             "config": self.config.to_dict(),
             "attempt": attempt,
-            "prior_incomplete_attempts": len(incomplete),
+            "prior_incomplete_attempts": len(incomplete) + quota_attempts,
             "environment_root": str(attempt_root / "environment-attempts"),
         }
         request_path = attempt_root / "request.json"
@@ -641,7 +641,7 @@ class SubprocessTrialRunner:
                     timed_out=True,
                     exit_code=None,
                     attempt=attempt,
-                    prior_incomplete_attempts=len(incomplete),
+                    prior_incomplete_attempts=len(incomplete) + quota_attempts,
                 )
         if result_path.is_file():
             return _load_worker_result(result_path)
@@ -656,7 +656,7 @@ class SubprocessTrialRunner:
             error=error or f"worker exited {exit_code} without a result",
             exit_code=exit_code,
             attempt=attempt,
-            prior_incomplete_attempts=len(incomplete),
+            prior_incomplete_attempts=len(incomplete) + quota_attempts,
         )
 
 
@@ -1023,6 +1023,18 @@ def _atomic_json(path: Path, payload: dict) -> None:
 def _save_public_report(path: str | Path, payload: dict) -> dict:
     _atomic_json(Path(path).resolve(), payload)
     return payload
+
+
+def _worker_attempt_history(workers: Path) -> tuple[WorkerResult | None, int]:
+    """Return a reusable outcome while leaving quota attempts eligible for resume."""
+    quota_attempts = 0
+    for path in sorted(workers.glob("attempt-*/result.json")):
+        result = _load_worker_result(path)
+        if classify_worker_result(result)[0] == "provider_quota_exhausted":
+            quota_attempts += 1
+            continue
+        return result, quota_attempts
+    return None, quota_attempts
 
 
 def _load_worker_result(path: Path) -> WorkerResult:

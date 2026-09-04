@@ -16,6 +16,7 @@ from exhibit_a.studies.fix_corpus import (
 )
 from exhibit_a.studies.fix_coverage import (
     CORPUS_SCHEMA,
+    WORKER_SCHEMA,
     FixCorpus,
     FixInstance,
     RunConfig,
@@ -25,6 +26,7 @@ from exhibit_a.studies.fix_coverage import (
     create_public_fix_coverage_report,
     load_fix_corpus,
     run_fix_coverage_study,
+    _worker_attempt_history,
 )
 
 
@@ -658,3 +660,18 @@ def test_resuming_after_a_quota_halt_retries_the_unattempted_instance(tmp_path: 
     assert resumed["complete"] is True
     assert resumed["completed_instances"] == 3, "every instance is measured after the reset"
     assert resumed["headline"]["verified"] == 3
+
+
+def test_subprocess_history_does_not_replay_a_completed_quota_attempt(tmp_path: Path) -> None:
+    workers = tmp_path / "workers"
+    attempt = workers / "attempt-001"
+    attempt.mkdir(parents=True)
+    result = _result(case=_quota_exhausted())
+    (attempt / "result.json").write_text(
+        json.dumps({"schema_version": WORKER_SCHEMA, "result": result.to_dict()})
+    )
+
+    reusable, quota_attempts = _worker_attempt_history(workers)
+
+    assert reusable is None, "resume must launch a fresh attempt after quota returns"
+    assert quota_attempts == 1, "the non-outcome attempt remains visible in the audit trail"
