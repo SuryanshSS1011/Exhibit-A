@@ -299,6 +299,7 @@ def test_study_keeps_partial_separate_and_resumes(tmp_path: Path) -> None:
         execution_source_revision="a" * 40,
     )
     assert public["headline"]["verified"] == 1
+    assert public["finished_at"] == "2026-09-04T00:00:01+00:00"
     assert public["execution_source_revision"] == "a" * 40
     assert public["selection"]["prior_corpus_exclusions"] == 1
     assert public["execution_source_revisions"] == ["a" * 40]

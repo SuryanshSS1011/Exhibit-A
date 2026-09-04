@@ -27,3 +27,8 @@ sandbox platform with null fields if Docker was temporarily inaccessible. Runtim
 is now persisted in run state and reused for every later aggregate. The v6 state predates
 that field, so it is populated once from the same Docker daemon before public export. This
 changes provenance retention only; it does not run or reclassify any corpus instance.
+
+Aggregate regeneration also used to expose its own `updated_at` value as the public run's
+`finished_at`. The public timestamp now comes from the latest immutable completed worker
+checkpoint, so a report-only pass cannot lengthen the apparent run. For v6 that preserves
+September 4, 2026 at 23:48:37.868926 UTC as completion rather than the later export time.

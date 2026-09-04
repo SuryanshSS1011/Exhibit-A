@@ -369,7 +369,7 @@ def create_public_fix_coverage_report(
             "complete": private.get("complete", True),
             "halted_reason": private.get("halted_reason"),
             "started_at": private["started_at"],
-            "finished_at": private["updated_at"],
+            "finished_at": private.get("completed_at") or private["updated_at"],
             "active_wall_time_s": private["active_wall_time_s"],
             "corpus_manifest_sha256": corpus.sha256,
             "private_report_sha256": hashlib.sha256(report_bytes).hexdigest(),
@@ -887,6 +887,11 @@ def _aggregate(corpus: FixCorpus, config: RunConfig, state: dict, records: dict[
     )
     requested = len(corpus.instances)
     completed = len(ordered)
+    completed_at = (
+        max(str(item["result"]["finished_at"]) for item in ordered)
+        if completed == requested and ordered
+        else None
+    )
     verified = verdicts["VERIFIED"]
     partial = verdicts["PARTIAL"]
     exclusion_counts = Counter(str(item["reason_code"]) for item in corpus.exclusions)
@@ -955,6 +960,7 @@ def _aggregate(corpus: FixCorpus, config: RunConfig, state: dict, records: dict[
         "id": state["id"],
         "started_at": state["started_at"],
         "updated_at": datetime.now(timezone.utc).isoformat(),
+        "completed_at": completed_at,
         "manifest_path": corpus.path,
         "manifest_sha256": corpus.sha256,
         "runtime_platform": state.get("runtime_platform") or _runtime_platform(),
