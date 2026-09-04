@@ -17,3 +17,8 @@ The first outcome-free selection returned the same 30 PR IDs as v5. The preserve
 [`pre-execution-amendment.md`](./pre-execution-amendment.md) record why v6 mechanically
 excludes the frozen v5 manifest before applying the repository cap. The replacement corpus
 will remain governed by every other preregistered selection rule.
+
+The amended selector then froze 30 PRs with no v5 overlap. The hash-pinned
+[`corpus.json`](./corpus.json) and [`selection-report.md`](./selection-report.md) record the
+21 represented repositories, every exclusion, and the 27 `uv.lock` plus three Poetry
+instances. No v6 execution outcome existed when this selection was committed.
