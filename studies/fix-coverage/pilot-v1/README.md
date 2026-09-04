@@ -15,3 +15,7 @@ The sequence matters:
 
 Any method change after step 1 receives its own commit explaining why. A low VERIFIED
 fraction, an exhausted corpus, or an unavailable cost figure is a valid result.
+
+The original top-50 frame was exhausted with zero included instances. See
+[`selection-report.md`](./selection-report.md) and the complete [`corpus.json`](./corpus.json).
+This is not reported as 0% VERIFIED because no investigation was run.
