@@ -10,6 +10,7 @@ import hashlib
 import json
 import math
 import os
+import platform
 import re
 import signal
 import subprocess
@@ -374,6 +375,7 @@ def create_public_fix_coverage_report(
             "private_report_sha256": hashlib.sha256(report_bytes).hexdigest(),
             "preregistration": corpus.preregistration,
             "headline": private["headline"],
+            "runtime_platform": private.get("runtime_platform"),
             "verdict_counts": private["verdict_counts"],
             "preregistered_failure_taxonomy": private["failure_taxonomy"],
             "refined_failure_taxonomy_schema": TAXONOMY_SCHEMA,
@@ -946,6 +948,7 @@ def _aggregate(corpus: FixCorpus, config: RunConfig, state: dict, records: dict[
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "manifest_path": corpus.path,
         "manifest_sha256": corpus.sha256,
+        "runtime_platform": _runtime_platform(),
         "preregistration": corpus.preregistration,
         "config": config.to_dict(),
         "requested_instances": requested,
@@ -1055,6 +1058,37 @@ def _case_logs(case: dict) -> str:
 
 def _needs_service(text: str) -> bool:
     return any(pattern.search(text) for pattern in _SERVICE_PATTERNS)
+
+
+def _runtime_platform(docker_bin: str = "docker") -> dict:
+    """Record what the sandbox actually built for.
+
+    Dependency resolution is platform-specific: a lockfile that installs cleanly on x86_64
+    can fail on arm64 for want of a wheel, and a package can be gated to one architecture
+    entirely. A coverage number that does not say which platform produced it cannot be
+    compared against another run, and the environment-install failures are exactly where
+    that difference shows up.
+    """
+    record: dict[str, str | None] = {
+        "host_machine": platform.machine() or None,
+        "host_system": (platform.system() or "").lower() or None,
+        "sandbox_os": None,
+        "sandbox_architecture": None,
+    }
+    try:
+        probe = subprocess.run(
+            [docker_bin, "version", "--format", "{{.Server.Os}}/{{.Server.Arch}}"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return record
+    if probe.returncode == 0 and "/" in probe.stdout:
+        os_name, _, architecture = probe.stdout.strip().partition("/")
+        record["sandbox_os"] = os_name or None
+        record["sandbox_architecture"] = architecture or None
+    return record
 
 
 def _wilson(successes: int, total: int) -> tuple[float, float]:

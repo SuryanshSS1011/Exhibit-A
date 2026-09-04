@@ -733,3 +733,51 @@ def test_subprocess_history_does_not_replay_a_completed_quota_attempt(tmp_path: 
 
     assert reusable is None, "resume must launch a fresh attempt after quota returns"
     assert quota_attempts == 1, "the non-outcome attempt remains visible in the audit trail"
+
+
+def test_the_report_records_the_platform_it_measured_on(tmp_path: Path) -> None:
+    """Install failures are platform-specific, so a number without a platform is unusable."""
+    corpus = _corpus_of(tmp_path, 1)
+
+    def runner(instance: FixInstance, root: Path, timeout_s: float) -> WorkerResult:
+        return replace(
+            _result(
+                case={
+                    "verdict": "VERIFIED",
+                    "hypotheses": [{"reason": None}],
+                    "evidence": {},
+                    "proposal_runs": [],
+                }
+            ),
+            instance_id=instance.id,
+        )
+
+    report = run_fix_coverage_study(
+        corpus=corpus, output_root=tmp_path / "run", config=_config(), runner=runner
+    )
+    recorded = report["runtime_platform"]
+
+    assert set(recorded) == {
+        "host_machine",
+        "host_system",
+        "sandbox_os",
+        "sandbox_architecture",
+    }
+    assert recorded["host_machine"], "the host architecture is always knowable"
+
+
+def test_a_missing_docker_leaves_the_sandbox_platform_unknown_not_wrong(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Guessing the sandbox platform would be worse than admitting it is unknown."""
+    from exhibit_a.studies import fix_coverage
+
+    def absent(*args: object, **kwargs: object):
+        raise OSError("docker not found")
+
+    monkeypatch.setattr(fix_coverage.subprocess, "run", absent)
+    recorded = fix_coverage._runtime_platform()
+
+    assert recorded["sandbox_os"] is None
+    assert recorded["sandbox_architecture"] is None
+    assert recorded["host_machine"]
