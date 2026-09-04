@@ -1,0 +1,83 @@
+{
+  "schema_version": "fix-coverage-preregistration/v5",
+  "registered_at": "2026-09-04T15:17:43Z",
+  "parent_commit": "51d515335448183eaa012b7dab251e64e344e93a",
+  "supersedes_for_future_collection": "studies/fix-coverage/pilot-v4/preregistration.json",
+  "pilot_v4_preregistration_sha256": "668aa21913acb096fceab310f896728097c0f31684a5c30e89c297cabe3ed86a",
+  "pilot_v4_corpus_sha256": "b293d97d3a3f786339bc964460562b0824aec960323c6f8fe84406bddae26cd4",
+  "reason_for_new_pilot": "Pilot v4 selected its frozen corpus before uv.lock became an accepted environment source. It also spent six corpus rows on provider quota failures and led interpretation with the whole-pipeline VERIFIED fraction without separating whether the deterministic judge was reached. Pilot v5 selects a new corpus under the expanded eligibility rule, leaves quota-blocked instances unattempted for resume, and preregisters judge reach plus a dependency-install failure breakdown.",
+  "selection": {
+    "repository_query": "language:Python fork:false archived:false",
+    "repository_order": "stargazers_count descending in the cached v4 source frame",
+    "source_frame": "Reuse the v4 public GitHub metadata and clone cache where present so the 490-repository frame is held constant; rerun every environment eligibility decision with the v5 code and fetch only missing metadata under the registered retry rule.",
+    "repository_frame": "First 50 repositories accepted by the current root pinned-environment parser, scanning at most 1,000.",
+    "accepted_root_environment_sources_in_precedence_order": [
+      "uv.lock",
+      "poetry.lock",
+      "Pipfile.lock",
+      "requirements*.txt"
+    ],
+    "uv_lock_rule": "Accept registry packages only when exactly versioned and carrying a sha256 artifact hash; skip the local project entry; reject git, URL, directory, editable dependency, missing-version, or missing-hash entries.",
+    "candidate_search": "First 100 merged-PR results per retained repository in the date window, sorted updated ascending.",
+    "bug_indicator": "Exact case-insensitive bug label OR title beginning fix, fixed, fixes, or fixing.",
+    "date_window": "2026-02-17 through 2026-08-31 inclusive",
+    "claim": "Verbatim PR title with no added expected signature.",
+    "revisions": "GitHub merge_commit_sha and its first parent.",
+    "instance_checks": "Commit date, production Python diff, accepted pinned environment on both revisions, and resolvable Git relationship.",
+    "candidate_order": "merged_at ascending within repository, round-robin by repository star rank.",
+    "per_repository_cap": 5,
+    "target_instances": 30,
+    "github_transport_attempts": 5,
+    "github_transport_backoff_seconds": [1, 2, 4, 8],
+    "outcome_based_exclusions": "forbidden"
+  },
+  "model": {
+    "requested_model": "gpt-5.6-sol",
+    "provider": "codex_cli",
+    "knowledge_cutoff": "2026-02-16",
+    "confirmed_identity_rule": "Record backend telemetry when present; otherwise preserve unknown_no_telemetry explicitly.",
+    "source": "https://developers.openai.com/api/docs/models/gpt-5.6-sol"
+  },
+  "execution": {
+    "sandbox": "Docker, unprivileged, network disabled, credentials unavailable.",
+    "existing_suite_preflight": true,
+    "reruns": 5,
+    "max_refine": 3,
+    "execution_timeout_seconds": 120,
+    "per_instance_wall_clock_ceiling_seconds": 720,
+    "total_active_wall_clock_ceiling_seconds": 21600,
+    "minimize_verified": false,
+    "score_evidence_strength": false,
+    "outcome_retry_rule": "One completed attempt per instance. Resume skips completed checkpoints. An interrupted attempt may be resumed only while its incomplete attempt remains recorded; never retry merely to seek a better verdict.",
+    "provider_quota_rule": "An explicit quota or usage-limit response halts the study immediately and is not checkpointed. The affected instance remains unattempted and is the first instance on resume after quota capacity returns.",
+    "completion_rule": "Do not publish a final v5 result until complete is true, halted_reason is null, and all 30 instances have completed checkpoints. Intermediate halted reports remain private operational state."
+  },
+  "analysis": {
+    "primary_metric": "reached_judge_fraction = judged_denominator / all 30 included instances; report this first.",
+    "judged_definition": "VERIFIED, PARTIAL, or a classified candidate rejection produced after a candidate was executed by the deterministic judge. Plumbing failures, proposal silence, provider unavailability, and catch-all rejections are not judged.",
+    "conditional_verification": "Report VERIFIED / judged_denominator and its two-sided 95% Wilson interval immediately after judge reach.",
+    "whole_pipeline_headline": "Report VERIFIED / all 30 included instances and PARTIAL separately; never merge PARTIAL into VERIFIED.",
+    "provider_unavailable": "Report separately and do not absorb it into judged or proposal silence.",
+    "failure_taxonomy": "fix-coverage-failure-taxonomy/v3 with the 20% catch-all refinement trigger; preserve both preregistered and any refined view without changing Cases or verdicts.",
+    "environment_dependency_install_breakdown": {
+      "schema_version": "fix-coverage-environment-install-taxonomy/v1",
+      "raw_reason_policy": "Raw environment diagnostics remain private. Publish only the per-instance category and aggregate counts.",
+      "categories": [
+        "python_version_incompatible",
+        "pinned_distribution_unavailable",
+        "dependency_resolution_conflict",
+        "artifact_hash_or_integrity_failure",
+        "package_index_or_network_failure",
+        "native_distribution_build_failure",
+        "package_build_backend_or_metadata_failure",
+        "other_install_failure"
+      ],
+      "classification_precedence": "The category order above is binding; first matching category wins.",
+      "validation": "Applied before registration to the 17 private v4 dependency-install reasons: 5 package build/metadata, 5 unavailable distributions, 3 resolution conflicts, 1 native build, and 3 other. No raw reason is published.",
+      "refinement_rule": "If other_install_failure exceeds 20% of dependency-install failures, refine the classifier after outcomes without changing the corpus, Cases, verdicts, or raw reasons; commit the reason and report both views."
+    },
+    "selection_exclusions": "Report repository exclusions, revision/environment eligibility exclusions, and sampling-boundary exclusions separately.",
+    "cost": "Report active and end-to-end wall time plus provider-reported spend only. Unavailable model telemetry is not zero and must not be estimated from incomplete data.",
+    "interpretation": "Rank the constraints and make a product-versus-research-instrument judgment without changing the corpus or rerunning completed outcomes."
+  }
+}
