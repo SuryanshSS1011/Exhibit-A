@@ -336,9 +336,14 @@ def _environment_spec(repo: RepoState, *, base_reference: str) -> _EnvironmentSp
     if not root.is_dir():
         raise EnvironmentSetupError(f"repo checkout not found: {root}")
 
+    uv_lock = root / "uv.lock"
     poetry_lock = root / "poetry.lock"
     pipfile_lock = root / "Pipfile.lock"
-    if poetry_lock.is_file():
+    # uv.lock is tried first: it is a complete resolution and carries artifact hashes, so
+    # it pins bytes rather than versions.
+    if uv_lock.is_file():
+        requirements = (_requirements_from_uv(uv_lock),)
+    elif poetry_lock.is_file():
         requirements = (_requirements_from_poetry(poetry_lock),)
     elif pipfile_lock.is_file():
         requirements = (_requirements_from_pipfile(pipfile_lock),)
@@ -346,7 +351,7 @@ def _environment_spec(repo: RepoState, *, base_reference: str) -> _EnvironmentSp
         requirement_files = sorted(root.glob("requirements*.txt"))
         if not requirement_files:
             raise EnvironmentSetupError(
-                "no poetry.lock, Pipfile.lock, or requirements*.txt was found; "
+                "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; "
                 "dependency discovery is intentionally disabled"
             )
         requirements = tuple(path.read_text() for path in requirement_files)
@@ -366,6 +371,70 @@ def _environment_spec(repo: RepoState, *, base_reference: str) -> _EnvironmentSp
     return _EnvironmentSpec(
         f"exhibit-a-env:{digest.hexdigest()[:20]}", requirements, base_reference
     )
+
+
+def _requirements_from_uv(path: Path) -> str:
+    """Convert a uv lockfile into an exactly pinned, hash-bearing requirements file.
+
+    A uv lockfile is a complete resolution: every transitive dependency is present with an
+    exact version and the sha256 of every artifact it may install. That is strictly more
+    than a version pin, so the generated file carries the hashes through and the build
+    installs under ``--require-hashes``.
+    """
+    try:
+        payload = tomllib.loads(path.read_text())
+        packages = payload["package"]
+    except (OSError, KeyError, tomllib.TOMLDecodeError) as exc:
+        raise EnvironmentSetupError(f"invalid uv.lock: {exc}") from exc
+    if not isinstance(packages, list):
+        raise EnvironmentSetupError("uv.lock package table is invalid")
+
+    entries: list[str] = []
+    for package in packages:
+        if not isinstance(package, dict):
+            raise EnvironmentSetupError("uv.lock package entry is invalid")
+        source = package.get("source")
+        if not isinstance(source, dict) or not source:
+            raise EnvironmentSetupError("uv.lock package declares no source")
+        kind = next(iter(source))
+        if kind in {"editable", "virtual", "directory"}:
+            # The project under test itself; its source is the checkout, not an index.
+            continue
+        if kind != "registry":
+            raise EnvironmentSetupError(
+                f"uv.lock package {package.get('name')!r} comes from {kind!r}, "
+                "which cannot be reproduced from an index"
+            )
+        name = package.get("name")
+        version = package.get("version")
+        if not isinstance(name, str) or not isinstance(version, str) or not version:
+            raise EnvironmentSetupError("uv.lock contains an unpinned package")
+        hashes = _uv_artifact_hashes(package)
+        if not hashes:
+            raise EnvironmentSetupError(f"uv.lock package {name!r} carries no artifact hash")
+        requirement = f"{name}=={version}"
+        marker = package.get("marker")
+        if isinstance(marker, str) and marker.strip():
+            requirement += f" ; {marker.strip()}"
+        entries.append(" \\\n    ".join([requirement, *(f"--hash={digest}" for digest in hashes)]))
+
+    if not entries:
+        raise EnvironmentSetupError("uv.lock contains no installable dependencies")
+    return "\n".join(sorted(entries)) + "\n"
+
+
+def _uv_artifact_hashes(package: dict) -> tuple[str, ...]:
+    """Every sha256 pip may need, since which artifact it picks depends on the platform."""
+    digests: list[str] = []
+    sdist = package.get("sdist")
+    if isinstance(sdist, dict) and isinstance(sdist.get("hash"), str):
+        digests.append(sdist["hash"])
+    wheels = package.get("wheels")
+    if isinstance(wheels, list):
+        for wheel in wheels:
+            if isinstance(wheel, dict) and isinstance(wheel.get("hash"), str):
+                digests.append(wheel["hash"])
+    return tuple(sorted({d for d in digests if d.startswith("sha256:")}))
 
 
 def _requirements_from_poetry(path: Path) -> str:

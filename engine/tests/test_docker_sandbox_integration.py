@@ -138,3 +138,46 @@ def test_source_is_never_mutated_by_the_run():
 
     assert (FIXTURE / "inventory.py").read_text() == before
     assert not (FIXTURE / "test_smoke.py").exists()
+
+
+@requires_daemon
+def test_a_uv_lock_repository_builds_and_installs_under_require_hashes(tmp_path: Path):
+    """Parsing a uv lockfile is worthless if pip then rejects what we generate.
+
+    The hashes below are the real published sha256 values for six 1.17.0, so this exercises
+    the actual hash-checking install path rather than a parse.
+    """
+    sdist = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81"
+    wheel = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274"
+    (tmp_path / "uv.lock").write_text(
+        "version = 1\n"
+        'requires-python = ">=3.11"\n\n'
+        "[[package]]\n"
+        'name = "six"\n'
+        'version = "1.17.0"\n'
+        'source = { registry = "https://pypi.org/simple" }\n'
+        f'sdist = {{ url = "https://example.invalid/six.tar.gz", hash = "{sdist}" }}\n'
+        f'wheels = [{{ url = "https://example.invalid/six.whl", hash = "{wheel}" }}]\n\n'
+        "[[package]]\n"
+        'name = "the-project"\n'
+        'version = "0.1.0"\n'
+        'source = { virtual = "." }\n'
+    )
+    (tmp_path / "mod.py").write_text("VALUE = 6\n")
+
+    outcome = DockerExecutor().run(
+        RepoState(path=str(tmp_path), label="target", source="uv-lock-smoke"),
+        ExecSpec(
+            test_path="test_uv.py",
+            test_code=(
+                "import six\n"
+                "from mod import VALUE\n\n"
+                "def test_locked_dependency_is_importable():\n"
+                "    assert six.PY3 and VALUE == 6\n"
+            ),
+            command="python3 -m pytest -x -q test_uv.py",
+            timeout_s=600,
+        ),
+    )
+
+    assert outcome.passed, outcome.log
