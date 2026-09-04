@@ -12,7 +12,7 @@ excluded at capture time so usernames,
 hostnames, tokens, and home paths never entered a frame. Temporary paths are under
 `/tmp/ea`.
 
-The published assets total about 2 MiB. Each recording is below 5 MiB and the combined
+The published assets total about 1.2 MiB. Each recording is below 5 MiB and the combined
 media is well below the 30 MiB repository budget. SHA-256 values below cover the exact
 checked-in bytes.
 
@@ -67,10 +67,14 @@ browser screenshots of those pages, not reconstructed passport data.
 ## Verdict pair
 
 - **Asset:** `assets/verdict-pair.png`
-- **Format and size:** PNG, 1600 × 1140, 2×, RGBA, 1,030,647 bytes
-- **SHA-256:** `b3629a4ffe5c896dc4ce3306f1f929ed1bbadda367cd63f5a5d9d492ffcb1252`
+- **Format and size:** PNG, 1600 × 311, 2×, RGB, 238,323 bytes
+- **SHA-256:** `bab9502b98e74769b0b019116732a252905e7b0b276d72c8b09b807dc2d54621`
 - **Produced by:** macOS Terminal in its light theme; two real commands in adjacent windows;
-  native 2× screenshot
+  native 2× screenshot, then cropped to the content
+- **Edited after capture:** cropped from 1600 × 1140 to 1600 × 311 and flattened from RGBA
+  to RGB. The original capture was 78% empty terminal below the output. Only blank space
+  was removed; no pixel of output was altered, and the file shrank from 1,030,647 to
+  238,323 bytes
 - **Inputs:** byte-for-byte copies of the two checked-in Cases under `/tmp/ea`
 
 The commands shown are:
