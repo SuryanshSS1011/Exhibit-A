@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from exhibit_a.studies.fix_corpus import _date, _is_production_python
+from exhibit_a.studies.fix_corpus import _date, _is_production_python, _top_repositories
 from exhibit_a.studies.fix_coverage import (
     CORPUS_SCHEMA,
     FixCorpus,
@@ -271,3 +271,24 @@ def test_selector_distinguishes_production_paths_and_inclusive_end_date() -> Non
     assert not _is_production_python("tests/test_runtime.py")
     assert not _is_production_python("docs/conf.py")
     assert _date("2026-08-31", end_of_day=True).hour == 23
+
+
+def test_repository_search_paginates_in_stable_star_order() -> None:
+    class Client:
+        def __init__(self) -> None:
+            self.calls = []
+
+        def get(self, url: str) -> dict:
+            self.calls.append(url)
+            page = len(self.calls)
+            size = 100 if page == 1 else 20
+            offset = (page - 1) * 100
+            return {"items": [{"rank": offset + index} for index in range(size)]}
+
+    client = Client()
+    repositories = _top_repositories(client, 120)
+
+    assert [item["rank"] for item in repositories] == list(range(120))
+    assert len(client.calls) == 2
+    assert "page=1" in client.calls[0]
+    assert "page=2" in client.calls[1]

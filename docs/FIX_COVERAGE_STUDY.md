@@ -17,18 +17,25 @@ on every buggy-state rerun and a pass on the fixed state. PARTIAL is counted sep
 
 ## Pre-register, select, then run
 
-The pilot method is checked in at
+The original pilot method is checked in at
 [`studies/fix-coverage/pilot-v1/preregistration.json`](https://github.com/suryanshss1011/Exhibit-A/blob/main/studies/fix-coverage/pilot-v1/preregistration.json).
 It fixes the sample size, dates, ordering, exclusions, model, budgets, retry policy, and
-taxonomy before the first outcome is observed. Corpus selection is also executable:
+taxonomy before the first outcome is observed. That first frame produced no instances:
+45 of the top 50 repositories did not pass pinned-environment eligibility, four had no
+matching PR, and one clone failed. The result is recorded rather than called “0%.”
+
+Before any model call or verdict, pilot v2 amended only the repository frame: scan at most
+1,000 star-ranked repositories and retain the first 50 accepted by the current pinned
+environment loader. Corpus selection is executable:
 
 ```bash
 cd engine
 python3 -m exhibit_a.cli select-fix-corpus \
-  --preregistration ../studies/fix-coverage/pilot-v1/preregistration.json \
+  --preregistration ../studies/fix-coverage/pilot-v2/preregistration.json \
   --date-from 2026-02-17 --date-to 2026-08-31 \
-  --repositories 50 --instances 30 --per-repository-cap 5 \
-  --out ../studies/fix-coverage/pilot-v1/corpus.json
+  --repositories 50 --repository-scan-limit 1000 \
+  --instances 30 --per-repository-cap 5 \
+  --out ../studies/fix-coverage/pilot-v2/corpus.json
 ```
 
 Selection uses GitHub's public API and Git transport. `GITHUB_TOKEN` is optional and is
@@ -41,11 +48,11 @@ Run the registered pilot from `engine/`:
 
 ```bash
 python3 -m exhibit_a.cli fix-coverage \
-  ../studies/fix-coverage/pilot-v1/corpus.json \
+  ../studies/fix-coverage/pilot-v2/corpus.json \
   --model gpt-5.6-sol \
   --instance-timeout-s 720 --total-ceiling-s 21600 \
   --execution-timeout-s 120 --reruns 5 --max-refine 3 \
-  --out ../.exhibit-a/research/fix-coverage/pilot-v1
+  --out ../.exhibit-a/research/fix-coverage/pilot-v2
 ```
 
 Each instance runs in a separate process group. A hard per-instance ceiling can terminate
@@ -76,6 +83,7 @@ explicit `unknown_cli_no_telemetry` value.
 
 ## Pilot result
 
-No result belonged here when the method was preregistered. The corpus, aggregate, and
-interpretation are added after the pilot without rewriting this fact or dropping failed
-instances.
+Pilot v1 stopped at selection with 0 included instances, so no VERIFIED fraction exists.
+No Exhibit A outcome belonged here when pilot v2 was preregistered. Its corpus, aggregate,
+and interpretation are added after the run without rewriting either fact or dropping
+failed instances.

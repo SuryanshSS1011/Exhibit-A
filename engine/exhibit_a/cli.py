@@ -976,6 +976,7 @@ def cmd_select_fix_corpus(args: argparse.Namespace) -> int:
             date_from=args.date_from,
             date_to=args.date_to,
             repository_count=args.repositories,
+            repository_scan_limit=args.repository_scan_limit,
             target_instances=args.instances,
             per_repository_cap=args.per_repository_cap,
             token_env=args.github_token_env,
@@ -1535,6 +1536,7 @@ def main(argv: list[str] | None = None) -> int:
     select_corpus.add_argument("--date-from", required=True, help="inclusive YYYY-MM-DD")
     select_corpus.add_argument("--date-to", required=True, help="inclusive YYYY-MM-DD")
     select_corpus.add_argument("--repositories", type=int, default=50)
+    select_corpus.add_argument("--repository-scan-limit", type=int, default=1000)
     select_corpus.add_argument("--instances", type=int, default=30)
     select_corpus.add_argument("--per-repository-cap", type=int, default=5)
     select_corpus.add_argument(

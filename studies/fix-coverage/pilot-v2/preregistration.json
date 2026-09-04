@@ -1,0 +1,71 @@
+{
+  "schema_version": "fix-coverage-preregistration/v2",
+  "registered_at": "2026-09-04T04:51:01Z",
+  "parent_commit": "d4eeec315a7fb937b824e205bec1036d3cb47453",
+  "supersedes_for_future_collection": "studies/fix-coverage/pilot-v1/preregistration.json",
+  "original_preregistration_sha256": "2b3cca2df35a5f4c191c3529ede4597c270feaaee95e18b552b992d64b193aee",
+  "original_selection_sha256": "a0a882cdb102117c3e28eb937a96aba8f24a535156ca9950b3c31c8bec27d70c",
+  "reason_for_amendment": "The original top-50 repository frame yielded zero instances before any model call, container build, or Exhibit A verdict: 45 repositories failed pinned-environment eligibility, four eligible repositories had no matching bug PR, and one clone failed. A verdict pilot therefore had no denominator.",
+  "observations_available_when_registered": {
+    "exhibit_a_outcomes": 0,
+    "model_calls": 0,
+    "included_instances": 0,
+    "repository_screening_counts": {
+      "no_supported_root_lock": 35,
+      "invalid_or_unpinned_root_input": 10,
+      "accepted_environment_but_no_matching_bug_pr": 4,
+      "clone_failed": 1
+    }
+  },
+  "changed_selection_rule": {
+    "repository_query": "language:Python fork:false archived:false",
+    "repository_order": "stargazers_count descending at selection time",
+    "repository_frame": "Scan in star order and retain the first 50 repositories whose default-branch root dependency input is accepted by the current Docker executor.",
+    "hard_scan_limit": 1000,
+    "if_frame_is_exhausted": "Report the shortfall; do not substitute hand-picked repositories.",
+    "rationale": "This implements the originally intended population—most-starred Python repositories that ship a lock accepted by Exhibit A—without removing any runtime failure or consulting a verdict."
+  },
+  "unchanged_selection_rules": {
+    "pull_request_rule": "Merged PRs with an exact case-insensitive bug label, merged from 2026-02-17 through 2026-08-31 inclusive.",
+    "claim_rule": "Use the PR title verbatim. Do not rewrite it or add an expected failure signature.",
+    "revision_rule": "The recorded fix is GitHub's merge_commit_sha and the buggy revision is its first parent.",
+    "instance_eligibility": [
+      "The fixing commit timestamp is inside the registered date window.",
+      "At least one production Python file changed; paths under test, tests, testing, docs, documentation, examples, or benchmarks do not count.",
+      "Both buggy and fixed revisions have a root pinned dependency input accepted by the current Docker executor.",
+      "Both revisions and their relationship resolve through Git without manual repair."
+    ],
+    "candidate_order": "Within each repository, merged_at ascending; then round-robin by repository star rank.",
+    "per_repository_cap": 5,
+    "target_instances": 30,
+    "stopping_rule": "Stop at 30 included instances, or report that the mechanically selected universe was exhausted.",
+    "exclusions": "Record every repository-level and PR-level exclusion, including candidates outside the per-repository cap or target sample. No outcome-based exclusion is allowed."
+  },
+  "unchanged_model": {
+    "requested_model": "gpt-5.6-sol",
+    "provider": "codex_cli",
+    "knowledge_cutoff": "2026-02-16",
+    "confirmed_identity_rule": "Record backend telemetry when present; otherwise preserve unknown_cli_no_telemetry explicitly.",
+    "source": "https://developers.openai.com/api/docs/models/gpt-5.6-sol"
+  },
+  "unchanged_execution": {
+    "sandbox": "Docker executor with network disabled, credentials unavailable, and unprivileged execution",
+    "existing_suite_preflight": true,
+    "reruns": 5,
+    "max_refine": 3,
+    "execution_timeout_seconds": 120,
+    "per_instance_wall_clock_ceiling_seconds": 720,
+    "total_active_wall_clock_ceiling_seconds": 21600,
+    "minimize_verified": false,
+    "score_evidence_strength": false,
+    "outcome_retry_rule": "One completed attempt per instance; resume skips completed checkpoints and records interrupted attempts."
+  },
+  "unchanged_analysis": {
+    "headline": "VERIFIED divided by all included corpus instances.",
+    "partial": "Report separately and never merge with VERIFIED.",
+    "confidence_interval": "Two-sided 95% Wilson score interval.",
+    "taxonomy": "Use the complete taxonomy and 20% catch-all refinement trigger from pilot-v1 preregistration.",
+    "cost": "Report provider telemetry; unavailable is not zero.",
+    "interpretation": "Do not change or filter the corpus after observing outcomes."
+  }
+}

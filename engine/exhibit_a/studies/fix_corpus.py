@@ -81,6 +81,7 @@ def select_fix_corpus(
     date_from: str,
     date_to: str,
     repository_count: int,
+    repository_scan_limit: int,
     target_instances: int,
     per_repository_cap: int,
     token_env: str = "GITHUB_TOKEN",
@@ -88,6 +89,8 @@ def select_fix_corpus(
     """Select a stable manifest without executing Exhibit A or observing outcomes."""
     if not 1 <= repository_count <= 100:
         raise ValueError("repository_count must be between 1 and 100")
+    if not repository_count <= repository_scan_limit <= 1000:
+        raise ValueError("repository_scan_limit must be between repository_count and 1000")
     if not 1 <= target_instances <= 1000:
         raise ValueError("target_instances must be between 1 and 1000")
     if not 1 <= per_repository_cap <= 100:
@@ -100,11 +103,14 @@ def select_fix_corpus(
     selected_at = datetime.now(timezone.utc).isoformat()
     cache_root = Path(cache).resolve()
     api = GitHubClient(cache_root / "github-api", token_env)
-    repositories = _top_repositories(api, repository_count)
+    repositories = _top_repositories(api, repository_scan_limit)
     repository_records = []
     queues: list[tuple[dict, deque[dict], Path]] = []
     exclusions: list[dict] = []
+    environment_eligible = 0
     for rank, repository in enumerate(repositories, start=1):
+        if environment_eligible >= repository_count:
+            break
         record = {
             "rank": rank,
             "full_name": repository["full_name"],
@@ -127,7 +133,11 @@ def select_fix_corpus(
             repository_records.append(record)
             continue
         try:
-            _validate_environment_checkout(clone, str(repository["html_url"]))
+            _validate_environment_tree(
+                clone,
+                str(record["default_head_sha"]),
+                str(repository["html_url"]),
+            )
         except (OSError, ValueError, EnvironmentSetupError) as exc:
             record.update(
                 {
@@ -138,11 +148,13 @@ def select_fix_corpus(
             )
             repository_records.append(record)
             continue
+        environment_eligible += 1
         candidates = _candidate_prs(api, str(repository["full_name"]), date_from, date_to)
         if not candidates:
             record.update(
                 {
-                    "eligible": False,
+                    "eligible": True,
+                    "has_matching_candidates": False,
                     "reason_code": "repository_no_matching_bug_prs",
                     "detail": "no merged PR with exact bug label in the registered window",
                 }
@@ -152,6 +164,7 @@ def select_fix_corpus(
         record.update(
             {
                 "eligible": True,
+                "has_matching_candidates": True,
                 "candidate_prs": len(candidates),
                 "candidate_prs_after_cap": min(len(candidates), per_repository_cap),
             }
@@ -223,6 +236,12 @@ def select_fix_corpus(
             "repository_query": "language:Python fork:false archived:false",
             "repository_order": "stars descending at selection time",
             "repository_count": repository_count,
+            "repository_count_definition": (
+                "first star-ranked repositories passing pinned-environment eligibility"
+            ),
+            "repository_scan_limit": repository_scan_limit,
+            "repositories_scanned": len(repository_records),
+            "environment_eligible_repositories": environment_eligible,
             "pull_request_rule": (
                 f"merged {date_from}..{date_to}, exact case-insensitive label bug"
             ),
@@ -246,21 +265,28 @@ def select_fix_corpus(
 
 
 def _top_repositories(api: GitHubClient, count: int) -> list[dict]:
-    query = urllib.parse.urlencode(
-        {
-            "q": "language:Python fork:false archived:false",
-            "sort": "stars",
-            "order": "desc",
-            "per_page": count,
-        }
-    )
-    payload = api.get(f"{_API}/search/repositories?{query}")
-    items = payload.get("items")
-    if not isinstance(items, list) or len(items) < count:
-        raise ValueError(
-            f"GitHub returned only {len(items) if isinstance(items, list) else 0} repos"
+    repositories = []
+    for page in range(1, (count + 99) // 100 + 1):
+        requested = min(100, count - len(repositories))
+        query = urllib.parse.urlencode(
+            {
+                "q": "language:Python fork:false archived:false",
+                "sort": "stars",
+                "order": "desc",
+                "per_page": requested,
+                "page": page,
+            }
         )
-    return [item for item in items[:count] if isinstance(item, dict)]
+        payload = api.get(f"{_API}/search/repositories?{query}")
+        items = payload.get("items")
+        if not isinstance(items, list):
+            raise TypeError("GitHub repository search returned invalid items")
+        repositories.extend(item for item in items if isinstance(item, dict))
+        if len(items) < requested:
+            break
+    if len(repositories) < count:
+        raise ValueError(f"GitHub returned only {len(repositories)} repositories")
+    return repositories[:count]
 
 
 def _candidate_prs(
@@ -351,8 +377,8 @@ def _resolve_candidate(
     production = [path for path in changed if _is_production_python(path)]
     if not production:
         raise ValueError("no_production_python_change: no production Python file changed")
-    _validate_commit_environment(clone, buggy_sha, str(repository["html_url"]))
-    _validate_commit_environment(clone, fix_sha, str(repository["html_url"]))
+    _validate_environment_tree(clone, buggy_sha, str(repository["html_url"]))
+    _validate_environment_tree(clone, fix_sha, str(repository["html_url"]))
     slug = full_name.casefold().replace("/", "-").replace("_", "-")
     identifier = f"{slug}-pr-{candidate['number']}"
     if len(identifier) > 80:
@@ -384,6 +410,7 @@ def _ensure_default_clone(repository: dict, clone: Path) -> None:
             "--single-branch",
             "--branch",
             str(repository["default_branch"]),
+            "--no-checkout",
             "--no-tags",
             "--",
             f"{repository['html_url']}.git",
@@ -393,21 +420,23 @@ def _ensure_default_clone(repository: dict, clone: Path) -> None:
     )
 
 
-def _validate_commit_environment(clone: Path, sha: str, source: str) -> None:
+def _validate_environment_tree(clone: Path, sha: str, source: str) -> None:
+    names = _git_output(["git", "-C", str(clone), "ls-tree", "--name-only", sha]).splitlines()
+    lock_names = [
+        name
+        for name in names
+        if name in {"poetry.lock", "Pipfile.lock"}
+        or (name.startswith("requirements") and name.endswith(".txt"))
+    ]
     with tempfile.TemporaryDirectory(prefix="exhibit-a-selection-") as temporary:
-        checkout = Path(temporary) / "repo"
-        _git(["git", "-C", str(clone), "worktree", "add", "--detach", str(checkout), sha])
-        try:
-            _validate_environment_checkout(checkout, source)
-        finally:
-            _git(["git", "-C", str(clone), "worktree", "remove", "--force", str(checkout)])
-
-
-def _validate_environment_checkout(checkout: Path, source: str) -> None:
-    _environment_spec(
-        RepoState(str(checkout), "selection", source=source),
-        base_reference="selection-only@sha256:0",
-    )
+        checkout = Path(temporary)
+        for name in lock_names:
+            content = _git_output(["git", "-C", str(clone), "show", f"{sha}:{name}"])
+            (checkout / name).write_text(content + "\n")
+        _environment_spec(
+            RepoState(str(checkout), "selection", source=source),
+            base_reference="selection-only@sha256:0",
+        )
 
 
 def _is_production_python(path: str) -> bool:

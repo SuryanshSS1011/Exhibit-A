@@ -19,3 +19,5 @@ fraction, an exhausted corpus, or an unavailable cost figure is a valid result.
 The original top-50 frame was exhausted with zero included instances. See
 [`selection-report.md`](./selection-report.md) and the complete [`corpus.json`](./corpus.json).
 This is not reported as 0% VERIFIED because no investigation was run.
+The pre-outcome protocol amendment for a second attempt is preserved under
+[`../pilot-v2/`](../pilot-v2/).
