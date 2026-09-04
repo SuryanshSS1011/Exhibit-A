@@ -982,6 +982,7 @@ def cmd_select_fix_corpus(args: argparse.Namespace) -> int:
             target_instances=args.instances,
             per_repository_cap=args.per_repository_cap,
             token_env=args.github_token_env,
+            exclude_manifest=args.exclude_manifest,
         )
     except (OSError, RuntimeError, TypeError, ValueError, subprocess.SubprocessError) as exc:
         print(f"error: fix-coverage corpus selection failed: {exc}", file=sys.stderr)
@@ -1582,6 +1583,10 @@ def main(argv: list[str] | None = None) -> int:
         "--cache",
         default=".exhibit-a/research/fix-coverage-selection-cache",
         help="private API and repository cache",
+    )
+    select_corpus.add_argument(
+        "--exclude-manifest",
+        help="prior corpus whose PRs are mechanically excluded before the repository cap",
     )
     select_corpus.add_argument("--out", required=True, help="corpus manifest path")
     select_corpus.set_defaults(func=cmd_select_fix_corpus)

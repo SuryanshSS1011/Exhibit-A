@@ -93,6 +93,7 @@ def select_fix_corpus(
     target_instances: int,
     per_repository_cap: int,
     token_env: str = "GITHUB_TOKEN",
+    exclude_manifest: str | Path | None = None,
 ) -> dict:
     """Select a stable manifest without executing Exhibit A or observing outcomes."""
     if not 1 <= repository_count <= 100:
@@ -109,6 +110,7 @@ def select_fix_corpus(
         raise ValueError("date_to must not precede date_from")
 
     selected_at = datetime.now(timezone.utc).isoformat()
+    excluded_sources, exclusion_provenance = _load_exclusion_manifest(exclude_manifest)
     cache_root = Path(cache).resolve()
     api = GitHubClient(cache_root / "github-api", token_env)
     repositories = _top_repositories(api, repository_scan_limit)
@@ -158,13 +160,33 @@ def select_fix_corpus(
             continue
         environment_eligible += 1
         candidates = _candidate_prs(api, str(repository["full_name"]), date_from, date_to)
+        candidates, prior_candidates = _exclude_prior_candidates(candidates, excluded_sources)
+        for candidate in prior_candidates:
+            exclusions.append(
+                {
+                    "repository": repository["full_name"],
+                    "pull_number": candidate["number"],
+                    "source_url": candidate["html_url"],
+                    "reason_code": "prior_corpus_member",
+                    "detail": "mechanically excluded by the registered fresh-corpus rule",
+                }
+            )
         if not candidates:
             record.update(
                 {
                     "eligible": True,
                     "has_matching_candidates": False,
-                    "reason_code": "repository_no_matching_bug_prs",
-                    "detail": "no merged PR with exact bug label in the registered window",
+                    "prior_corpus_candidates_excluded": len(prior_candidates),
+                    "reason_code": (
+                        "repository_no_new_matching_bug_prs"
+                        if prior_candidates
+                        else "repository_no_matching_bug_prs"
+                    ),
+                    "detail": (
+                        "all matching PRs were members of the registered prior corpus"
+                        if prior_candidates
+                        else "no merged PR with exact bug label in the registered window"
+                    ),
                 }
             )
             repository_records.append(record)
@@ -173,7 +195,9 @@ def select_fix_corpus(
             {
                 "eligible": True,
                 "has_matching_candidates": True,
-                "candidate_prs": len(candidates),
+                "candidate_prs": len(candidates) + len(prior_candidates),
+                "prior_corpus_candidates_excluded": len(prior_candidates),
+                "candidate_prs_after_prior_exclusion": len(candidates),
                 "candidate_prs_after_cap": min(len(candidates), per_repository_cap),
             }
         )
@@ -264,6 +288,7 @@ def select_fix_corpus(
             ),
             "per_repository_cap": per_repository_cap,
             "target_instances": target_instances,
+            "prior_corpus_exclusion": exclusion_provenance,
             "repositories": repository_records,
             "stopping_reason": (
                 "target_reached"
@@ -276,6 +301,42 @@ def select_fix_corpus(
     }
     _atomic_json(Path(output).resolve(), payload)
     return payload
+
+
+def _load_exclusion_manifest(path: str | Path | None) -> tuple[set[str], dict | None]:
+    if path is None:
+        return set(), None
+    manifest = Path(path).resolve(strict=True)
+    raw = manifest.read_bytes()
+    payload = json.loads(raw)
+    if not isinstance(payload, dict) or payload.get("schema_version") != CORPUS_SCHEMA:
+        raise ValueError("prior corpus exclusion manifest has an incompatible schema")
+    instances = payload.get("instances")
+    if not isinstance(instances, list):
+        raise TypeError("prior corpus exclusion manifest instances must be a list")
+    sources = set()
+    for item in instances:
+        source = item.get("source_url") if isinstance(item, dict) else None
+        if not isinstance(source, str) or not source.startswith("https://"):
+            raise ValueError("prior corpus exclusion manifest has an invalid source URL")
+        sources.add(source)
+    return sources, {
+        "path": str(path),
+        "sha256": hashlib.sha256(raw).hexdigest(),
+        "instances": len(instances),
+        "rule": "exclude matching source_url before applying the per-repository cap",
+    }
+
+
+def _exclude_prior_candidates(
+    candidates: list[dict], excluded_sources: set[str]
+) -> tuple[list[dict], list[dict]]:
+    kept = []
+    excluded = []
+    for candidate in candidates:
+        target = excluded if candidate.get("html_url") in excluded_sources else kept
+        target.append(candidate)
+    return kept, excluded
 
 
 def _top_repositories(api: GitHubClient, count: int) -> list[dict]:

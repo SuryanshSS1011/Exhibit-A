@@ -11,7 +11,9 @@ from exhibit_a.studies.fix_corpus import (
     GitHubClient,
     _candidate_prs,
     _date,
+    _exclude_prior_candidates,
     _is_production_python,
+    _load_exclusion_manifest,
     _top_repositories,
 )
 from exhibit_a.studies.fix_coverage import (
@@ -488,6 +490,30 @@ def test_candidate_rule_accepts_exact_bug_label_or_fix_title() -> None:
     assert [candidate["number"] for candidate in candidates] == [2, 1]
     assert candidates[0]["selection_basis"] == ["fix_title_prefix"]
     assert candidates[1]["selection_basis"] == ["exact_bug_label"]
+
+
+def test_prior_corpus_members_are_excluded_before_the_repository_cap(tmp_path: Path) -> None:
+    prior = {
+        "schema_version": CORPUS_SCHEMA,
+        "instances": [{"source_url": "https://github.com/owner/repo/pull/1"}],
+    }
+    manifest = tmp_path / "prior.json"
+    manifest.write_text(json.dumps(prior))
+    sources, provenance = _load_exclusion_manifest(manifest)
+    candidates = [
+        {"number": 1, "html_url": "https://github.com/owner/repo/pull/1"},
+        {"number": 2, "html_url": "https://github.com/owner/repo/pull/2"},
+    ]
+
+    kept, excluded = _exclude_prior_candidates(candidates, sources)
+
+    assert [item["number"] for item in kept] == [2]
+    assert [item["number"] for item in excluded] == [1]
+    assert provenance is not None
+    assert provenance["instances"] == 1
+    assert provenance["rule"] == (
+        "exclude matching source_url before applying the per-repository cap"
+    )
 
 
 def test_github_client_retries_transient_transport_errors(

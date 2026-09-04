@@ -11,3 +11,9 @@ against v5's two marker-sensitive dependency categories in advance, requires the
 Docker platform beside the dependency breakdown, and forbids outcome-based exclusions.
 
 Selection and result artifacts will be added only after their corresponding frozen steps.
+
+The first outcome-free selection returned the same 30 PR IDs as v5. The preserved
+[`initial-overlap-selection.json`](./initial-overlap-selection.json) and
+[`pre-execution-amendment.md`](./pre-execution-amendment.md) record why v6 mechanically
+excludes the frozen v5 manifest before applying the repository cap. The replacement corpus
+will remain governed by every other preregistered selection rule.
