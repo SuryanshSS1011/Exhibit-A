@@ -800,6 +800,12 @@ def _load_or_create_state(root: Path, corpus: FixCorpus, config: RunConfig) -> d
             raise ValueError("coverage output belongs to a different corpus manifest")
         if state.get("config_sha256") != config_sha:
             raise ValueError("coverage output belongs to different run parameters")
+        if "runtime_platform" not in state:
+            # Older in-progress runs recorded the platform only in the regenerated
+            # aggregate. Persist it on first resume so a later report-only pass cannot
+            # replace a known Docker platform with unknown when the daemon is unavailable.
+            state["runtime_platform"] = _runtime_platform()
+            _atomic_json(path, state)
         return state
     state = {
         "schema_version": RUN_STATE_SCHEMA,
@@ -809,6 +815,7 @@ def _load_or_create_state(root: Path, corpus: FixCorpus, config: RunConfig) -> d
         "manifest_sha256": corpus.sha256,
         "config_sha256": config_sha,
         "config": config.to_dict(),
+        "runtime_platform": _runtime_platform(),
     }
     _atomic_json(path, state)
     return state
@@ -950,7 +957,7 @@ def _aggregate(corpus: FixCorpus, config: RunConfig, state: dict, records: dict[
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "manifest_path": corpus.path,
         "manifest_sha256": corpus.sha256,
-        "runtime_platform": _runtime_platform(),
+        "runtime_platform": state.get("runtime_platform") or _runtime_platform(),
         "preregistration": corpus.preregistration,
         "config": config.to_dict(),
         "requested_instances": requested,

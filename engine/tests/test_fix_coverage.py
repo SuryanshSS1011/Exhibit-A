@@ -799,6 +799,45 @@ def test_the_report_records_the_platform_it_measured_on(tmp_path: Path) -> None:
     assert recorded["host_machine"], "the host architecture is always knowable"
 
 
+def test_resume_preserves_the_original_runtime_platform(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Report regeneration must not silently change the platform provenance."""
+    from exhibit_a.studies import fix_coverage
+
+    recorded = {
+        "host_machine": "arm64",
+        "host_system": "darwin",
+        "sandbox_os": "linux",
+        "sandbox_architecture": "arm64",
+    }
+    probes = 0
+
+    def platform_probe() -> dict[str, str]:
+        nonlocal probes
+        probes += 1
+        if probes > 1:
+            raise AssertionError("resume probed a new platform")
+        return recorded
+
+    monkeypatch.setattr(fix_coverage, "_runtime_platform", platform_probe)
+    corpus = _corpus_of(tmp_path, 1)
+
+    def runner(instance: FixInstance, root: Path, timeout: float) -> WorkerResult:
+        return replace(_result(case=_uncertain()), instance_id=instance.id)
+
+    first = run_fix_coverage_study(
+        corpus=corpus, output_root=tmp_path / "run", config=_config(), runner=runner
+    )
+    resumed = run_fix_coverage_study(
+        corpus=corpus, output_root=tmp_path / "run", config=_config(), runner=runner
+    )
+
+    assert first["runtime_platform"] == recorded
+    assert resumed["runtime_platform"] == recorded
+    assert probes == 1
+
+
 def test_a_missing_docker_leaves_the_sandbox_platform_unknown_not_wrong(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -20,3 +20,10 @@ breakdown never depended on this bookkeeping field.
 This is a reporting-only correction discovered while checking the completed private
 aggregate before publication. Re-running the aggregate reads the already-frozen worker
 checkpoints; it does not retry, replace, or reclassify an instance.
+
+The same check found that the initial platform implementation reprobed Docker every time
+the aggregate was regenerated. A checkpoint-only resume could therefore replace a known
+sandbox platform with null fields if Docker was temporarily inaccessible. Runtime platform
+is now persisted in run state and reused for every later aggregate. The v6 state predates
+that field, so it is populated once from the same Docker daemon before public export. This
+changes provenance retention only; it does not run or reclassify any corpus instance.
