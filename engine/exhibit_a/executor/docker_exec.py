@@ -23,6 +23,7 @@ import tempfile
 import time
 import tomllib
 import uuid
+from collections import deque
 from pathlib import Path
 
 from ..replay_environment import PINNED_PYTEST_VERSION
@@ -42,6 +43,12 @@ logger = logging.getLogger(__name__)
 _BASE_IMAGE = "python:3.12-slim"
 _CLEANUP_TIMEOUT_S = 30
 _PULL_TIMEOUT_S = 600
+# uv lock sources that mean "the checkout under test", not something to install.
+_UV_LOCAL_SOURCES = frozenset({"editable", "virtual", "directory"})
+# A package reachable by more paths than this gets installed unconditionally rather
+# than carrying an unwieldy marker. That is the pre-existing behaviour, so it can only
+# install too much, never too little.
+_UV_MAX_CLAUSES = 24
 _PINNED_REQUIREMENT = re.compile(r"^[A-Za-z0-9_.-]+(?:\[[A-Za-z0-9_,.-]+\])?==[^\s;\\]+")
 
 
@@ -389,6 +396,8 @@ def _requirements_from_uv(path: Path) -> str:
     if not isinstance(packages, list):
         raise EnvironmentSetupError("uv.lock package table is invalid")
 
+    conditions = _uv_reachability(packages)
+
     entries: list[str] = []
     for package in packages:
         if not isinstance(package, dict):
@@ -397,8 +406,11 @@ def _requirements_from_uv(path: Path) -> str:
         if not isinstance(source, dict) or not source:
             raise EnvironmentSetupError("uv.lock package declares no source")
         kind = next(iter(source))
-        if kind in {"editable", "virtual", "directory"}:
+        if kind in _UV_LOCAL_SOURCES:
             # The project under test itself; its source is the checkout, not an index.
+            continue
+        if conditions is not None and package.get("name") not in conditions:
+            # Resolved for some other platform or Python version and unreachable here.
             continue
         if kind != "registry":
             raise EnvironmentSetupError(
@@ -413,14 +425,127 @@ def _requirements_from_uv(path: Path) -> str:
         if not hashes:
             raise EnvironmentSetupError(f"uv.lock package {name!r} carries no artifact hash")
         requirement = f"{name}=={version}"
-        marker = package.get("marker")
-        if isinstance(marker, str) and marker.strip():
-            requirement += f" ; {marker.strip()}"
+        marker = _uv_combined_marker(package, conditions)
+        if marker:
+            requirement += f" ; {marker}"
         entries.append(" \\\n    ".join([requirement, *(f"--hash={digest}" for digest in hashes)]))
 
     if not entries:
         raise EnvironmentSetupError("uv.lock contains no installable dependencies")
     return "\n".join(sorted(entries)) + "\n"
+
+
+def _uv_dependency_edges(package: dict, *, include_dev: bool) -> list[tuple[str, str | None]]:
+    """Every way this package can pull in another, with the marker gating each edge."""
+    edges: list[tuple[str, str | None]] = []
+
+    def collect(entries: object) -> None:
+        if not isinstance(entries, list):
+            return
+        for entry in entries:
+            if isinstance(entry, dict) and isinstance(entry.get("name"), str):
+                marker = entry.get("marker")
+                edges.append((entry["name"], marker if isinstance(marker, str) else None))
+
+    collect(package.get("dependencies"))
+    for group in (package.get("optional-dependencies") or {}).values():
+        collect(group)
+    if include_dev:
+        metadata = package.get("metadata")
+        if isinstance(metadata, dict):
+            for group in (metadata.get("requires-dev") or {}).values():
+                collect(group)
+    return edges
+
+
+def _uv_reachability(packages: list) -> dict[str, set[frozenset[str]]] | None:
+    """Marker conditions under which each package is reachable from the workspace roots.
+
+    A uv lockfile is a conditional graph, not a flat list: markers sit on the dependency
+    edges. Emitting every entry installs packages resolved for other platforms or Python
+    versions, which then have no distribution to install. Each package therefore carries a
+    disjunction of its path conditions, and pip decides whether it applies.
+
+    Returns None when no workspace root is identifiable, so the caller keeps the previous
+    behaviour rather than emptying the environment on an unfamiliar lockfile shape.
+    """
+    by_name = {
+        p["name"]: p for p in packages if isinstance(p, dict) and isinstance(p.get("name"), str)
+    }
+    roots = [
+        p
+        for p in packages
+        if isinstance(p, dict) and set(p.get("source") or {}) & _UV_LOCAL_SOURCES
+    ]
+    if not roots:
+        return None
+
+    conditions: dict[str, set[frozenset[str]]] = {}
+    queue: deque[str] = deque()
+
+    def record(name: str, clause: frozenset[str]) -> None:
+        existing = conditions.get(name)
+        if existing is None:
+            conditions[name] = {clause}
+        elif frozenset() in existing or clause in existing:
+            return
+        elif not clause:
+            conditions[name] = {frozenset()}
+        elif len(existing) >= _UV_MAX_CLAUSES:
+            conditions[name] = {frozenset()}
+        else:
+            existing.add(clause)
+        queue.append(name)
+
+    for root in roots:
+        for name, marker in _uv_dependency_edges(root, include_dev=True):
+            record(name, frozenset({marker}) if marker else frozenset())
+
+    while queue:
+        current = queue.popleft()
+        package = by_name.get(current)
+        if package is None:
+            continue
+        for name, marker in _uv_dependency_edges(package, include_dev=False):
+            for clause in tuple(conditions.get(current, ())):
+                record(name, clause | {marker} if marker else clause)
+
+    return conditions or None
+
+
+def _uv_combined_marker(package: dict, conditions: dict | None) -> str | None:
+    """Render every condition on a package -- path, declared, and resolution -- for pip.
+
+    `resolution-markers` is what makes a lockfile able to hold the same package at several
+    versions at once, one per resolution context. Dropping it asks pip to install both, and
+    pip refuses with a resolution conflict.
+    """
+    clauses: set[frozenset[str]] = set()
+    if conditions is not None:
+        clauses = set(conditions.get(package.get("name"), ()) or ())
+    if not clauses:
+        clauses = {frozenset()}
+
+    conjuncts: list[str] = []
+    declared = package.get("marker")
+    if isinstance(declared, str) and declared.strip():
+        conjuncts.append(declared.strip())
+    resolution = package.get("resolution-markers")
+    if isinstance(resolution, list):
+        contexts = [m.strip() for m in resolution if isinstance(m, str) and m.strip()]
+        if contexts:
+            conjuncts.append(" or ".join(f"({context})" for context in contexts))
+    if conjuncts:
+        clauses = {frozenset(clause | set(conjuncts)) for clause in clauses}
+
+    if not clauses or frozenset() in clauses:
+        return None
+    rendered = sorted(
+        " and ".join(f"({marker})" for marker in sorted(clause)) for clause in clauses
+    )
+    if len(rendered) == 1:
+        return rendered[0]
+    return " or ".join(f"({clause})" for clause in rendered)
 
 
 def _uv_artifact_hashes(package: dict) -> tuple[str, ...]:
