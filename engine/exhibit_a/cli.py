@@ -64,6 +64,7 @@ from .studies.archaeology import run_archaeology, save_archaeology_report
 from .studies.bug_identity import run_bug_identity, save_bug_identity_report
 from .studies.fix_corpus import select_fix_corpus
 from .studies.fix_coverage import (
+    EXECUTION_SEGMENTS_SCHEMA,
     RunConfig as FixCoverageRunConfig,
     SubprocessTrialRunner,
     create_public_fix_coverage_report,
@@ -1058,11 +1059,20 @@ def cmd_fix_coverage(args: argparse.Namespace) -> int:
 def cmd_fix_coverage_report(args: argparse.Namespace) -> int:
     """Export a safe public summary from a completed private coverage run."""
     try:
+        execution_segments = None
+        if args.execution_segments:
+            payload = json.loads(Path(args.execution_segments).read_text())
+            if not isinstance(payload, dict) or (
+                payload.get("schema_version") != EXECUTION_SEGMENTS_SCHEMA
+            ):
+                raise ValueError("execution segments file has an incompatible schema")
+            execution_segments = payload.get("segments")
         report = create_public_fix_coverage_report(
             corpus=load_fix_corpus(args.manifest),
             private_root=args.private_root,
             output=args.out,
             execution_source_revision=args.execution_source_revision,
+            execution_segments=execution_segments,
         )
     except (OSError, TypeError, ValueError, json.JSONDecodeError) as exc:
         print(f"error: cannot export fix-coverage report: {exc}", file=sys.stderr)
@@ -1620,7 +1630,11 @@ def main(argv: list[str] | None = None) -> int:
     coverage_report.add_argument(
         "--execution-source-revision",
         required=True,
-        help="full Git revision used for the completed run",
+        help="full initial Git revision used for the completed run",
+    )
+    coverage_report.add_argument(
+        "--execution-segments",
+        help="optional versioned JSON ranges when a recorded runtime amendment changed source",
     )
     coverage_report.add_argument("--out", required=True, help="public JSON report path")
     coverage_report.set_defaults(func=cmd_fix_coverage_report)

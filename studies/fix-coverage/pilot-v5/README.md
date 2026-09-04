@@ -14,3 +14,11 @@ executions, or v5 verdicts. The mechanical selector then reached the registered 
 target. The new hash-pinned [`corpus.json`](./corpus.json) and
 [`selection-report.md`](./selection-report.md) record that result without any execution
 outcome.
+
+The completed run reached the deterministic judge on **2/30 instances (6.7%)**. Both
+judged instances were VERIFIED; 24/30 stopped at dependency installation. Read the
+[full result and interpretation](../../../docs/FIX_COVERAGE_RESULTS.md), the sanitized
+[`public-report.json`](./public-report.json), the exact
+[`execution-segments.json`](./execution-segments.json), and the
+[`runtime-amendment.md`](./runtime-amendment.md) recorded before the quota-blocked row was
+resumed. Raw dependency reasons, Cases, generated tests, and logs remain private.

@@ -1,0 +1,16 @@
+{
+  "schema_version": "fix-coverage-execution-segments/v1",
+  "segments": [
+    {
+      "first_instance": 1,
+      "last_instance": 26,
+      "source_revision": "445f4982a3d93ec6e10e96adf4e038bcc98798ab"
+    },
+    {
+      "first_instance": 27,
+      "last_instance": 30,
+      "source_revision": "e1b4a0799c612224a55833789c0ca7329f0c1c99",
+      "reason": "The preregistered provider-quota halt exposed a completed-worker cache bug. The committed runtime amendment made the same unattempted instance resumable without changing selection, run parameters, Cases, failure classification, or verdict logic."
+    }
+  ]
+}

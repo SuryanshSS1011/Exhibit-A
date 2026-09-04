@@ -16,10 +16,11 @@
 
 ---
 
-> **Measured real-fix coverage (September 2026): 1/30 VERIFIED (3.3%), 0/30
-> PARTIAL.** The 95% Wilson interval is 0.6%–16.7%; dependency-image failures blocked
-> 17/30 instances. The current implementation should be treated as a **research
-> instrument**, not a broad-coverage product. [Read the complete preregistered pilot and
+> **Measured real-fix coverage (September 2026): the judge was reached on 2/30 fixes
+> (6.7%). Both reached VERIFIED; 0/30 were PARTIAL.** Dependency installation blocked
+> 24/30 instances, so this remains primarily a measurement of plumbing. The current
+> implementation should be treated as a **research instrument**, not a broad-coverage
+> product. [Read the complete preregistered v5 pilot, dependency breakdown, and
 > exclusions.](./docs/FIX_COVERAGE_RESULTS.md)
 
 ## The problem

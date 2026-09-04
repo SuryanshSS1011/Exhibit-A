@@ -31,18 +31,23 @@ environment loader. That produced only five candidates, all from one repository,
 pre-outcome amendment: an exact `bug` label or a title beginning with
 `fix`/`fixed`/`fixes`/`fixing`, within the first 100 date-filtered results per repository.
 That selected 16 instances before 50 candidate-detail reads failed during a transient
-`No route to host` outage. Pilot v4 keeps the frame unchanged and adds five bounded
-metadata-read attempts only.
+`No route to host` outage. Pilot v4 kept the frame unchanged and added five bounded
+metadata-read attempts only. Pilot v5 selects a fresh corpus: it holds that public source
+frame constant but reruns eligibility with `uv.lock` support, makes judge reach the primary
+metric, halts on provider quota instead of recording a failed instance, and preregisters a
+category-only dependency-install breakdown.
+
 Corpus selection is executable:
 
 ```bash
 cd engine
 python3 -m exhibit_a.cli select-fix-corpus \
-  --preregistration ../studies/fix-coverage/pilot-v4/preregistration.json \
+  --preregistration ../studies/fix-coverage/pilot-v5/preregistration.json \
   --date-from 2026-02-17 --date-to 2026-08-31 \
   --repositories 50 --repository-scan-limit 1000 \
   --instances 30 --per-repository-cap 5 \
-  --out ../studies/fix-coverage/pilot-v4/corpus.json
+  --cache ../.exhibit-a/research/fix-coverage-selection-cache-v2 \
+  --out ../studies/fix-coverage/pilot-v5/corpus.json
 ```
 
 Selection uses GitHub's public API and Git transport. `GITHUB_TOKEN` is optional and is
@@ -55,11 +60,11 @@ Run the registered pilot from `engine/`:
 
 ```bash
 python3 -m exhibit_a.cli fix-coverage \
-  ../studies/fix-coverage/pilot-v4/corpus.json \
+  ../studies/fix-coverage/pilot-v5/corpus.json \
   --model gpt-5.6-sol \
   --instance-timeout-s 720 --total-ceiling-s 21600 \
   --execution-timeout-s 120 --reruns 5 --max-refine 3 \
-  --out ../.exhibit-a/research/fix-coverage/pilot-v4
+  --out ../.exhibit-a/research/fix-coverage/pilot-v5
 ```
 
 Each instance runs in a separate process group. A hard per-instance ceiling can terminate
@@ -67,7 +72,10 @@ the model, checkout, container build, and test descendants together. The parent 
 atomic checkpoint after every completed item and reconstructs the aggregate from those
 checkpoints. Running the identical command again skips completed items; parameter or
 manifest drift is rejected. An interrupted, incomplete attempt remains recorded and does
-not silently become an outcome retry.
+not silently become an outcome retry. An explicit provider-quota response halts the run
+without checkpointing that corpus row. Resume after capacity returns creates a new worker
+attempt for the still-unattempted row and retains the quota attempt in the private audit
+trail.
 
 ## What the report preserves
 
@@ -77,11 +85,14 @@ active wall time, every terminal category, and per-instance summary. Raw Cases, 
 tests, and execution logs remain in private worker checkpoints because they may contain
 unreviewed third-party content.
 
-The headline denominator includes every included instance, including failures to build,
-missing services, proposal silence, rejected candidates, flakes, and timeouts. Selection
-losses appear alongside the headline: repository-level exclusions, candidate exclusions,
-and eligible candidates outside the fixed sample are not hidden. The report ranks failure
-categories and warns if catch-all categories exceed the preregistered 20% threshold.
+The primary metric is `reached_judge_fraction`: the share of all included instances where
+a candidate reached the deterministic judge. `verified_fraction_of_judged` then reports
+the conditional result, while the whole-pipeline VERIFIED fraction keeps all included
+instances in its denominator. PARTIAL is always separate. Selection losses appear beside
+these measures: repository exclusions, candidate exclusions, and eligible candidates
+outside the fixed sample are not hidden. The report ranks failure categories, separately
+classifies dependency-install failures without publishing raw reasons, and warns if a
+catch-all exceeds the preregistered 20% threshold.
 
 Provider cost is reported only when every model call reports billable cost. The Codex CLI
 does not currently expose that telemetry, so its honest spend result is **unavailable**,
@@ -93,21 +104,28 @@ private checkpoints:
 
 ```bash
 python3 -m exhibit_a.cli fix-coverage-report \
-  ../studies/fix-coverage/pilot-v4/corpus.json \
-  ../.exhibit-a/research/fix-coverage/pilot-v4 \
-  --execution-source-revision d37312c82b4f38f49254787deb0a0a316ed83c64 \
-  --out ../studies/fix-coverage/pilot-v4/public-report.json
+  ../studies/fix-coverage/pilot-v5/corpus.json \
+  ../.exhibit-a/research/fix-coverage/pilot-v5 \
+  --execution-source-revision 445f4982a3d93ec6e10e96adf4e038bcc98798ab \
+  --execution-segments ../studies/fix-coverage/pilot-v5/execution-segments.json \
+  --out ../studies/fix-coverage/pilot-v5/public-report.json
 ```
 
 The exporter requires a complete run and matching corpus hash. It carries aggregate and
-per-instance outcomes, selection losses, both failure taxonomies, run dates, engine/source
-versions, and provider identity telemetry. It deliberately omits generated test bodies,
-execution logs, provider diagnostics, and private filesystem locations.
+per-instance outcomes, selection losses, both failure taxonomies, the dependency-install
+breakdown, run dates, engine/source versions, and provider identity telemetry. A normal
+run records one source revision. The optional versioned execution-segments file records
+contiguous corpus ranges when an audited runtime amendment occurs mid-run. The exporter
+deliberately omits generated test bodies, execution logs, raw dependency errors, provider
+diagnostics, and private filesystem locations.
 
 ## Pilot result
 
 Pilot v1 stopped at selection with zero instances, pilot v2 stopped with five, and pilot
-v3 stopped with 16 after a transport outage. No Exhibit A outcome belonged here when
-pilot v4 was preregistered. The completed frozen pilot reached **1/30 VERIFIED (3.3%)** and
-**0/30 PARTIAL**, with a 95% Wilson interval of **0.6%–16.7%**. Read the
-[complete result, ranked taxonomy, constraints, and limitations](./FIX_COVERAGE_RESULTS.html).
+v3 stopped with 16 after a transport outage. Pilot v4 reached the judge on 1/30 and
+VERIFIED that one case. The fresh v5 corpus reached the judge on **2/30 (6.7%)** and
+VERIFIED both judged cases; **0/30 were PARTIAL**. Dependency installation blocked 24/30,
+so the result remains a verdict on environment reach more than proposer or judge quality.
+Read the [complete v5 result, ranked taxonomy, dependency breakdown, constraints, and
+limitations](./FIX_COVERAGE_RESULTS.html), or the preserved
+[v4 report](./FIX_COVERAGE_V4_RESULTS.html).

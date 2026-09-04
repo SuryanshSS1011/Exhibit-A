@@ -292,6 +292,16 @@ def test_study_keeps_partial_separate_and_resumes(tmp_path: Path) -> None:
     )
     assert public["headline"]["verified"] == 1
     assert public["execution_source_revision"] == "a" * 40
+    assert public["execution_source_revisions"] == ["a" * 40]
+    assert public["execution_segments"] == [
+        {
+            "first_instance": 1,
+            "last_instance": 2,
+            "first_instance_id": "owner-repo-pr-1",
+            "last_instance_id": "owner-repo-pr-2",
+            "source_revision": "a" * 40,
+        }
+    ]
     public_taxonomy = {
         item["category"]: item["count"] for item in public["refined_failure_taxonomy"]
     }
@@ -340,6 +350,54 @@ def test_report_breaks_down_dependency_install_failures_without_public_raw_reaso
     )
     assert private_reason not in json.dumps(public)
     assert public["items"][0]["environment_install_category"] == ("pinned_distribution_unavailable")
+
+
+def test_public_report_records_multiple_execution_source_segments(tmp_path: Path) -> None:
+    corpus = FixCorpus(
+        path=str(tmp_path / "corpus.json"),
+        sha256="f" * 64,
+        preregistration={},
+        selection={},
+        exclusions=(),
+        instances=(_instance(), _instance("owner-repo-pr-2")),
+    )
+    run_fix_coverage_study(
+        corpus=corpus,
+        output_root=tmp_path / "run",
+        config=_config(),
+        runner=lambda instance, root, timeout: _result(case=_uncertain()),
+    )
+
+    public = create_public_fix_coverage_report(
+        corpus=corpus,
+        private_root=tmp_path / "run",
+        output=tmp_path / "public.json",
+        execution_source_revision="a" * 40,
+        execution_segments=[
+            {"first_instance": 1, "last_instance": 1, "source_revision": "a" * 40},
+            {
+                "first_instance": 2,
+                "last_instance": 2,
+                "source_revision": "b" * 40,
+                "reason": "resume-only correction",
+            },
+        ],
+    )
+
+    assert public["execution_source_revisions"] == ["a" * 40, "b" * 40]
+    assert public["execution_segments"][1]["first_instance_id"] == "owner-repo-pr-2"
+    assert public["execution_segments"][1]["reason"] == "resume-only correction"
+
+    with pytest.raises(ValueError, match="cover the corpus"):
+        create_public_fix_coverage_report(
+            corpus=corpus,
+            private_root=tmp_path / "run",
+            output=tmp_path / "invalid-public.json",
+            execution_source_revision="a" * 40,
+            execution_segments=[
+                {"first_instance": 2, "last_instance": 2, "source_revision": "b" * 40}
+            ],
+        )
 
 
 def test_resume_rejects_parameter_drift(tmp_path: Path) -> None:

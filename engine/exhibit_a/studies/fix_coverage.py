@@ -31,7 +31,8 @@ CHECKPOINT_SCHEMA = "fix-coverage-instance/v1"
 WORKER_SCHEMA = "fix-coverage-worker/v1"
 RUN_STATE_SCHEMA = "fix-coverage-run-state/v1"
 TAXONOMY_SCHEMA = "fix-coverage-failure-taxonomy/v3"
-PUBLIC_REPORT_SCHEMA = "fix-coverage-public-report/v2"
+PUBLIC_REPORT_SCHEMA = "fix-coverage-public-report/v3"
+EXECUTION_SEGMENTS_SCHEMA = "fix-coverage-execution-segments/v1"
 ENVIRONMENT_INSTALL_TAXONOMY_SCHEMA = "fix-coverage-environment-install-taxonomy/v1"
 
 _ENVIRONMENT_INSTALL_CATEGORIES = (
@@ -273,6 +274,7 @@ def create_public_fix_coverage_report(
     private_root: str | Path,
     output: str | Path,
     execution_source_revision: str | None = None,
+    execution_segments: list[dict] | None = None,
 ) -> dict:
     """Export aggregate and per-instance outcomes without tests, logs, or local paths."""
     root = Path(private_root).resolve(strict=True)
@@ -289,6 +291,8 @@ def create_public_fix_coverage_report(
     revision = execution_source_revision or state.get("source_revision")
     if not isinstance(revision, str) or not _SHA.fullmatch(revision):
         raise ValueError("public report requires the full execution source revision")
+    segments = _validated_execution_segments(corpus, revision, execution_segments)
+    revisions = list(dict.fromkeys(item["source_revision"] for item in segments)) or [revision]
 
     records = _load_checkpoints(root / "checkpoints", corpus, state["config_sha256"])
     failures: Counter[str] = Counter()
@@ -357,6 +361,9 @@ def create_public_fix_coverage_report(
             "schema_version": PUBLIC_REPORT_SCHEMA,
             "engine_version": private["engine_version"],
             "execution_source_revision": revision,
+            "execution_source_revisions": revisions,
+            "execution_segments_schema": EXECUTION_SEGMENTS_SCHEMA,
+            "execution_segments": segments,
             "run_id": private["id"],
             "complete": private.get("complete", True),
             "halted_reason": private.get("halted_reason"),
@@ -409,6 +416,68 @@ def create_public_fix_coverage_report(
             "items": items,
         },
     )
+
+
+def _validated_execution_segments(
+    corpus: FixCorpus,
+    default_revision: str,
+    segments: list[dict] | None,
+) -> list[dict]:
+    """Normalize contiguous source-revision ranges covering the frozen corpus."""
+    if not corpus.instances:
+        if segments not in (None, []):
+            raise ValueError("an empty corpus cannot have execution segments")
+        return []
+    if segments is None:
+        segments = [
+            {
+                "first_instance": 1,
+                "last_instance": len(corpus.instances),
+                "source_revision": default_revision,
+            }
+        ]
+    if not isinstance(segments, list) or not segments:
+        raise ValueError("execution segments must be a non-empty list")
+
+    normalized = []
+    expected_first = 1
+    for segment in segments:
+        if not isinstance(segment, dict):
+            raise TypeError("each execution segment must be an object")
+        first = segment.get("first_instance")
+        last = segment.get("last_instance")
+        revision = segment.get("source_revision")
+        reason = segment.get("reason")
+        if (
+            not isinstance(first, int)
+            or isinstance(first, bool)
+            or not isinstance(last, int)
+            or isinstance(last, bool)
+            or first != expected_first
+            or last < first
+            or last > len(corpus.instances)
+        ):
+            raise ValueError("execution segments must cover the corpus once in contiguous order")
+        if not isinstance(revision, str) or not _SHA.fullmatch(revision):
+            raise ValueError("each execution segment requires a full source revision")
+        if reason is not None and (not isinstance(reason, str) or not reason.strip()):
+            raise ValueError("execution segment reason must be a non-empty string when present")
+        item = {
+            "first_instance": first,
+            "last_instance": last,
+            "first_instance_id": corpus.instances[first - 1].id,
+            "last_instance_id": corpus.instances[last - 1].id,
+            "source_revision": revision,
+        }
+        if reason is not None:
+            item["reason"] = reason
+        normalized.append(item)
+        expected_first = last + 1
+    if expected_first != len(corpus.instances) + 1:
+        raise ValueError("execution segments must cover the corpus once in contiguous order")
+    if normalized[0]["source_revision"] != default_revision:
+        raise ValueError("the first execution segment must match the initial source revision")
+    return normalized
 
 
 def classify_worker_result(result: WorkerResult) -> tuple[str | None, str | None]:

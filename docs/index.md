@@ -43,6 +43,7 @@ setup instructions, and Codex usage.
 
 - [Real-fix coverage study](./FIX_COVERAGE_STUDY.html)
 - [Real-fix coverage pilot results](./FIX_COVERAGE_RESULTS.html)
+- [Historical pilot v4 results](./FIX_COVERAGE_V4_RESULTS.html)
 - [Reproducibility-of-reproduction study](./REPRODUCIBILITY_STUDY.html)
 - [Adversarial self-audit](./SELF_AUDIT.html)
 - [Oracle-gap probe](./ORACLE_GAP.html)
