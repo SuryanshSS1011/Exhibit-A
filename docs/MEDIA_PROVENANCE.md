@@ -121,16 +121,18 @@ that a retry is conditional: the provider declined refinement, so no retry occur
 ## Finished web case file
 
 - **Asset:** `assets/web-case-file.png`
-- **Format and size:** PNG, 1600 × 1400, 2×, RGB, 172,274 bytes
-- **SHA-256:** `029dd0f14d9e917a42c6875c3f94b908b0cc81a6d7b198eaf9c2b18579135af7`
-- **Produced by:** current Next.js UI in system Chrome through Playwright
-- **Input:** the UI's **Replay proof** action at `http://127.0.0.1:3000/`, which streams
+- **Format and size:** PNG, 1600 × 1400, 2×, RGB, 174,347 bytes
+- **SHA-256:** `631f301e767aa36963fa64c09386f062b775fc1d08227aeb3d81d9e513b2760a`
+- **Produced by:** current Next.js production build in headless system Chrome
+- **Input:** the UI's **Replay proof** action at `http://127.0.0.1:3100/`, which streams
   the checked-in `fixtures/cases/inventory_proven.json` sealed Case
 - **Outcome:** completed case file with a `PROVEN REGRESSION` stamp, fail/pass comparison,
   generated test, and evidence-strength summary
 
 This still is deliberately a sealed replay, not a frame extracted from the live provider
-video. It shows the finished artifact clearly without implying fresh execution.
+video. It shows the finished artifact clearly without implying fresh execution. The page
+was served with `npm run start -- --hostname 127.0.0.1 --port 3100` from a successful
+production build; the temporary API token and browser address bar were outside the frame.
 
 ## EEF tamper refusal
 

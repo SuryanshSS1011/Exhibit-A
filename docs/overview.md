@@ -92,9 +92,9 @@ splice, reordered frame, narration, or audio track. See the [capture record](./M
 ![Completed Exhibit A case-file screen from the sealed proven Case replay, showing a proven-regression stamp, hypothesis, evidence-strength summary, and side-by-side failing and passing logs.](./assets/web-case-file.png)
 
 The still is a separate real run of the UI's **Replay proof** action at
-`http://127.0.0.1:3000/`, using the checked-in `inventory_proven.json` sealed Case. It is a
-no-execution replay for inspecting the finished case-file layout, not a frame from the live
-investigation above.
+`http://127.0.0.1:3100/` from a production build, using the checked-in
+`inventory_proven.json` sealed Case. It is a no-execution replay for inspecting the
+finished case-file layout, not a frame from the live investigation above.
 
 ## What it proves, and what it does not
 
