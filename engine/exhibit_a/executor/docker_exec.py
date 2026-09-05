@@ -50,6 +50,11 @@ _UV_LOCAL_SOURCES = frozenset({"editable", "virtual", "directory"})
 # than carrying an unwieldy marker. That is the pre-existing behaviour, so it can only
 # install too much, never too little.
 _UV_MAX_CLAUSES = 24
+# python:3.12-slim omits the shared libraries that widely used wheels link against, so a
+# perfectly pinned install still fails at import. Only libraries observed to block a real
+# repository belong here: both of these are what opencv-python needs, and without them
+# every project that depends on it dies on ImportError before the judge sees anything.
+_SYSTEM_LIBRARIES = ("libgl1", "libglib2.0-0")
 _PINNED_REQUIREMENT = re.compile(r"^[A-Za-z0-9_.-]+(?:\[[A-Za-z0-9_,.-]+\])?==[^\s;\\]+")
 
 
@@ -387,9 +392,10 @@ def _environment_spec(repo: RepoState, *, base_reference: str) -> _EnvironmentSp
 
     identity = repo.source or str(root)
     digest = hashlib.sha256(identity.encode())
-    # The base image and pinned pytest are part of what the image *is*, so they belong in
-    # the key that decides whether a cached image may be reused.
-    for component in (base_reference, PINNED_PYTEST_VERSION):
+    # The base image, the pinned pytest, and the system libraries are part of what the
+    # image *is*, so they belong in the key that decides whether a cached image may be
+    # reused. Leaving the libraries out would hand back an image built before they existed.
+    for component in (base_reference, PINNED_PYTEST_VERSION, *_SYSTEM_LIBRARIES):
         digest.update(b"\0")
         digest.update(component.encode())
     for content in requirements:
@@ -664,8 +670,11 @@ def _dockerfile(
         + f"--requirement /tmp/locks/{name}"
         for name, carries in zip(requirement_names, flags, strict=True)
     )
+    libraries = " ".join(_SYSTEM_LIBRARIES)
     return (
         f"FROM {base_reference}\n"
+        "RUN apt-get update && apt-get install -y --no-install-recommends "
+        f"{libraries} && rm -rf /var/lib/apt/lists/*\n"
         "RUN python -m pip install --disable-pip-version-check --no-cache-dir "
         f"pytest=={PINNED_PYTEST_VERSION}\n"
         f"{copies}\n{installs}\n"

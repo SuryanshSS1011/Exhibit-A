@@ -59,6 +59,7 @@ _PUBLIC_FAILURE_CATEGORIES = (
     "no_candidate_proposed",
     "candidate_wrong_failure_signature",
     "candidate_infrastructure_failure",
+    "candidate_system_library_missing",
     "candidate_vacuous",
     "candidate_tamper",
     "candidate_flaky",
@@ -74,6 +75,13 @@ _PUBLIC_FAILURE_CATEGORIES = (
 _ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,79}$")
 _SHA = re.compile(r"^[0-9a-f]{40}$")
 _CATCH_ALL = frozenset({"candidate_other_rejection", "study_error"})
+# The dynamic loader's own wording when a shared object a wheel links against is absent
+# from the image. This is our ceiling rather than a defect in the candidate, and it is
+# fixable by us, so it is worth separating from every other harness failure.
+_SYSTEM_LIBRARY_PATTERNS = (
+    "cannot open shared object file",
+    "error while loading shared libraries",
+)
 # A candidate existed and was executed, so the deterministic judge actually ruled on
 # evidence. Every other failure stopped the pipeline before the judge got a turn, and
 # counting those against the judge conflates plumbing with judgement.
@@ -558,6 +566,8 @@ def classify_worker_result(result: WorkerResult) -> tuple[str | None, str | None
     if "failed for the wrong reason" in reason_text:
         return "candidate_wrong_failure_signature", reasons or silence
     if "environmental/harness reason" in reason_text or "collection/usage error" in reason_text:
+        if any(pattern in logs for pattern in _SYSTEM_LIBRARY_PATTERNS):
+            return "candidate_system_library_missing", reasons or silence
         return "candidate_infrastructure_failure", reasons or silence
     if "does not fail on the target" in reason_text:
         return "candidate_did_not_fail_on_buggy", reasons or silence

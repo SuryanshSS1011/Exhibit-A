@@ -24,6 +24,7 @@ from exhibit_a.studies.fix_coverage import (
     RunConfig,
     WorkerResult,
     classify_environment_install_failure,
+    _JUDGED_FAILURE_CATEGORIES,
     classify_worker_result,
     create_public_fix_coverage_report,
     load_fix_corpus,
@@ -896,3 +897,38 @@ def test_preflight_log_cannot_relabel_a_judged_instance_as_a_timeout() -> None:
     )
 
     assert classify_worker_result(result)[0] == "candidate_did_not_fail_on_buggy"
+
+
+def test_a_missing_system_library_is_named_rather_than_pooled_with_harness_failures() -> None:
+    # python:3.12-slim omits shared objects that common wheels link against. That is our
+    # ceiling and we can fix it, so it must not disappear into the generic bucket that
+    # also holds genuinely broken candidates.
+    result = _result(
+        case=_uncertain(
+            hypotheses=[
+                {"reason": "target failed for an environmental/harness reason (ImportError)"}
+            ],
+            evidence={
+                "fail_log": "ImportError: libGL.so.1: cannot open shared object file",
+                "pass_log": "",
+                "runs": [],
+            },
+        )
+    )
+
+    category, _ = classify_worker_result(result)
+
+    assert category == "candidate_system_library_missing"
+    # The judge still ruled on a candidate, so the instance stays inside the reach metric.
+    assert category in _JUDGED_FAILURE_CATEGORIES
+
+
+def test_a_harness_failure_without_a_loader_error_keeps_the_generic_category() -> None:
+    result = _result(
+        case=_uncertain(
+            hypotheses=[{"reason": "target failed for an environmental/harness reason (fixture )"}],
+            evidence={"fail_log": "fixture 'db' not found", "pass_log": "", "runs": []},
+        )
+    )
+
+    assert classify_worker_result(result)[0] == "candidate_infrastructure_failure"
