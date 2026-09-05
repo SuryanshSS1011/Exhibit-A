@@ -175,6 +175,11 @@ class DockerExecutor(Executor):
                 "PYTHONDONTWRITEBYTECODE=1",
                 "--env",
                 "PYTHONPYCACHEPREFIX=/tmp/pycache",
+                # /work is read-only on purpose, and a repository whose pytest config
+                # turns on coverage writes .coverage into it before collecting anything.
+                # That kills the run with an OSError that has nothing to do with the claim.
+                "--env",
+                "COVERAGE_FILE=/tmp/.coverage",
             ]
             # A src/ or backend/ layout is not importable from the working directory
             # alone, and a test that cannot import the code under test fails for a
@@ -258,6 +263,12 @@ class DockerExecutor(Executor):
                 "2g",
                 "--cpus",
                 "2",
+                "--env",
+                "PYTHONDONTWRITEBYTECODE=1",
+                "--env",
+                "PYTHONPYCACHEPREFIX=/tmp/pycache",
+                "--env",
+                "COVERAGE_FILE=/tmp/.coverage",
             ]
             # The preflight gets the same import environment as the candidate, so a
             # recorded suite result describes the repository rather than our path setup.

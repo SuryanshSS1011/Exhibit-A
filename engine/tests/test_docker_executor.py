@@ -315,3 +315,42 @@ def test_a_flat_layout_sets_no_pythonpath_at_all(monkeypatch: pytest.MonkeyPatch
     )
 
     assert not any(item.startswith("PYTHONPATH=") for item in calls[0])
+
+
+def test_scratch_writes_are_pointed_off_the_read_only_mount(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    # /work is read-only on purpose. A repository whose pytest config enables coverage
+    # writes .coverage into the rootdir before collecting anything, and the resulting
+    # OSError kills the run for a reason that has nothing to do with the claim.
+    (tmp_path / "module.py").write_text("VALUE = 1\n")
+    calls: list[list[str]] = []
+
+    def fake_run(argv: list[str], **kwargs) -> subprocess.CompletedProcess:
+        calls.append(argv)
+        return subprocess.CompletedProcess(argv, 0, "1 passed", "")
+
+    monkeypatch.setattr("exhibit_a.executor.docker_exec.subprocess.run", fake_run)
+    executor = DockerExecutor()
+    executor.run(
+        RepoState(str(tmp_path), "target"),
+        ExecSpec(
+            test_path="test_repro.py",
+            test_code="def test_x():\n    assert True\n",
+            command="python3 -m pytest -q test_repro.py",
+            image="exhibit-a-env:test",
+        ),
+    )
+    executor.run_suite(
+        RepoState(str(tmp_path), "target"),
+        ["python3", "-m", "pytest", "-q"],
+        image="exhibit-a-env:test",
+    )
+
+    # Both the candidate and the preflight, so a recorded suite result is not an
+    # artifact of our own mount options.
+    for argv in calls:
+        assert "--read-only" in argv
+        assert "COVERAGE_FILE=/tmp/.coverage" in argv
+        assert "PYTHONDONTWRITEBYTECODE=1" in argv
+        assert "PYTHONPYCACHEPREFIX=/tmp/pycache" in argv

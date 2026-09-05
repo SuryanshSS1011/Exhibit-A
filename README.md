@@ -103,9 +103,13 @@ Verdicts are tiered so the tool never overclaims:
 **Intended scope:** deterministic functional bugs in Python repositories that build in a
 sandbox. The latest preregistered real-fix pilot reached the judge on 2/30 and found that
 current environment and suite support are the dominant practical limits, so this remains
-an empirical target rather than a demonstrated coverage claim. It cannot speak to race
-conditions, performance regressions, or most security issues, and it stays silent instead
-of guessing.
+an empirical target rather than a demonstrated coverage claim. All three causes behind
+that figure have since been diagnosed and addressed: the repository-suite preflight is
+recorded rather than treated as a gate, a checkout's own source roots go on `PYTHONPATH`
+so a `src/` layout can import itself, and the sandbox installs the shared libraries that
+common wheels link against. The corrected figure awaits a fresh preregistered pilot and
+is deliberately not claimed here. It cannot speak to race conditions, performance
+regressions, or most security issues, and it stays silent instead of guessing.
 
 ## Open science
 

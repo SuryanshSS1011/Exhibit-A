@@ -80,6 +80,13 @@ Scores (mutation, minimization, evidence strength) describe evidence. They never
 - **New docs pages need two things**: Jekyll front matter (`layout: default` + `title`)
   and an entry in `docs/index.md`. Without both, the file ships but the site never
   renders it. `VERIFY_DETECTIVE.md` is excluded in `_config.yml` by intent.
+- **`executor/source_roots.py` does not handle PEP 420 namespace packages, on purpose.**
+  `llama_index/core/__init__.py` with no `llama_index/__init__.py` is structurally
+  identical to `src/mypkg/__init__.py`, and the two want opposite answers. Getting `src/`
+  right matters more, so the limitation is pinned in a test rather than guessed at.
+- **`_SYSTEM_LIBRARIES` is part of the image digest.** Adding one invalidates every cached
+  environment image, which is the point: without it `prepare()` hands back an image built
+  before the library existed. Expect a full rebuild after touching that tuple.
 - `engine/.exhibit-a/` is runtime output from local runs, gitignored. `submission/` and
   `.exhibit-internal/` are gitignored too and must never be committed.
 - The engine has no runtime dependencies. Keep it that way; `dev` extras are pytest and
