@@ -149,7 +149,7 @@ class EvidenceEngine:
             self._emit(
                 "phase",
                 phase="existing_suite",
-                message="Checking whether the repository suite already catches this",
+                message="Recording whether the repository suite already catches this",
             )
             suite = self.executor.run_suite(
                 target,
@@ -158,35 +158,23 @@ class EvidenceEngine:
                 timeout_s=self.config.timeout_s,
             )
             if suite is not None:
+                # Recorded, never gated. The only consumer of this is `suite_gap`, which is
+                # descriptive, and the candidate runs scoped to its own file -- so whether
+                # the repository's own suite is green cannot change whether a generated test
+                # fails on one revision and passes on the other. Ending the investigation
+                # here also conflates "this suite is red" with "this suite catches this bug",
+                # and half the red suites observed were red because the sandbox could not
+                # import the project at all.
                 case.existing_suite_log = suite.log
-                if suite.exit_code in {0, 5} and not suite.timed_out:
+                if suite.timed_out:
+                    case.existing_suite_passed = None
+                elif suite.exit_code in {0, 5}:
                     case.existing_suite_passed = True
-                elif suite.exit_code == 1 and not suite.timed_out:
-                    case.truth.execution = ExecutionTruth.COMPLETED
-                    case.truth.execution_reason = "existing test-suite preflight completed"
+                elif suite.exit_code == 1:
                     case.existing_suite_passed = False
-                    case.suite_gap = False
-                    case.silence_reason = "existing test suite already fails; CI has this signal"
-                    self._emit(
-                        "verdict",
-                        verdict="UNCERTAIN",
-                        reason=case.silence_reason,
-                    )
-                    return case
                 else:
-                    case.truth.execution = ExecutionTruth.FAILED
-                    case.truth.execution_reason = (
-                        f"existing test-suite preflight failed: exit {suite.exit_code}"
-                    )
-                    case.silence_reason = (
-                        f"existing test suite could not be evaluated safely: exit {suite.exit_code}"
-                    )
-                    self._emit(
-                        "verdict",
-                        verdict="UNCERTAIN",
-                        reason=case.silence_reason,
-                    )
-                    return case
+                    # A collection or usage error says nothing about the repository.
+                    case.existing_suite_passed = None
 
         changed_lines: ChangedLines | None = None
         if mode is Mode.PROSECUTOR:
@@ -225,8 +213,8 @@ class EvidenceEngine:
                 control_image,
             )
             if case.is_evidence():
-                if case.existing_suite_passed is True:
-                    case.suite_gap = True
+                if case.existing_suite_passed is not None:
+                    case.suite_gap = case.existing_suite_passed
                 self._assess_intent(case, target, intent_context)
                 case.disposition = derive_disposition(case.verdict, case.intent_judgment)
                 return case
@@ -253,8 +241,8 @@ class EvidenceEngine:
                     control_image,
                 )
                 if case.is_evidence():
-                    if case.existing_suite_passed is True:
-                        case.suite_gap = True
+                    if case.existing_suite_passed is not None:
+                        case.suite_gap = case.existing_suite_passed
                     self._assess_intent(case, target, intent_context)
                     case.disposition = derive_disposition(case.verdict, case.intent_judgment)
                     return case

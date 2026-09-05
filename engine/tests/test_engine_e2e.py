@@ -12,6 +12,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pytest
+
 from exhibit_a import EngineConfig, EvidenceEngine
 from exhibit_a.executor.base import EnvironmentSetupError, ExecSpec, Executor, RepoState
 from exhibit_a.executor.local_exec import LocalExecutor
@@ -538,32 +540,56 @@ class ExplodingExecutor(Executor):
         raise AssertionError("unsafe candidate reached the executor")
 
 
-class SuiteCatchesExecutor(ExplodingExecutor):
+class FixedSuiteExecutor(LocalExecutor):
+    """A LocalExecutor whose repository-suite preflight returns a fixed outcome."""
+
+    def __init__(self, exit_code: int, *, timed_out: bool = False):
+        self._exit_code = exit_code
+        self._timed_out = timed_out
+
     def run_suite(self, repo, argv, *, image=None, timeout_s=120):
         from exhibit_a.executor.base import ExecOutcome
 
-        return ExecOutcome(1, "FAILED tests/test_existing.py", "")
+        return ExecOutcome(self._exit_code, "existing suite output", "", self._timed_out)
 
 
-class MustNotGenerate:
-    def propose(self, claim, max_hypotheses=3):
-        raise AssertionError("generator ran after the existing suite caught the failure")
+@pytest.mark.parametrize(
+    ("exit_code", "timed_out", "recorded"),
+    [
+        (0, False, True),  # green suite
+        (5, False, True),  # collected nothing, which is not a failure
+        (1, False, False),  # red suite: no gap to claim, but nothing to conclude either
+        (2, False, None),  # collection error describes the sandbox, not the repository
+        (4, False, None),  # usage error, likewise
+        (0, True, None),  # a suite that never finished did not pass
+    ],
+)
+def test_existing_suite_is_recorded_and_never_ends_the_investigation(
+    exit_code: int, timed_out: bool, recorded: bool | None
+):
+    # The preflight is a description of the repository, not a gate. A red or unrunnable
+    # suite says nothing about whether a scoped candidate can flip, so the investigation
+    # has to continue and let the deterministic judge answer that.
+    engine = EvidenceEngine(
+        OneShotGenerator(), FixedSuiteExecutor(exit_code, timed_out=timed_out), _cfg()
+    )
+    claim = Claim(
+        text="last_n drops the last row",
+        repo_path=str(FIXTURES / "buggy_slice"),
+        expected_signature="AssertionError",
+    )
 
-    def refine(self, claim, feedback):
-        raise AssertionError("refinement ran after the existing suite caught the failure")
+    case = engine.investigate(
+        claim,
+        target=RepoState(path=str(FIXTURES / "buggy_slice"), label="target"),
+        base=RepoState(path=str(FIXTURES / "fixed_slice"), label="base"),
+    )
 
-
-def test_existing_suite_failure_stays_silent_before_generation():
-    engine = EvidenceEngine(MustNotGenerate(), SuiteCatchesExecutor())
-    claim = Claim(text="already covered", repo_path=str(FIXTURES / "buggy_slice"))
-
-    case = engine.investigate(claim)
-
-    assert case.verdict is Verdict.UNCERTAIN
-    assert case.existing_suite_passed is False
-    assert case.suite_gap is False
-    assert case.existing_suite_log == "FAILED tests/test_existing.py"
-    assert case.hypotheses == []
+    assert case.verdict is Verdict.VERIFIED, case.silence_reason
+    assert case.hypotheses  # generation ran rather than being short-circuited
+    assert case.existing_suite_log == "existing suite output"
+    assert case.existing_suite_passed is recorded
+    assert case.suite_gap is recorded
 
 
 class UnsafeCommandGenerator:

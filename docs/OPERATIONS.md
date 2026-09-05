@@ -19,8 +19,13 @@ model-backed investigation is not economically viable on every pushed commit.
 ## Suite-gap reporting
 
 The engine runs the explicitly configured existing suite once as a preflight in the
-same disposable executor. An integration can also attach a trusted external CI result
-via `annotate_suite_gap(case, existing_suite_passed=...)`:
+same disposable executor. The result is recorded, never acted on: a red or unrunnable
+suite does not end an investigation, because "this repository's suite is failing" is not
+the same claim as "this repository's suite catches this bug", and a candidate test runs
+scoped to its own file either way. When the suite neither passed nor cleanly failed --- a
+collection error, a usage error, a timeout --- `existing_suite_passed` and `suite_gap` are
+both left unknown rather than guessed. An integration can also attach a trusted external
+CI result via `annotate_suite_gap(case, existing_suite_passed=...)`:
 
 > `suite_gap = Exhibit A produced evidence AND the existing suite passed`
 
