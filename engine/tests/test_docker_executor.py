@@ -235,3 +235,83 @@ def test_carries_hashes_detects_both_layouts():
     assert _carries_hashes("requests==2.32.4 --hash=sha256:abc\n")
     assert _carries_hashes("requests==2.32.4 \\\n    --hash=sha256:abc\n")
     assert not _carries_hashes("requests==2.32.4\n")
+
+
+def _src_layout(root: Path) -> None:
+    package = root / "src" / "mypkg"
+    package.mkdir(parents=True)
+    (package / "__init__.py").write_text("VALUE = 1\n")
+
+
+def test_src_layout_puts_its_source_root_on_the_container_pythonpath(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    # Without this the candidate raises ModuleNotFoundError before it can exercise
+    # anything, which is indistinguishable from a test that simply does not work.
+    _src_layout(tmp_path)
+    calls: list[list[str]] = []
+
+    def fake_run(argv: list[str], **kwargs) -> subprocess.CompletedProcess:
+        calls.append(argv)
+        return subprocess.CompletedProcess(argv, 0, "1 passed", "")
+
+    monkeypatch.setattr("exhibit_a.executor.docker_exec.subprocess.run", fake_run)
+    DockerExecutor().run(
+        RepoState(str(tmp_path), "target"),
+        ExecSpec(
+            test_path="test_repro.py",
+            test_code="def test_x():\n    assert True\n",
+            command="python3 -m pytest -q test_repro.py",
+            image="exhibit-a-env:test",
+        ),
+    )
+
+    argv = calls[0]
+    assert f"PYTHONPATH={'/work/src'}" in argv
+    # The mount and workdir still follow the environment flags, in that order.
+    assert argv[argv.index("-v") + 1].endswith(":/work:ro")
+    assert argv[argv.index("-w") + 1] == "/work"
+
+
+def test_the_preflight_gets_the_same_import_environment_as_the_candidate(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    # A suite that is red only because our sandbox could not import the project is a
+    # statement about the sandbox. The recorded observation has to describe the repo.
+    _src_layout(tmp_path)
+    calls: list[list[str]] = []
+
+    def fake_run(argv: list[str], **kwargs) -> subprocess.CompletedProcess:
+        calls.append(argv)
+        return subprocess.CompletedProcess(argv, 0, "3 passed", "")
+
+    monkeypatch.setattr("exhibit_a.executor.docker_exec.subprocess.run", fake_run)
+    DockerExecutor().run_suite(
+        RepoState(str(tmp_path), "target"),
+        ["python3", "-m", "pytest", "-q"],
+        image="exhibit-a-env:test",
+    )
+
+    argv = calls[0]
+    assert "PYTHONPATH=/work/src" in argv
+    assert argv[-4:] == ["python3", "-m", "pytest", "-q"]
+
+
+def test_a_flat_layout_sets_no_pythonpath_at_all(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    # The working directory already imports it, so the common case is untouched.
+    (tmp_path / "mypkg").mkdir()
+    (tmp_path / "mypkg" / "__init__.py").write_text("")
+    calls: list[list[str]] = []
+
+    def fake_run(argv: list[str], **kwargs) -> subprocess.CompletedProcess:
+        calls.append(argv)
+        return subprocess.CompletedProcess(argv, 0, "1 passed", "")
+
+    monkeypatch.setattr("exhibit_a.executor.docker_exec.subprocess.run", fake_run)
+    DockerExecutor().run_suite(
+        RepoState(str(tmp_path), "target"),
+        ["python3", "-m", "pytest", "-q"],
+        image="exhibit-a-env:test",
+    )
+
+    assert not any(item.startswith("PYTHONPATH=") for item in calls[0])

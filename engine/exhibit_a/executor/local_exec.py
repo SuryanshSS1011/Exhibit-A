@@ -22,6 +22,7 @@ import tempfile
 import time
 from pathlib import Path
 
+from .source_roots import pythonpath
 from .base import (
     ExecOutcome,
     ExecSpec,
@@ -80,6 +81,7 @@ class LocalExecutor(Executor):
                 cwd=work,
                 timeout_s=spec.timeout_s,
                 timeout_message="TIMEOUT: exceeded per-run wall-clock budget",
+                env=_import_env(work),
             )
         finally:
             shutil.rmtree(workdir, ignore_errors=True)
@@ -102,9 +104,23 @@ class LocalExecutor(Executor):
                 cwd=work,
                 timeout_s=timeout_s,
                 timeout_message="TIMEOUT: existing suite exceeded wall-clock budget",
+                env=_import_env(work),
             )
         finally:
             shutil.rmtree(workdir, ignore_errors=True)
+
+
+def _import_env(work: Path) -> dict[str, str] | None:
+    """Ambient environment plus the checkout's own source roots, or None to inherit.
+
+    Mirrors what the Docker executor puts on PYTHONPATH so a src/ layout behaves the
+    same in both, rather than importing only under the executor nobody ships.
+    """
+    value = pythonpath(work, prefix=str(work))
+    if value is None:
+        return None
+    inherited = os.environ.get("PYTHONPATH")
+    return {**os.environ, "PYTHONPATH": f"{value}{os.pathsep}{inherited}" if inherited else value}
 
 
 def _run_capped(
@@ -113,6 +129,7 @@ def _run_capped(
     cwd: Path,
     timeout_s: int,
     timeout_message: str,
+    env: dict[str, str] | None = None,
 ) -> ExecOutcome:
     """Run one command in its own process group so a timeout stops the whole tree.
 
@@ -128,6 +145,7 @@ def _run_capped(
         stderr=subprocess.PIPE,
         text=True,
         start_new_session=True,
+        env=env,
     )
     try:
         stdout, stderr = process.communicate(timeout=timeout_s)

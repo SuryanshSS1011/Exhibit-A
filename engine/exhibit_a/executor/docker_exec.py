@@ -27,6 +27,7 @@ from collections import deque
 from pathlib import Path
 
 from ..replay_environment import PINNED_PYTEST_VERSION
+from .source_roots import pythonpath
 from .base import (
     EnvironmentSetupError,
     ExecOutcome,
@@ -169,12 +170,22 @@ class DockerExecutor(Executor):
                 "PYTHONDONTWRITEBYTECODE=1",
                 "--env",
                 "PYTHONPYCACHEPREFIX=/tmp/pycache",
-                "-v",
-                f"{work}:/work:ro",
-                "-w",
-                "/work",
-                image,
             ]
+            # A src/ or backend/ layout is not importable from the working directory
+            # alone, and a test that cannot import the code under test fails for a
+            # reason that has nothing to do with the claim.
+            import_path = pythonpath(work, prefix="/work")
+            if import_path is not None:
+                argv.extend(["--env", f"PYTHONPATH={import_path}"])
+            argv.extend(
+                [
+                    "-v",
+                    f"{work}:/work:ro",
+                    "-w",
+                    "/work",
+                    image,
+                ]
+            )
             argv.extend(shlex.split(spec.command))
 
             start = time.monotonic()
@@ -242,13 +253,22 @@ class DockerExecutor(Executor):
                 "2g",
                 "--cpus",
                 "2",
-                "-v",
-                f"{work}:/work:ro",
-                "-w",
-                "/work",
-                resolved_image,
-                *argv,
             ]
+            # The preflight gets the same import environment as the candidate, so a
+            # recorded suite result describes the repository rather than our path setup.
+            import_path = pythonpath(work, prefix="/work")
+            if import_path is not None:
+                docker_argv.extend(["--env", f"PYTHONPATH={import_path}"])
+            docker_argv.extend(
+                [
+                    "-v",
+                    f"{work}:/work:ro",
+                    "-w",
+                    "/work",
+                    resolved_image,
+                    *argv,
+                ]
+            )
             start = time.monotonic()
             try:
                 proc = subprocess.run(
