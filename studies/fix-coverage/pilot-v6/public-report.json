@@ -1,0 +1,847 @@
+{
+  "active_wall_time_s": 3235.103656,
+  "complete": true,
+  "corpus_manifest_sha256": "64ca53193d5138200b98d21363cfd178e14fb49c8b87381d32a86e5026035aa8",
+  "engine_version": "0.1.0",
+  "environment_dependency_install_breakdown": {
+    "categories": [
+      {
+        "category": "native_distribution_build_failure",
+        "count": 5,
+        "fraction_of_dependency_install_failures": 0.29411764705882354
+      },
+      {
+        "category": "package_build_backend_or_metadata_failure",
+        "count": 5,
+        "fraction_of_dependency_install_failures": 0.29411764705882354
+      },
+      {
+        "category": "pinned_distribution_unavailable",
+        "count": 3,
+        "fraction_of_dependency_install_failures": 0.17647058823529413
+      },
+      {
+        "category": "dependency_resolution_conflict",
+        "count": 2,
+        "fraction_of_dependency_install_failures": 0.11764705882352941
+      },
+      {
+        "category": "artifact_hash_or_integrity_failure",
+        "count": 1,
+        "fraction_of_dependency_install_failures": 0.058823529411764705
+      },
+      {
+        "category": "other_install_failure",
+        "count": 1,
+        "fraction_of_dependency_install_failures": 0.058823529411764705
+      },
+      {
+        "category": "package_index_or_network_failure",
+        "count": 0,
+        "fraction_of_dependency_install_failures": 0.0
+      },
+      {
+        "category": "python_version_incompatible",
+        "count": 0,
+        "fraction_of_dependency_install_failures": 0.0
+      }
+    ],
+    "other_fraction": 0.058823529411764705,
+    "schema_version": "fix-coverage-environment-install-taxonomy/v1",
+    "total": 17,
+    "warning": null
+  },
+  "execution_segments": [
+    {
+      "first_instance": 1,
+      "first_instance_id": "open-webui-open-webui-pr-21577",
+      "last_instance": 30,
+      "last_instance_id": "oraios-serena-pr-1110",
+      "source_revision": "7409a62708ee965a1abbe8ffb4f340e5bfb2e4ea"
+    }
+  ],
+  "execution_segments_schema": "fix-coverage-execution-segments/v1",
+  "execution_source_revision": "7409a62708ee965a1abbe8ffb4f340e5bfb2e4ea",
+  "execution_source_revisions": [
+    "7409a62708ee965a1abbe8ffb4f340e5bfb2e4ea"
+  ],
+  "finished_at": "2026-09-04T23:48:37.868926+00:00",
+  "halted_reason": null,
+  "headline": {
+    "attempted_denominator": 30,
+    "denominator": 30,
+    "judged_denominator": 2,
+    "partial": 0,
+    "partial_fraction": 0.0,
+    "provider_unavailable": 0,
+    "reached_judge_fraction": 0.06666666666666667,
+    "unclassified": 0,
+    "verified": 2,
+    "verified_fraction": 0.06666666666666667,
+    "verified_fraction_of_attempted": 0.06666666666666667,
+    "verified_fraction_of_judged": 1.0,
+    "verified_judged_wilson_95": [
+      0.342380227507,
+      1.0
+    ],
+    "verified_wilson_95": [
+      0.018477023791,
+      0.213234583626
+    ]
+  },
+  "items": [
+    {
+      "buggy_sha": "2f1344d619cc053c68e1c939753a59a9090e8075",
+      "claim": "fix: clamp SCIM pagination args instead of rejecting them",
+      "commit_date": "2026-02-19T21:08:42+00:00",
+      "failure_category": "suite_infrastructure_failure",
+      "fix_sha": "27c76c677aab6f0ec4fe27471d700f95f748e7a9",
+      "id": "open-webui-open-webui-pr-21577",
+      "model_calls": 0,
+      "preregistered_failure_category": "suite_infrastructure_failure",
+      "repository": "https://github.com/open-webui/open-webui.git",
+      "source_url": "https://github.com/open-webui/open-webui/pull/21577",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 362.488844
+    },
+    {
+      "buggy_sha": "bf417e6d264ebaf93bda7f53534e2cc50ccb2284",
+      "claim": "fix: security vulnerabilities with XML External Entity and related attacks",
+      "commit_date": "2026-02-17T19:29:04+00:00",
+      "environment_install_category": "package_build_backend_or_metadata_failure",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "576bada7b7d542ea308778a053bc3c4d49086f20",
+      "id": "docling-project-docling-pr-3009",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/docling-project/docling.git",
+      "source_url": "https://github.com/docling-project/docling/pull/3009",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 33.814855
+    },
+    {
+      "buggy_sha": "d280d22cb349b5213ba13b25c627818b52b41562",
+      "claim": "\u4fee\u590d\uff1aWebUI\u73af\u5883\u68c0\u67e5\u56e0Asyncio Windows\u517c\u5bb9\u6027\u800c\u5931\u8d25\u5e76\u4e14\u65e0\u4efb\u4f55\u9519\u8bef\u63d0\u793a",
+      "commit_date": "2026-05-29T11:26:08+00:00",
+      "environment_install_category": "native_distribution_build_failure",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "10091499f136943210e4c306cc3129c12e1683f7",
+      "id": "nanmicoder-mediacrawler-pr-901",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/NanmiCoder/MediaCrawler.git",
+      "source_url": "https://github.com/NanmiCoder/MediaCrawler/pull/901",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 42.245211
+    },
+    {
+      "buggy_sha": "9be9ecfd74bd09c255d92a34809ddecf3cae0d36",
+      "claim": "fix: raise ValueError for unsupported providers and remove duplicate import",
+      "commit_date": "2026-03-13T09:35:22+00:00",
+      "failure_category": null,
+      "fix_sha": "1152ab810ac0eda7f99e92fd5d6beb95a34f638e",
+      "id": "virattt-ai-hedge-fund-pr-531",
+      "model_calls": 1,
+      "preregistered_failure_category": null,
+      "repository": "https://github.com/virattt/ai-hedge-fund.git",
+      "source_url": "https://github.com/virattt/ai-hedge-fund/pull/531",
+      "verdict": "VERIFIED",
+      "verified_evidence": {
+        "deterministic": true,
+        "failure_signature": "Failed: DID NOT RAISE <class 'ValueError'>",
+        "hypothesis": "`get_model` silently returns `None` for `ModelProvider` members that have no client implementation instead of raising `ValueError`.",
+        "reruns": 5,
+        "run_outcomes": [
+          {
+            "duration_s": 4.6779697079909965,
+            "exit_code": 1,
+            "passed": false,
+            "state": "target"
+          },
+          {
+            "duration_s": 4.9166414579958655,
+            "exit_code": 1,
+            "passed": false,
+            "state": "target"
+          },
+          {
+            "duration_s": 3.663032041018596,
+            "exit_code": 1,
+            "passed": false,
+            "state": "target"
+          },
+          {
+            "duration_s": 3.869367208011681,
+            "exit_code": 1,
+            "passed": false,
+            "state": "target"
+          },
+          {
+            "duration_s": 3.534999458002858,
+            "exit_code": 1,
+            "passed": false,
+            "state": "target"
+          },
+          {
+            "duration_s": 3.4798512920096982,
+            "exit_code": 0,
+            "passed": true,
+            "state": "base"
+          }
+        ],
+        "test_path": "tests/test_unsupported_model_providers.py"
+      },
+      "wall_time_s": 138.135638
+    },
+    {
+      "buggy_sha": "3dbadc0b328b7baad1b6991e8e29434a3846958d",
+      "claim": "fix: update claude api spec",
+      "commit_date": "2026-06-03T07:23:05+00:00",
+      "environment_install_category": "package_build_backend_or_metadata_failure",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "feb11e45cb67ce5f9c2e9d39fdf84e8771cb7ed0",
+      "id": "zylon-ai-private-gpt-pr-2246",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/zylon-ai/private-gpt.git",
+      "source_url": "https://github.com/zylon-ai/private-gpt/pull/2246",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 27.0403
+    },
+    {
+      "buggy_sha": "b5ccf6882de9b71d8dfbaba6d050213c8f3c92d4",
+      "claim": "Fix inconsistent `force_masks` across dataset formats",
+      "commit_date": "2026-02-20T07:15:16+00:00",
+      "failure_category": "suite_infrastructure_failure",
+      "fix_sha": "162a46cae1371b51f9c9aad55889633aa413f7ee",
+      "id": "roboflow-supervision-pr-265",
+      "model_calls": 0,
+      "preregistered_failure_category": "suite_infrastructure_failure",
+      "repository": "https://github.com/roboflow/supervision.git",
+      "source_url": "https://github.com/roboflow/supervision/pull/265",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 105.505847
+    },
+    {
+      "buggy_sha": "c165ceee3dfd685abfb588998898ad5c7596c6f5",
+      "claim": "fix: use WindowsSelectorEventLoopPolicy on Windows to fix server port\u2026",
+      "commit_date": "2026-02-27T06:02:21+00:00",
+      "failure_category": "existing_suite_failed",
+      "fix_sha": "6bdc547c5473d7106c6575f298c377c8dfc5e839",
+      "id": "hkuds-lightrag-pr-2704",
+      "model_calls": 0,
+      "preregistered_failure_category": "existing_suite_failed",
+      "repository": "https://github.com/HKUDS/LightRAG.git",
+      "source_url": "https://github.com/HKUDS/LightRAG/pull/2704",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 254.257901
+    },
+    {
+      "buggy_sha": "14795ffa9aa1fc6438025f531ea9fcadae2579de",
+      "claim": "fix: guard against None candidate in search_by_id",
+      "commit_date": "2026-02-17T06:10:52+00:00",
+      "failure_category": "existing_suite_failed",
+      "fix_sha": "31c09052d60af740219b9a9ca83613b28e8207b1",
+      "id": "volcengine-openviking-pr-198",
+      "model_calls": 0,
+      "preregistered_failure_category": "existing_suite_failed",
+      "repository": "https://github.com/volcengine/OpenViking.git",
+      "source_url": "https://github.com/volcengine/OpenViking/pull/198",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 138.840679
+    },
+    {
+      "buggy_sha": "2d37d218cbd5d8c42ccdf46188d549e26920704a",
+      "claim": "fix: preserve pretrained weights in setup_lora",
+      "commit_date": "2026-03-12T04:18:51+00:00",
+      "environment_install_category": "dependency_resolution_conflict",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "cccb997abb20b964a06ed15c3b5ffa25d0d797a1",
+      "id": "fishaudio-fish-speech-pr-1170",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/fishaudio/fish-speech.git",
+      "source_url": "https://github.com/fishaudio/fish-speech/pull/1170",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 73.989894
+    },
+    {
+      "buggy_sha": "efd838823914bfa00313ad4689f411884e79b9a8",
+      "claim": "fix: Code interpreter takes files",
+      "commit_date": "2026-02-17T02:53:20+00:00",
+      "failure_category": "checkout_failed",
+      "fix_sha": "7977017aab6409b8d2ca7cf3040beeaeb3286835",
+      "id": "onyx-dot-app-onyx-pr-8489",
+      "model_calls": 0,
+      "preregistered_failure_category": "checkout_failed",
+      "repository": "https://github.com/onyx-dot-app/onyx.git",
+      "source_url": "https://github.com/onyx-dot-app/onyx/pull/8489",
+      "verdict": null,
+      "wall_time_s": 69.36245
+    },
+    {
+      "buggy_sha": "66a3ca8a317580e4a1b8d62ddaa6365440880567",
+      "claim": "Fix: the request_info for a batch of symbols was actually never optimized",
+      "commit_date": "2026-02-24T17:03:28+00:00",
+      "environment_install_category": "native_distribution_build_failure",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "2ab807a1ff13ffc08e82070e44c3d2bfc5aa75f8",
+      "id": "oraios-serena-pr-1075",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/oraios/serena.git",
+      "source_url": "https://github.com/oraios/serena/pull/1075",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 132.073113
+    },
+    {
+      "buggy_sha": "bf8b2f0a90bb19c499c4212b4bf7e445e28835c3",
+      "claim": "fix: pass archive_results=[] to LiveBusUI.print_summary() in _run_install",
+      "commit_date": "2026-06-19T16:57:16+00:00",
+      "environment_install_category": "pinned_distribution_unavailable",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "d7edaa04d62b7e47e5f49ab3212edc0de67f9394",
+      "id": "archivebox-archivebox-pr-1826",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/ArchiveBox/ArchiveBox.git",
+      "source_url": "https://github.com/ArchiveBox/ArchiveBox/pull/1826",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 85.10879
+    },
+    {
+      "buggy_sha": "f63b2c436d8ec246c128e957d5b0b5060f93b712",
+      "claim": "fix: auto-update ChromeDriver when version mismatches Chrome",
+      "commit_date": "2026-03-02T18:43:39+00:00",
+      "environment_install_category": "native_distribution_build_failure",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "fa4cef0e74eef10c845b32eaf295f5f289df87d6",
+      "id": "fosowl-agenticseek-pr-438",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/Fosowl/agenticSeek.git",
+      "source_url": "https://github.com/Fosowl/agenticSeek/pull/438",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 44.071381
+    },
+    {
+      "buggy_sha": "fbf97774cd7732ded41002f173013345e68e8d2b",
+      "claim": "fix: report disabled Sketchfab integration accurately",
+      "commit_date": "2026-08-16T15:49:03+00:00",
+      "failure_category": "timed_out",
+      "fix_sha": "1dd0c19fc930a672f6d86fbd39d7b460975bebf6",
+      "id": "ahujasid-blender-mcp-pr-319",
+      "model_calls": 0,
+      "preregistered_failure_category": "timed_out",
+      "repository": "https://github.com/ahujasid/blender-mcp.git",
+      "source_url": "https://github.com/ahujasid/blender-mcp/pull/319",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 253.06379
+    },
+    {
+      "buggy_sha": "03a1f9d5bafe169decf3a018469a3bffb6433147",
+      "claim": "Fix cached script element IDs missing after page navigation",
+      "commit_date": "2026-02-18T01:28:05+00:00",
+      "failure_category": "timed_out",
+      "fix_sha": "699e64089fc2d599ad662e43f7b697aa667c05ac",
+      "id": "skyvern-ai-skyvern-pr-4774",
+      "model_calls": 0,
+      "preregistered_failure_category": "timed_out",
+      "repository": "https://github.com/Skyvern-AI/skyvern.git",
+      "source_url": "https://github.com/Skyvern-AI/skyvern/pull/4774",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 372.197384
+    },
+    {
+      "buggy_sha": "5f4322cd479a120e4237a341770468637bad4986",
+      "claim": "Fix BoolParameter to consider global parsing default.",
+      "commit_date": "2026-04-10T11:58:23+00:00",
+      "environment_install_category": "package_build_backend_or_metadata_failure",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "a21b829dce28cd61ad513ec0516a270120a12480",
+      "id": "spotify-luigi-pr-3416",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/spotify/luigi.git",
+      "source_url": "https://github.com/spotify/luigi/pull/3416",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 45.5288
+    },
+    {
+      "buggy_sha": "9a44fc440020594b1c99f3b86ca958179f921dbb",
+      "claim": "\ud83d\udc1b Fix type annotation in `SQLModel.__new__`, avoid explicitly returning `Any`",
+      "commit_date": "2026-04-02T20:58:24+00:00",
+      "environment_install_category": "other_install_failure",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "5da82e2d741e6ab94580395ee637721ca0cb315e",
+      "id": "fastapi-sqlmodel-pr-1846",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/fastapi/sqlmodel.git",
+      "source_url": "https://github.com/fastapi/sqlmodel/pull/1846",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 37.797977
+    },
+    {
+      "buggy_sha": "684f59f263094622ee976886d0ce229d1952dd41",
+      "claim": "fix(docx): guard against None hyperlink address in _get_paragraph_elements (#2367)",
+      "commit_date": "2026-02-24T04:56:45+00:00",
+      "environment_install_category": "package_build_backend_or_metadata_failure",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "236216ed4e2b7c4b627a81b6b77dd8bac01428a5",
+      "id": "docling-project-docling-pr-3022",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/docling-project/docling.git",
+      "source_url": "https://github.com/docling-project/docling/pull/3022",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 143.738236
+    },
+    {
+      "buggy_sha": "e5ceb08ed45c593598320f9d7a4e423cd8aa0939",
+      "claim": "fix: \u4fee\u590d\u5feb\u624b\u7ffb\u9875\u903b\u8f91",
+      "commit_date": "2026-06-16T12:38:37+00:00",
+      "environment_install_category": "native_distribution_build_failure",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "f459764953ce9a19d69a90650b83fdcd7419d193",
+      "id": "nanmicoder-mediacrawler-pr-917",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/NanmiCoder/MediaCrawler.git",
+      "source_url": "https://github.com/NanmiCoder/MediaCrawler/pull/917",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 115.357396
+    },
+    {
+      "buggy_sha": "1152ab810ac0eda7f99e92fd5d6beb95a34f638e",
+      "claim": "fix: replace bare except clauses with Exception in api.py",
+      "commit_date": "2026-03-13T09:36:07+00:00",
+      "failure_category": null,
+      "fix_sha": "c7775d7cd93768efd1ff4180ab51aca770dcc83f",
+      "id": "virattt-ai-hedge-fund-pr-530",
+      "model_calls": 1,
+      "preregistered_failure_category": null,
+      "repository": "https://github.com/virattt/ai-hedge-fund.git",
+      "source_url": "https://github.com/virattt/ai-hedge-fund/pull/530",
+      "verdict": "VERIFIED",
+      "verified_evidence": {
+        "deterministic": true,
+        "failure_signature": "AssertionError: [84, 125, 168, 215, 280] == []",
+        "hypothesis": "Every exception handler in src/tools/api.py that guards API-response parsing should catch Exception rather than all BaseException subclasses.",
+        "reruns": 5,
+        "run_outcomes": [
+          {
+            "duration_s": 2.8404694159980863,
+            "exit_code": 1,
+            "passed": false,
+            "state": "target"
+          },
+          {
+            "duration_s": 2.3019601669802796,
+            "exit_code": 1,
+            "passed": false,
+            "state": "target"
+          },
+          {
+            "duration_s": 2.254630916984752,
+            "exit_code": 1,
+            "passed": false,
+            "state": "target"
+          },
+          {
+            "duration_s": 2.3933641249896027,
+            "exit_code": 1,
+            "passed": false,
+            "state": "target"
+          },
+          {
+            "duration_s": 2.4147052080079447,
+            "exit_code": 1,
+            "passed": false,
+            "state": "target"
+          },
+          {
+            "duration_s": 2.4235367079963908,
+            "exit_code": 0,
+            "passed": true,
+            "state": "base"
+          }
+        ],
+        "test_path": "tests/test_api_exception_handlers.py"
+      },
+      "wall_time_s": 116.095223
+    },
+    {
+      "buggy_sha": "86341597c15198dc4d9418f2b2391583e4fe79f5",
+      "claim": "fix: prevent ScreenStackError when stopping agent from modal",
+      "commit_date": "2026-03-20T03:39:05+00:00",
+      "environment_install_category": "pinned_distribution_unavailable",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "9a0bc5e491b2f16dde28fced336f112388362928",
+      "id": "usestrix-strix-pr-374",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/usestrix/strix.git",
+      "source_url": "https://github.com/usestrix/strix/pull/374",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 33.41748
+    },
+    {
+      "buggy_sha": "feb11e45cb67ce5f9c2e9d39fdf84e8771cb7ed0",
+      "claim": "fix: claude desktop after changes yesterday",
+      "commit_date": "2026-06-03T07:55:59+00:00",
+      "environment_install_category": "package_build_backend_or_metadata_failure",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "a6ab856c2b03fca4dfabdf20654d639f7d97b66d",
+      "id": "zylon-ai-private-gpt-pr-2245",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/zylon-ai/private-gpt.git",
+      "source_url": "https://github.com/zylon-ai/private-gpt/pull/2245",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 25.545991
+    },
+    {
+      "buggy_sha": "68c760a50d29844f96e56e189e91c676e6445bf9",
+      "claim": "fix: Update WhatsAppChatLoader to retrieve DataFrame in pandas format",
+      "commit_date": "2026-02-18T12:25:31+00:00",
+      "failure_category": "suite_infrastructure_failure",
+      "fix_sha": "171ae830ad98c22cc69afa043678340536bc7dbe",
+      "id": "run-llama-llama-index-pr-20722",
+      "model_calls": 0,
+      "preregistered_failure_category": "suite_infrastructure_failure",
+      "repository": "https://github.com/run-llama/llama_index.git",
+      "source_url": "https://github.com/run-llama/llama_index/pull/20722",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 181.845408
+    },
+    {
+      "buggy_sha": "f8f62891de20f5a4ac2e773141c15526877e9413",
+      "claim": "Fix mask_annotate for int dtypes",
+      "commit_date": "2026-02-20T09:43:56+00:00",
+      "failure_category": "suite_infrastructure_failure",
+      "fix_sha": "ae2c35632190c74d50fceb519d7a34d37ca9a362",
+      "id": "roboflow-supervision-pr-1445",
+      "model_calls": 0,
+      "preregistered_failure_category": "suite_infrastructure_failure",
+      "repository": "https://github.com/roboflow/supervision.git",
+      "source_url": "https://github.com/roboflow/supervision/pull/1445",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 16.894085
+    },
+    {
+      "buggy_sha": "ebb5426e7f78ce367712913e460c6c4b5a0f540c",
+      "claim": "fix(hybridcloud): Use distribution metric for webhook delivery time",
+      "commit_date": "2026-02-17T16:09:11+00:00",
+      "environment_install_category": "artifact_hash_or_integrity_failure",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "b9025925b89eaf6cc7a0ae7ba9b7a109968e5f8b",
+      "id": "getsentry-sentry-pr-108289",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/getsentry/sentry.git",
+      "source_url": "https://github.com/getsentry/sentry/pull/108289",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 46.161611
+    },
+    {
+      "buggy_sha": "6bdc547c5473d7106c6575f298c377c8dfc5e839",
+      "claim": "fix: sanitize comma-separated entity types to prevent Neo4j CypherSyntaxError",
+      "commit_date": "2026-02-27T06:06:39+00:00",
+      "failure_category": "existing_suite_failed",
+      "fix_sha": "2be8f7fc1740ebaeda71b5c7c41f810693786686",
+      "id": "hkuds-lightrag-pr-2722",
+      "model_calls": 0,
+      "preregistered_failure_category": "existing_suite_failed",
+      "repository": "https://github.com/HKUDS/LightRAG.git",
+      "source_url": "https://github.com/HKUDS/LightRAG/pull/2722",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 13.126081
+    },
+    {
+      "buggy_sha": "79c0cf68ddb80895880dedbe7c1152d69670a451",
+      "claim": "fix: correct isinstance/strip order in _generate() to prevent AttributeError on non-string input",
+      "commit_date": "2026-04-10T02:30:15+00:00",
+      "environment_install_category": "pinned_distribution_unavailable",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "abf01b9bf39db0a3c911a8392c634ae9000e692b",
+      "id": "openbmb-voxcpm-pr-229",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/OpenBMB/VoxCPM.git",
+      "source_url": "https://github.com/OpenBMB/VoxCPM/pull/229",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 75.29665
+    },
+    {
+      "buggy_sha": "31c09052d60af740219b9a9ca83613b28e8207b1",
+      "claim": "fix bugs \u4fee\u590dprovider\u4e3aopenai\uff0c\u4f46api_key\u5e76\u4e0d\u662fhttps://api.openai.com/v1\u800c\u5f15\u8d77\u7684\u5927\u6a21\u578b\u8c03\u7528\u5931\u8d25\u60c5\u51b5",
+      "commit_date": "2026-02-17T10:15:24+00:00",
+      "failure_category": "existing_suite_failed",
+      "fix_sha": "a4f0d44731a3cb95a5e5b83f51e405da734cd866",
+      "id": "volcengine-openviking-pr-200",
+      "model_calls": 0,
+      "preregistered_failure_category": "existing_suite_failed",
+      "repository": "https://github.com/volcengine/OpenViking.git",
+      "source_url": "https://github.com/volcengine/OpenViking/pull/200",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 7.702104
+    },
+    {
+      "buggy_sha": "eb4f8586c1bbf3bf1324279fd19bcd2dbdae4dca",
+      "claim": "fix: replace in-place tensor operations for torch.compile compatibility",
+      "commit_date": "2026-03-13T04:41:44+00:00",
+      "environment_install_category": "dependency_resolution_conflict",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "1618b7bea285751690cf369d74747c1c459a078f",
+      "id": "fishaudio-fish-speech-pr-1179",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/fishaudio/fish-speech.git",
+      "source_url": "https://github.com/fishaudio/fish-speech/pull/1179",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 58.927203
+    },
+    {
+      "buggy_sha": "8375da7dc9f9dfd8221c68009e0ba79535fc5fdd",
+      "claim": "Fix: Markdown heading symbols were low-level symbols",
+      "commit_date": "2026-03-01T13:55:21+00:00",
+      "environment_install_category": "native_distribution_build_failure",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "6a798ef0c916d99eff9f5175a04073f82d046cbb",
+      "id": "oraios-serena-pr-1110",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/oraios/serena.git",
+      "source_url": "https://github.com/oraios/serena/pull/1110",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 185.473334
+    }
+  ],
+  "model_telemetry": {
+    "actual_model_spend_usd": null,
+    "calls": 2,
+    "identities": [
+      {
+        "calls": 2,
+        "confirmed_model": "unknown_no_telemetry",
+        "confirmed_version": "unknown_no_telemetry",
+        "provider": "openai-codex-cli",
+        "requested_model": "gpt-5.6-sol"
+      }
+    ],
+    "input_tokens": {
+      "reported_calls": 0,
+      "total": null
+    },
+    "output_tokens": {
+      "reported_calls": 0,
+      "total": null
+    },
+    "reported_cost_calls": 0,
+    "reported_cost_usd": null,
+    "spend_basis": "unavailable: at least one model call did not report billable cost",
+    "total_tokens": {
+      "reported_calls": 0,
+      "total": null
+    }
+  },
+  "preregistered_failure_taxonomy": [
+    {
+      "category": "environment_dependency_install_failed",
+      "count": 17,
+      "fraction_of_failures": 0.6071428571428571
+    },
+    {
+      "category": "existing_suite_failed",
+      "count": 4,
+      "fraction_of_failures": 0.14285714285714285
+    },
+    {
+      "category": "suite_infrastructure_failure",
+      "count": 4,
+      "fraction_of_failures": 0.14285714285714285
+    },
+    {
+      "category": "timed_out",
+      "count": 2,
+      "fraction_of_failures": 0.07142857142857142
+    },
+    {
+      "category": "checkout_failed",
+      "count": 1,
+      "fraction_of_failures": 0.03571428571428571
+    }
+  ],
+  "preregistration": {
+    "path": "../studies/fix-coverage/pilot-v6/preregistration.json",
+    "sha256": "7cfbb8f0768802b49f2fd17cacaedba5a213965659e2067b46d2631fa6042cc2"
+  },
+  "private_report_sha256": "f756a78ec480217217651be97aebfde54006111cd1b77455e5bd088fee6f7ed9",
+  "refined_failure_taxonomy": [
+    {
+      "category": "environment_dependency_install_failed",
+      "count": 17,
+      "fraction_of_failures": 0.6071428571428571,
+      "unique_repositories": 12
+    },
+    {
+      "category": "existing_suite_failed",
+      "count": 4,
+      "fraction_of_failures": 0.14285714285714285,
+      "unique_repositories": 2
+    },
+    {
+      "category": "suite_infrastructure_failure",
+      "count": 4,
+      "fraction_of_failures": 0.14285714285714285,
+      "unique_repositories": 3
+    },
+    {
+      "category": "timed_out",
+      "count": 2,
+      "fraction_of_failures": 0.07142857142857142,
+      "unique_repositories": 2
+    },
+    {
+      "category": "checkout_failed",
+      "count": 1,
+      "fraction_of_failures": 0.03571428571428571,
+      "unique_repositories": 1
+    },
+    {
+      "category": "candidate_did_not_fail_on_buggy",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "candidate_failed_on_fixed",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "candidate_flaky",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "candidate_infrastructure_failure",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "candidate_other_rejection",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "candidate_policy_rejection",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "candidate_tamper",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "candidate_vacuous",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "candidate_wrong_failure_signature",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "environment_no_supported_lockfile",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "environment_other_setup_failed",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "no_candidate_proposed",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "provider_generation_failed",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "provider_quota_exhausted",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "study_error",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "suite_requires_unavailable_services",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    }
+  ],
+  "refined_failure_taxonomy_schema": "fix-coverage-failure-taxonomy/v3",
+  "run_id": "bc6ccbe4a84e",
+  "runtime_platform": {
+    "host_machine": "arm64",
+    "host_system": "darwin",
+    "sandbox_architecture": "arm64",
+    "sandbox_os": "linux"
+  },
+  "schema_version": "fix-coverage-public-report/v3",
+  "selection": {
+    "candidate_exclusion_counts": {
+      "no_production_python_change": 18,
+      "per_repository_cap": 868,
+      "prior_corpus_member": 30,
+      "sample_size_reached": 110,
+      "unsupported_or_invalid_pinned_environment": 13
+    },
+    "eligibility_exclusions": 31,
+    "end_to_end_verified_fraction": 0.03278688524590164,
+    "environment_eligible_repositories": 50,
+    "included_instances": 30,
+    "prior_corpus_exclusions": 30,
+    "repositories_scanned": 192,
+    "repository_exclusion_counts": {
+      "repository_no_matching_bug_prs": 10,
+      "repository_no_new_matching_bug_prs": 2,
+      "repository_no_supported_pinned_lock": 142
+    },
+    "represented_repositories": 21,
+    "screened_candidates": 61,
+    "unselected_eligible_candidates": 978
+  },
+  "started_at": "2026-09-04T21:08:30.399774+00:00",
+  "verdict_counts": {
+    "ERROR": 1,
+    "UNCERTAIN": 27,
+    "VERIFIED": 2
+  }
+}

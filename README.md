@@ -17,10 +17,12 @@
 ---
 
 > **Measured real-fix coverage (September 2026): the judge was reached on 2/30 fixes
-> (6.7%). Both reached VERIFIED; 0/30 were PARTIAL.** Dependency installation blocked
-> 24/30 instances, so this remains primarily a measurement of plumbing. The current
-> implementation should be treated as a **research instrument**, not a broad-coverage
-> product. [Read the complete preregistered v5 pilot, dependency breakdown, and
+> (6.7%). Both reached VERIFIED; 0/30 were PARTIAL.** On the recorded Docker
+> `linux/arm64` platform, dependency installation blocked 17/30 instances and another
+> 11 stopped earlier in checkout, suite preflight, or timeout. This remains primarily a
+> measurement of plumbing. The current implementation should be treated as a
+> **research instrument**, not a broad-coverage product. [Read the complete preregistered
+> v6 pilot, dependency breakdown, and
 > exclusions.](./docs/FIX_COVERAGE_RESULTS.md)
 
 ## The problem
@@ -99,10 +101,11 @@ Verdicts are tiered so the tool never overclaims:
 | `UNCERTAIN` | Nothing cleared the gate. Honest silence. |
 
 **Intended scope:** deterministic functional bugs in Python repositories that build in a
-sandbox. The first real-fix pilot proved 1/30 and found that current environment support is
-the dominant practical limit, so this remains an empirical target rather than a demonstrated
-coverage claim. It cannot speak to race conditions, performance regressions, or most
-security issues, and it stays silent instead of guessing.
+sandbox. The latest preregistered real-fix pilot reached the judge on 2/30 and found that
+current environment and suite support are the dominant practical limits, so this remains
+an empirical target rather than a demonstrated coverage claim. It cannot speak to race
+conditions, performance regressions, or most security issues, and it stays silent instead
+of guessing.
 
 ## Open science
 

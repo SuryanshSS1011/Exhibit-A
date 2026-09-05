@@ -1,178 +1,201 @@
 ---
 layout: default
-title: Real-fix coverage pilot v5 results
+title: Real-fix coverage pilot v6 results
 ---
 
-# Real-fix coverage pilot v5 results
+# Real-fix coverage pilot v6 results
 
 ## Judge reach comes first
 
-Exhibit A reached its deterministic judge on **2/30 fixes (6.7%)**. On those two judged
-instances it reached **2/2 VERIFIED (100%)** and **0 PARTIAL**, but two observations are far
-too few to establish judge quality: the two-sided 95% Wilson interval is **34.2%–100%**.
+Exhibit A reached its deterministic judge on **2/30 fixes (6.7%)**. Both judged
+instances reached **VERIFIED**, so the conditional result is **2/2 (100%)**, with
+**0 PARTIAL**. Two judged observations are not enough to establish judge quality: the
+two-sided 95% Wilson interval for VERIFIED among judged instances is **34.2%–100%**.
 
-The whole-pipeline result is **2/30 VERIFIED (6.7%)**, **0/30 PARTIAL**, with a two-sided
-95% Wilson interval of **1.8%–21.3%**. The honest product read remains: **the current
+The whole pipeline also produced **2/30 VERIFIED (6.7%)**, **0/30 PARTIAL**, with a
+two-sided 95% Wilson interval of **1.8%–21.3%**. Twenty-eight instances stopped before
+the judge could rule. The honest product read therefore remains: **the current
 implementation is a research instrument, not a broad-coverage product**. This pilot is
-primarily a measurement of plumbing. Twenty-eight instances stopped before the judge
-could rule.
+still primarily a measurement of plumbing.
 
 ## What was counted
 
-The v5 corpus was selected fresh under the expanded `uv.lock` rule and frozen before any
-v5 outcome in corpus SHA-256
-`b95789fa86a7c26268d8b237e9fe6656a77e661525536abecc332fcbbe653f58`.
-It contains 30 fixes across 25 repositories, dated February 17–July 20, 2026. No repository
-contributes more than two instances. Claims are verbatim PR titles; each buggy revision is
-the fixing commit's first parent.
+V6 was preregistered before selection and selected under the corrected marker-aware
+`uv.lock` implementation. Its immutable corpus SHA-256 is
+`64ca53193d5138200b98d21363cfd178e14fb49c8b87381d32a86e5026035aa8`.
+It contains 30 fixes across 21 repositories, dated February 17–August 16, 2026. No
+repository contributes more than two instances. Claims are verbatim PR titles; each
+buggy revision is the fixing commit's first parent.
+
+The first outcome-free selection returned the same 30 PRs as v5. Because the request
+required a fresh corpus, that selection was preserved and a pre-execution amendment
+mechanically excluded all v5 PR URLs before applying the repository cap. No provider
+call, build, test, Case, or verdict existed when the amendment was committed. The final
+v6 corpus and v5 corpus are disjoint.
 
 Selection losses are part of the result:
 
 | Selection boundary | Count | Meaning |
 |---|---:|---|
-| Star-ranked Python repositories scanned | 192 | Fixed v4 public source frame, rerun with v5 eligibility code |
+| Star-ranked Python repositories scanned | 192 | Held-constant public source frame |
 | Repositories rejected by pinned-environment eligibility | 142 | No accepted reproducible root environment |
-| Environment-eligible repositories | 50 | 40 had matching fixes; 10 had no matching bug PR |
-| Candidate revisions screened to fill the run | 51 | 30 included; 21 eligibility exclusions |
-| No production-Python change | 12 | Recorded exclusion, not silently dropped |
-| Unsupported or invalid environment at the selected revision | 9 | Recorded exclusion, not silently dropped |
-| Eligible candidates outside the fixed sample | 1,018 | 892 beyond the repository cap; 126 after sample size was reached |
+| Environment-eligible repositories | 50 | 38 had fresh matching fixes; 12 had none after v5 removal |
+| Included instances | 30 | 21 repositories, maximum two selected per repository |
+| Candidate-level eligibility exclusions | 31 | 18 had no production-Python change; 13 lacked an accepted environment on a revision |
+| Prior v5 corpus members excluded | 30 | Deliberate disjointness, reported separately from eligibility |
+| Eligible candidates outside the fixed sample | 978 | 868 beyond the repository cap; 110 after sample size was reached |
 
-Including the 21 candidate-level eligibility exclusions gives an observed end-to-end yield
-of **2/51 (3.9%)**. This is descriptive, not an alternate headline.
+The selection funnel screened 61 candidates for eligibility: 30 included and 31 rejected.
+That gives a descriptive end-to-end VERIFIED yield of **2/61 (3.3%)**. The 30 deliberate
+v5 exclusions are not eligibility failures and are not added to that denominator. This
+bookkeeping distinction was corrected after completion but before public export; it did
+not alter an instance, category, or verdict.
 
-## What `uv.lock` changed
-
-Pilot v4 needed to scan 490 repositories to find 50 accepted environments. V5 found 50
-after 192: the retained fraction rose from **10.2% to 26.0%**, a **2.55×** increase. Of the
-50 v5 environments, 33 were accepted through `uv.lock`; 22 of the 30 selected instances
-used the `uv.lock` path. The other selected environments were four Poetry and four pinned
-requirements environments.
-
-That selection gain did not translate into broad execution reach. V4 had 17/30 dependency
-image failures; v5 had 24/30 dependency-install failures. This is not evidence that
-`uv.lock` support made execution worse—the corpora differ. It shows that recognizing a
-lockfile and reproducing its resolved environment are separate constraints.
+Of the 30 selected instances, 27 use `uv.lock` on both revisions and three use
+`poetry.lock`. No selected instance changes environment source between revisions.
 
 ## Ranked outcome taxonomy
 
 | Rank | Outcome | Instances | Repositories | Share of failures | Share of all 30 |
 |---:|---|---:|---:|---:|---:|
-| 1 | Environment dependency install failed | 24 | 20 | 85.7% | 80.0% |
-| 2 | Existing suite infrastructure failure | 2 | 2 | 7.1% | 6.7% |
-| 3 | Existing suite already failed | 1 | 1 | 3.6% | 3.3% |
-| 4 | Per-instance timeout | 1 | 1 | 3.6% | 3.3% |
-| — | VERIFIED | 2 | 2 | — | 6.7% |
+| 1 | Environment dependency install failed | 17 | 12 | 60.7% | 56.7% |
+| 2 | Existing suite already failed | 4 | 2 | 14.3% | 13.3% |
+| 2 | Existing suite infrastructure failure | 4 | 3 | 14.3% | 13.3% |
+| 4 | Per-instance timeout | 2 | 2 | 7.1% | 6.7% |
+| 5 | Checkout failed | 1 | 1 | 3.6% | 3.3% |
+| — | VERIFIED | 2 | 1 | — | 6.7% |
 | — | PARTIAL | 0 | 0 | — | 0.0% |
 
-The completed outcome report has `provider_unavailable: 0`. A quota response halted the
-run at 26 completed instances and left instance 27 unattempted, exactly as preregistered.
-After capacity returned, the identical command resumed the remaining four. Quota was
-therefore neither a failed Case nor model silence.
+The completed public report has `provider_unavailable: 0` and `unclassified: 0`. After 19
+completed rows, a quota response halted before row 20 and was not checkpointed as an
+outcome. The identical command later resumed that still-unattempted row. The quota event
+remains in the private audit trail; it is not model silence or an instance failure.
 
-No selected instance landed in a candidate-rejection, no-candidate, checkout, missing
-service, provider-generation, or catch-all category. Zero-count registered categories are
-retained in the machine-readable report.
+No selected instance landed in a candidate-rejection, no-candidate, missing-service,
+provider-generation, or catch-all category. Zero-count registered categories remain in
+the machine-readable report.
 
 ## Why dependency installation failed
 
-Raw package-manager text remains private because it can contain third-party paths or
-diagnostics. The versioned classifier publishes these categories:
+**Recorded execution platform: Docker `linux/arm64`; host `darwin/arm64`.** These fields
+are persisted in the run state so regenerating a report cannot silently change the
+platform provenance.
 
-| Rank | Dependency-install category | Count | Share of 24 |
+Raw package-manager reasons remain private because third-party diagnostics can contain
+local paths or other sensitive content. The public versioned classifier reports:
+
+| Rank | Dependency-install category | Count | Share of 17 |
 |---:|---|---:|---:|
-| 1 | Pinned distribution unavailable | 7 | 29.2% |
-| 2 | Dependency resolution conflict | 4 | 16.7% |
-| 2 | Native distribution build failure | 4 | 16.7% |
-| 2 | Build backend or package metadata failure | 4 | 16.7% |
-| 5 | Artifact hash or integrity failure | 3 | 12.5% |
-| 6 | Other install failure | 2 | 8.3% |
+| 1 | Native distribution build failure | 5 | 29.4% |
+| 1 | Build backend or package metadata failure | 5 | 29.4% |
+| 3 | Pinned distribution unavailable | 3 | 17.6% |
+| 4 | Dependency resolution conflict | 2 | 11.8% |
+| 5 | Artifact hash or integrity failure | 1 | 5.9% |
+| 5 | Other install failure | 1 | 5.9% |
 | — | Package index or network failure | 0 | 0.0% |
 | — | Python-version incompatibility | 0 | 0.0% |
 
-The catch-all is 8.3%, below the preregistered 20% refinement trigger, so the taxonomy was
-not changed after seeing v5 outcomes.
+The catch-all is 5.9%, below the preregistered 20% refinement trigger, so the taxonomy
+was not changed after seeing v6 outcomes.
+
+### Did the marker-sensitive failures fall?
+
+Yes, descriptively:
+
+| Category | V5 | V6 | Change |
+|---|---:|---:|---:|
+| Pinned distribution unavailable | 7/30 | 3/30 | Fell by 4 |
+| Dependency resolution conflict | 4/30 | 2/30 | Fell by 2 |
+| Combined marker-sensitive failures | 11/30 | 5/30 | Fell by 6 |
+| All dependency-install failures | 24/30 | 17/30 | Fell by 7 |
+
+Both named categories fell under the preregistered same-30 denominator rule. That is
+consistent with the marker fix addressing part of v5's failure mode, but it is **not a
+causal estimate**: v5 and v6 use different, deliberately disjoint corpora. V6 records
+`linux/arm64`; v5 was also run on arm64 but its report predates machine-readable platform
+provenance. A paired rerun would be needed to attribute the difference to the code change.
 
 ## The two proofs that succeeded
 
-[`virattt/ai-hedge-fund#502`](https://github.com/virattt/ai-hedge-fund/pull/502), “fix: use
-target downside deviation in Sortino ratio,” produced
-`tests/backtesting/test_sortino_target_downside_deviation.py`. The same observed signature
-appeared on all five buggy-state reruns, and the exact test passed on the fixed revision.
-This is the proof already seen in v4, now admitted independently in the fresh v5 run.
+Both successful instances came from `virattt/ai-hedge-fund` and were retained by the
+mechanical ordering rather than chosen for tractability.
 
-[`ahujasid/blender-mcp#266`](https://github.com/ahujasid/blender-mcp/pull/266), “fix: render
-viewport screenshots offscreen so they aren't black when the window isn't foreground,”
-produced `test_viewport_screenshot_offscreen.py`. The first proposal was rejected because
-it prohibited the intentional screenshot fallback. Refinement preserved the fallback and
-tested the required offscreen render path; that exact test failed five times on the buggy
-revision and passed on the fix.
+[`virattt/ai-hedge-fund#531`](https://github.com/virattt/ai-hedge-fund/pull/531), “fix:
+raise ValueError for unsupported providers and remove duplicate import,” produced
+`tests/test_unsupported_model_providers.py`. The exact candidate failed on the buggy state
+five times with `DID NOT RAISE ValueError`, then passed on the fixed revision.
+
+[`virattt/ai-hedge-fund#530`](https://github.com/virattt/ai-hedge-fund/pull/530), “fix:
+replace bare except clauses with Exception in api.py,” produced
+`tests/test_api_exception_handlers.py`. The exact candidate found the five bare handler
+locations on every buggy-state rerun and passed after the fix.
 
 ## Time, model, cost, and provenance
 
-- Run: September 4, 2026, 15:25:45–18:28:08 UTC.
-- Calendar elapsed time from the initial start to final checkpoint: 10,943 seconds
-  (3h 2m 23s), including the honest quota halt and runtime-amendment validation delay.
-- Sum of measured instance-worker time: 2,098.9 seconds (34m 58.9s).
+- Run: September 4, 2026, 21:08:30–23:48:37 UTC.
+- Calendar elapsed time: 9,607.5 seconds (2h 40m 7.5s), including the honest quota pause.
+- Sum of measured instance-worker time: 3,235.1 seconds (53m 55.1s).
 - Registered ceilings: 720 seconds per instance, 21,600 active seconds total, and 120
   seconds per test execution.
 - Engine: version `0.1.0`.
-- Instances 1–26 executed at source commit
-  `445f4982a3d93ec6e10e96adf4e038bcc98798ab`.
-- Instances 27–30 executed at source commit
-  `e1b4a0799c612224a55833789c0ca7329f0c1c99`, after the recorded resume-only amendment.
-  The amendment changed no selection, run parameter, Case, category, or verdict code.
+- All 30 instance outcomes executed at source commit
+  `7409a62708ee965a1abbe8ffb4f340e5bfb2e4ea`.
 - Provider: `openai-codex-cli`; requested model `gpt-5.6-sol`.
 - Confirmed model and version: explicit `unknown_no_telemetry`.
-- Successful normalized proposal calls: 4.
-- Actual model spend: **unavailable**, because no call reported complete tokens or billable
-  cost. It is not reported as `$0` and is not estimated from incomplete telemetry.
+- Successful normalized proposal calls: 2.
+- Actual model spend: **unavailable**, because neither call reported complete tokens or
+  billable cost. It is neither `$0` nor an estimate.
 
-The requested model's documented knowledge cutoff was February 16, 2026, so all included
-fixes are later. The model identity, cutoff, and pricing snapshot come from the
+The requested model's documented knowledge cutoff was February 16, 2026, and every
+included fix is later. The requested identity and cutoff come from the
 [official GPT-5.6 Sol model page](https://developers.openai.com/api/docs/models/gpt-5.6-sol),
-but the requested identity is not presented as runtime confirmation.
+but requested identity is not presented as runtime confirmation.
 
-The quota halt also exposed a resumability defect: the parent correctly declined to
-checkpoint the quota response, while the worker cache still treated it as reusable. The
-failure was recorded after 26 outcomes and before row 27. Commit `e1b4a07` retains the
-quota attempt as a private audit record while allowing a new worker attempt after capacity
-returns. The public report records both execution segments instead of attributing the
-whole run to one revision.
+Post-run reporting corrections happened before public export. They separate prior-corpus
+exclusions from eligibility, persist runtime platform across report regeneration, and bind
+public completion time to the last immutable worker checkpoint. They changed no corpus
+member, execution result, Case, failure category, dependency category, or verdict. The
+[amendment record](https://github.com/suryanshss1011/Exhibit-A/blob/main/studies/fix-coverage/pilot-v6/post-run-reporting-amendment.md)
+states exactly what changed and when.
 
 ## Constraints to attack first
 
-1. **Make resolved dependencies portable across the fixed container platform.** Unavailable
-   distributions, resolution conflicts, and hash/integrity failures account for 14/24
-   install failures. The next instrument should preserve a safe package-level resolution
-   trace and distinguish missing platform artifacts from lock-export defects.
-2. **Support native and package-build prerequisites without weakening isolation.** Native
-   compilation and build-backend/metadata failures account for another 8/24. A versioned
-   base-image capability profile and allowlisted system packages would test how much of
-   this block can be lifted reproducibly.
-3. **Add repository-specific suite recipes only as declared, reviewable inputs.** Two runs
-   reached an infrastructure failure, one started from a failing existing suite, and one
-   timed out. Recipes can name the correct suite slice and required sandbox services, but
-   must not become outcome-driven exceptions.
+1. **Make package builds reproducible on the declared sandbox platform.** Native builds
+   and build-backend/metadata failures account for 10/17 dependency failures and one-third
+   of the full corpus. A versioned base-image capability profile, safe build trace, and
+   tightly allowlisted system prerequisites are the highest-leverage next experiment.
+2. **Make suite preflight distinguish repo setup from a genuinely bad baseline.** Eight of
+   30 instances stopped because the existing suite failed or its invocation hit
+   infrastructure. Declared, reviewable suite recipes can identify the right test slice
+   and prerequisites without becoming outcome-specific exceptions.
+3. **Finish the remaining lock portability and bounded-execution work.** Marker-sensitive
+   install categories fell but still account for 5/17 install failures; two instances
+   timed out and one checkout failed. Safe resolution traces and phase-level timeout
+   reporting would show whether the next lift belongs in lock export, platform artifacts,
+   clone reliability, or execution budgets.
 
-Provider proposal quality is not the next measured bottleneck: only two instances reached
-the judge, and both verified. Improving prompts before improving environment reach would
-optimize the least-observed stage.
+Provider prompting is not yet the measured bottleneck. Only two instances reached the
+proposal-and-judge stage, and both verified. Optimizing the model before improving
+environment and suite reach would optimize the least-observed stage.
 
 ## Limits on interpretation
 
-Thirty clustered observations provide a signal, not a population constant. The title-prefix
-rule is mechanical but admits some maintenance or resource fixes; they remain in the
-denominator because the rule was frozen. V4 and v5 use different corpora, so their outcome
-counts are not a controlled paired comparison. The v4 public repository frame was held
-constant to isolate eligibility reach, but only six PRs overlap.
+Thirty observations clustered across 21 repositories provide a pilot signal, not a
+population constant. The title/label rule is mechanical but can admit maintenance or
+resource fixes; those stay in the denominator because the rule was frozen. The 100%
+conditional judge result is based on two cases from one repository and must not be read as
+a general judge success rate.
+
+V5 and v6 use disjoint corpora, so their category changes are not a controlled paired
+comparison. The same public repository frame, date window, target size, cap, model, and
+budgets reduce some drift, but fresh instance composition remains a major confounder.
 
 The log-free per-instance record is
-[`public-report.json`](https://github.com/suryanshss1011/Exhibit-A/blob/main/studies/fix-coverage/pilot-v5/public-report.json)
-(SHA-256 `2cebce394f47ade35dfdd71c6026ac4f04507e63a944b770d67dbfa1b6841ed2`).
+[`public-report.json`](https://github.com/suryanshss1011/Exhibit-A/blob/main/studies/fix-coverage/pilot-v6/public-report.json)
+(SHA-256 `1fb026eb43a5c1c9fc094c1e0f397a2c44ffa46b0126cbf0c65609eed222156e`).
 It binds corpus SHA-256
-`b95789fa86a7c26268d8b237e9fe6656a77e661525536abecc332fcbbe653f58`
+`64ca53193d5138200b98d21363cfd178e14fb49c8b87381d32a86e5026035aa8`
 and private report SHA-256
-`90fc9f161dc8711294c1169c622738ddb4baedafedfd678d437098416b3ab2d0`.
+`f756a78ec480217217651be97aebfde54006111cd1b77455e5bd088fee6f7ed9`.
 Raw Cases, generated tests, provider diagnostics, dependency error text, and execution logs
 remain private.

@@ -35,19 +35,22 @@ That selected 16 instances before 50 candidate-detail reads failed during a tran
 metadata-read attempts only. Pilot v5 selects a fresh corpus: it holds that public source
 frame constant but reruns eligibility with `uv.lock` support, makes judge reach the primary
 metric, halts on provider quota instead of recording a failed instance, and preregisters a
-category-only dependency-install breakdown.
+category-only dependency-install breakdown. Pilot v6 keeps that discipline, corrects
+`uv.lock` workspace reachability and markers, records the host and Docker platform, and
+selects a corpus disjoint from v5 under a pre-execution amendment.
 
 Corpus selection is executable:
 
 ```bash
 cd engine
 python3 -m exhibit_a.cli select-fix-corpus \
-  --preregistration ../studies/fix-coverage/pilot-v5/preregistration.json \
+  --preregistration ../studies/fix-coverage/pilot-v6/preregistration.json \
   --date-from 2026-02-17 --date-to 2026-08-31 \
   --repositories 50 --repository-scan-limit 1000 \
   --instances 30 --per-repository-cap 5 \
   --cache ../.exhibit-a/research/fix-coverage-selection-cache-v2 \
-  --out ../studies/fix-coverage/pilot-v5/corpus.json
+  --exclude-manifest ../studies/fix-coverage/pilot-v5/corpus.json \
+  --out ../studies/fix-coverage/pilot-v6/corpus.json
 ```
 
 Selection uses GitHub's public API and Git transport. `GITHUB_TOKEN` is optional and is
@@ -60,11 +63,11 @@ Run the registered pilot from `engine/`:
 
 ```bash
 python3 -m exhibit_a.cli fix-coverage \
-  ../studies/fix-coverage/pilot-v5/corpus.json \
+  ../studies/fix-coverage/pilot-v6/corpus.json \
   --model gpt-5.6-sol \
   --instance-timeout-s 720 --total-ceiling-s 21600 \
   --execution-timeout-s 120 --reruns 5 --max-refine 3 \
-  --out ../.exhibit-a/research/fix-coverage/pilot-v5
+  --out ../.exhibit-a/research/fix-coverage/pilot-v6
 ```
 
 Each instance runs in a separate process group. A hard per-instance ceiling can terminate
@@ -75,7 +78,8 @@ manifest drift is rejected. An interrupted, incomplete attempt remains recorded 
 not silently become an outcome retry. An explicit provider-quota response halts the run
 without checkpointing that corpus row. Resume after capacity returns creates a new worker
 attempt for the still-unattempted row and retains the quota attempt in the private audit
-trail.
+trail. The platform is captured in run state and reused by later aggregates, so a
+checkpoint-only report regeneration cannot change its provenance.
 
 ## What the report preserves
 
@@ -104,11 +108,10 @@ private checkpoints:
 
 ```bash
 python3 -m exhibit_a.cli fix-coverage-report \
-  ../studies/fix-coverage/pilot-v5/corpus.json \
-  ../.exhibit-a/research/fix-coverage/pilot-v5 \
-  --execution-source-revision 445f4982a3d93ec6e10e96adf4e038bcc98798ab \
-  --execution-segments ../studies/fix-coverage/pilot-v5/execution-segments.json \
-  --out ../studies/fix-coverage/pilot-v5/public-report.json
+  ../studies/fix-coverage/pilot-v6/corpus.json \
+  ../.exhibit-a/research/fix-coverage/pilot-v6 \
+  --execution-source-revision 7409a62708ee965a1abbe8ffb4f340e5bfb2e4ea \
+  --out ../studies/fix-coverage/pilot-v6/public-report.json
 ```
 
 The exporter requires a complete run and matching corpus hash. It carries aggregate and
@@ -124,8 +127,13 @@ diagnostics, and private filesystem locations.
 Pilot v1 stopped at selection with zero instances, pilot v2 stopped with five, and pilot
 v3 stopped with 16 after a transport outage. Pilot v4 reached the judge on 1/30 and
 VERIFIED that one case. The fresh v5 corpus reached the judge on **2/30 (6.7%)** and
-VERIFIED both judged cases; **0/30 were PARTIAL**. Dependency installation blocked 24/30,
-so the result remains a verdict on environment reach more than proposer or judge quality.
-Read the [complete v5 result, ranked taxonomy, dependency breakdown, constraints, and
+VERIFIED both judged cases; dependency installation blocked 24/30. The disjoint v6 corpus
+again reached the judge on **2/30 (6.7%)** and VERIFIED both, with **0/30 PARTIAL**.
+Dependency installation blocked 17/30 on Docker `linux/arm64`; eight more stopped in suite
+preflight. The marker-sensitive install categories fell from 11 in v5 to 5 in v6, but the
+fresh corpora make that descriptive rather than causal. The result remains a verdict on
+environment and suite reach more than proposer or judge quality.
+
+Read the [complete v6 result, ranked taxonomy, dependency breakdown, constraints, and
 limitations](./FIX_COVERAGE_RESULTS.html), or the preserved
-[v4 report](./FIX_COVERAGE_V4_RESULTS.html).
+[v5](./FIX_COVERAGE_V5_RESULTS.html) and [v4](./FIX_COVERAGE_V4_RESULTS.html) reports.
