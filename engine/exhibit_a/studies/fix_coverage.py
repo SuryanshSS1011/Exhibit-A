@@ -511,14 +511,6 @@ def classify_worker_result(result: WorkerResult) -> tuple[str | None, str | None
         return "environment_other_setup_failed", silence
     if "timed out" in combined or "timeout:" in combined:
         return "timed_out", silence or "an execution exceeded its wall-clock limit"
-    if case.get("existing_suite_passed") is False:
-        if _needs_service(combined):
-            return "suite_requires_unavailable_services", silence
-        return "existing_suite_failed", silence
-    if "existing test suite could not be evaluated safely" in lowered:
-        if _needs_service(combined):
-            return "suite_requires_unavailable_services", silence
-        return "suite_infrastructure_failure", silence
 
     hypotheses = case.get("hypotheses")
     if not isinstance(hypotheses, list) or not hypotheses:
@@ -534,6 +526,19 @@ def classify_worker_result(result: WorkerResult) -> tuple[str | None, str | None
             return "provider_quota_exhausted", silence
         if "generation failed" in lowered or "provider" in lowered:
             return "provider_generation_failed", silence
+        # The preflight only explains an instance that never reached the judge. It stopped
+        # ending runs, so once a candidate has been ruled on, what the repository's own
+        # suite happened to do is a description of the repository and not this outcome.
+        suite_log = str(case.get("existing_suite_log") or "")
+        with_suite = f"{combined}\n{suite_log.lower()}"
+        if case.get("existing_suite_passed") is False:
+            if _needs_service(with_suite):
+                return "suite_requires_unavailable_services", silence
+            return "existing_suite_failed", silence
+        if case.get("existing_suite_passed") is None and suite_log:
+            if _needs_service(with_suite):
+                return "suite_requires_unavailable_services", silence
+            return "suite_infrastructure_failure", silence
         return "no_candidate_proposed", silence or "the provider proposed no candidate"
     reasons = "\n".join(
         str(item.get("reason") or "") for item in hypotheses if isinstance(item, dict)
@@ -1062,7 +1067,13 @@ def _aggregate(corpus: FixCorpus, config: RunConfig, state: dict, records: dict[
 
 
 def _case_logs(case: dict) -> str:
-    parts = [str(case.get("existing_suite_log") or "")]
+    """Logs produced by the candidate, deliberately excluding the preflight's.
+
+    The repository's own suite no longer ends a run, so its log is no longer evidence
+    about what stopped this instance. Folding it in here would let an unrelated
+    "timed out" in someone else's test suite relabel an instance the judge did rule on.
+    """
+    parts: list[str] = []
     evidence = case.get("evidence")
     if isinstance(evidence, dict):
         parts.extend(str(evidence.get(key) or "") for key in ("fail_log", "pass_log"))

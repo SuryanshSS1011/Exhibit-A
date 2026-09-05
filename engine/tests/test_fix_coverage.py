@@ -145,6 +145,19 @@ def test_load_fix_corpus_validates_and_hashes_manifest(tmp_path: Path) -> None:
             ),
             "suite_requires_unavailable_services",
         ),
+        (
+            _result(case=_uncertain(existing_suite_passed=False)),
+            "existing_suite_failed",
+        ),
+        (
+            _result(
+                case=_uncertain(
+                    existing_suite_passed=None,
+                    existing_suite_log="ERROR collecting tests/conftest.py",
+                )
+            ),
+            "suite_infrastructure_failure",
+        ),
         (_result(case=_uncertain()), "no_candidate_proposed"),
         (
             _result(
@@ -854,3 +867,32 @@ def test_a_missing_docker_leaves_the_sandbox_platform_unknown_not_wrong(
     assert recorded["sandbox_os"] is None
     assert recorded["sandbox_architecture"] is None
     assert recorded["host_machine"]
+
+
+def test_preflight_never_outranks_an_instance_the_judge_ruled_on() -> None:
+    # The preflight stopped ending runs, so a red or unrunnable repository suite is a
+    # description of the repository. Once a candidate has been judged, the judge's reason
+    # is what happened -- otherwise these instances vanish from judged_denominator and the
+    # study under-reports its own reach.
+    for suite_passed in (False, None):
+        result = _result(
+            case=_uncertain(
+                existing_suite_passed=suite_passed,
+                existing_suite_log="ERROR collecting tests/conftest.py",
+                hypotheses=[{"reason": "test imports nothing - it cannot exercise the code"}],
+            )
+        )
+        assert classify_worker_result(result)[0] == "candidate_vacuous"
+
+
+def test_preflight_log_cannot_relabel_a_judged_instance_as_a_timeout() -> None:
+    # The repository's own suite log is not evidence about what stopped this instance.
+    result = _result(
+        case=_uncertain(
+            existing_suite_passed=None,
+            existing_suite_log="tests/test_slow.py::test_x Timeout: the test timed out",
+            hypotheses=[{"reason": "does not fail on the target"}],
+        )
+    )
+
+    assert classify_worker_result(result)[0] == "candidate_did_not_fail_on_buggy"
