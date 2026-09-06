@@ -12,3 +12,10 @@ classified but not fixed during this pilot.
 
 This preregistration and prior-corpus union are committed before v7 selection, probe,
 provider calls, container builds, test executions, Cases, or verdicts.
+
+The mechanical selector subsequently froze 30 disjoint fixes across 21 repositories. The
+hash-pinned [`corpus.json`](./corpus.json) and
+[`selection-report.md`](./selection-report.md) preserve all 60 prior-corpus exclusions, 42
+ordinary eligibility exclusions, and 937 eligible candidates outside the fixed sample.
+Twenty-seven selected instances use `uv.lock`, two use Poetry, and one uses pinned
+requirements. No probe outcome existed when the corpus was committed.
