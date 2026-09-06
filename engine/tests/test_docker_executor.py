@@ -355,3 +355,42 @@ def test_scratch_writes_are_pointed_off_the_read_only_mount(
         assert "PYTHONDONTWRITEBYTECODE=1" in argv
         assert "PYTHONPYCACHEPREFIX=/tmp/pycache" in argv
         assert "PYTEST_ADDOPTS=-o cache_dir=/tmp/pytest_cache" in argv
+
+
+def test_prepare_builds_on_the_interpreter_the_project_declares(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    # serena and private-gpt pin below 3.12 and were built on 3.12 anyway, so pip could
+    # not match a wheel in their own lockfiles and fell back to source builds.
+    (tmp_path / "requirements.txt").write_text("requests==2.32.4\n")
+    (tmp_path / "pyproject.toml").write_text('[project]\nrequires-python = ">=3.11, <3.12"\n')
+    inspected: list[str] = []
+
+    def fake_run(argv: list[str], **kwargs) -> subprocess.CompletedProcess:
+        if argv[1:3] == ["image", "inspect"] and "--format" in argv:
+            inspected.append(argv[-1])
+            return subprocess.CompletedProcess(argv, 0, f"{argv[-1]}@sha256:{'a' * 64}", "")
+        if argv[1:3] == ["image", "inspect"]:
+            return subprocess.CompletedProcess(argv, 1, "", "missing")
+        return subprocess.CompletedProcess(argv, 0, "built", "")
+
+    monkeypatch.setattr("exhibit_a.executor.docker_exec.subprocess.run", fake_run)
+    DockerExecutor().prepare(RepoState(str(tmp_path), "target", source="repo-a"))
+
+    assert inspected == ["python:3.11-slim"]
+
+
+def test_prepare_refuses_an_interpreter_the_sandbox_does_not_provide(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    # Substituting one silently would produce observations about a configuration the
+    # project says it does not support.
+    (tmp_path / "requirements.txt").write_text("requests==2.32.4\n")
+    (tmp_path / "pyproject.toml").write_text('[project]\nrequires-python = "==3.9.*"\n')
+
+    def fake_run(argv: list[str], **kwargs) -> subprocess.CompletedProcess:
+        raise AssertionError("no image work should start for an unservable interpreter")
+
+    monkeypatch.setattr("exhibit_a.executor.docker_exec.subprocess.run", fake_run)
+    with pytest.raises(EnvironmentSetupError, match="does not provide"):
+        DockerExecutor().prepare(RepoState(str(tmp_path), "target", source="repo-a"))

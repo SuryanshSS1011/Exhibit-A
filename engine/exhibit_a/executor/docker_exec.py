@@ -27,6 +27,7 @@ from collections import deque
 from pathlib import Path
 
 from ..replay_environment import PINNED_PYTEST_VERSION
+from .python_version import declared_python, image_for, select_python
 from .source_roots import pythonpath
 from .base import (
     EnvironmentSetupError,
@@ -73,7 +74,19 @@ class DockerExecutor(Executor):
     def prepare(self, repo: RepoState) -> str | None:
         if self.base_image != DEFAULT_IMAGE:
             return self.base_image
-        environment = _environment_spec(repo, base_reference=_base_reference(self.docker_bin))
+        root = Path(repo.path).resolve()
+        if not root.is_dir():
+            raise EnvironmentSetupError(f"repo checkout not found: {root}")
+        specifier = declared_python(root)
+        version = select_python(specifier)
+        if version is None:
+            raise EnvironmentSetupError(
+                f"project requires Python {specifier!r}, which this sandbox does not provide"
+            )
+        base_image = image_for(version)
+        environment = _environment_spec(
+            repo, base_reference=_base_reference(self.docker_bin, base_image)
+        )
         inspect = subprocess.run(
             [self.docker_bin, "image", "inspect", environment.image],
             capture_output=True,
@@ -344,7 +357,7 @@ class _EnvironmentSpec:
         self.base_reference = base_reference
 
 
-def _base_reference(docker_bin: str) -> str:
+def _base_reference(docker_bin: str, base_image: str = _BASE_IMAGE) -> str:
     """Resolve the base image to an immutable digest, pulling it once if absent.
 
     ``python:3.12-slim`` is a tag, and tags move. The environment cache key is content
@@ -352,26 +365,26 @@ def _base_reference(docker_bin: str) -> str:
     what a rebuilt image contains while the key stayed put -- evidence would name an
     environment that no longer existed, with nothing to signal the drift.
     """
-    reference = _inspect_base_digest(docker_bin)
+    reference = _inspect_base_digest(docker_bin, base_image)
     if reference is None:
         pull = subprocess.run(
-            [docker_bin, "pull", "--quiet", _BASE_IMAGE],
+            [docker_bin, "pull", "--quiet", base_image],
             capture_output=True,
             text=True,
             timeout=_PULL_TIMEOUT_S,
         )
         if pull.returncode != 0:
             detail = pull.stderr.strip() or pull.stdout.strip() or "no diagnostic"
-            raise EnvironmentSetupError(f"base image {_BASE_IMAGE} could not be pulled: {detail}")
-        reference = _inspect_base_digest(docker_bin)
+            raise EnvironmentSetupError(f"base image {base_image} could not be pulled: {detail}")
+        reference = _inspect_base_digest(docker_bin, base_image)
     if reference is None:
-        raise EnvironmentSetupError(f"base image {_BASE_IMAGE} exposes no digest to pin to")
+        raise EnvironmentSetupError(f"base image {base_image} exposes no digest to pin to")
     return reference
 
 
-def _inspect_base_digest(docker_bin: str) -> str | None:
+def _inspect_base_digest(docker_bin: str, base_image: str = _BASE_IMAGE) -> str | None:
     inspect = subprocess.run(
-        [docker_bin, "image", "inspect", "--format", "{{index .RepoDigests 0}}", _BASE_IMAGE],
+        [docker_bin, "image", "inspect", "--format", "{{index .RepoDigests 0}}", base_image],
         capture_output=True,
         text=True,
         timeout=_CLEANUP_TIMEOUT_S,
