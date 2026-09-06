@@ -24,6 +24,7 @@ from exhibit_a.studies.fix_coverage import (
     RunConfig,
     WorkerResult,
     classify_environment_install_failure,
+    _ID,
     _JUDGED_FAILURE_CATEGORIES,
     _validate_config,
     classify_worker_result,
@@ -1005,3 +1006,19 @@ def test_a_reach_probe_withholds_verified_figures_rather_than_reporting_zero(
     )
     assert public["probe_only"] is True
     assert public["headline"]["verified"] is None
+
+
+def test_repository_names_outside_the_id_alphabet_still_select() -> None:
+    """A period in a repository name cost pilot v7 a selection run.
+
+    `plotly/plotly.py` produced `plotly-plotly.py-pr-5517`, which the study runner
+    rejected before instance one -- after selection had already cloned and validated
+    every repository. Folding is generic rather than a list of known offenders, so the
+    next name shape nobody anticipated cannot cost another run.
+    """
+    assert fix_corpus._slug("plotly/plotly.py") == "plotly-plotly-py"
+    for full_name in ("plotly/plotly.py", "a_b/c.d.e", "--weird--/..name..", "HKUDS/LightRAG"):
+        assert _ID.fullmatch(f"{fix_corpus._slug(full_name)}-pr-1"), full_name
+    # Names that were already valid keep the identifiers they had.
+    assert fix_corpus._slug("HKUDS/LightRAG") == "hkuds-lightrag"
+    assert fix_corpus._slug("virattt/ai-hedge-fund") == "virattt-ai-hedge-fund"

@@ -22,6 +22,9 @@ from ..executor.docker_exec import _environment_spec
 from .fix_coverage import CORPUS_SCHEMA, _atomic_json
 
 _API = "https://api.github.com"
+# The corpus schema's instance-id alphabet. Anything else in a repository name folds
+# to a hyphen; see _slug.
+_SLUG_ALPHABET = frozenset("abcdefghijklmnopqrstuvwxyz0123456789-")
 _FIX_TITLE = re.compile(r"^fix(?:e[ds]?|ing)?(?:\b|\s|[:([])", re.IGNORECASE)
 _PRODUCTION_EXCLUDED_PARTS = {
     "benchmarks",
@@ -458,8 +461,7 @@ def _resolve_candidate(
         raise ValueError("no_production_python_change: no production Python file changed")
     _validate_environment_tree(clone, buggy_sha, str(repository["html_url"]))
     _validate_environment_tree(clone, fix_sha, str(repository["html_url"]))
-    slug = full_name.casefold().replace("/", "-").replace("_", "-")
-    identifier = f"{slug}-pr-{candidate['number']}"
+    identifier = f"{_slug(full_name)}-pr-{candidate['number']}"
     if len(identifier) > 80:
         suffix = hashlib.sha256(identifier.encode()).hexdigest()[:10]
         identifier = f"{identifier[:69]}-{suffix}"
@@ -517,6 +519,21 @@ def _validate_environment_tree(clone: Path, sha: str, source: str) -> None:
             RepoState(str(checkout), "selection", source=source),
             base_reference="selection-only@sha256:0",
         )
+
+
+def _slug(full_name: str) -> str:
+    """Fold a GitHub ``owner/name`` into the alphabet the corpus schema allows.
+
+    Repository names may hold characters the schema does not. A period is the common
+    one: ``plotly/plotly.py`` produced an id the study runner rejected before instance
+    one, after selection had already cloned and validated every repository. Anything
+    outside the alphabet becomes a hyphen rather than being enumerated, so the next name
+    shape nobody anticipated cannot cost a selection run.
+    """
+    folded = "".join(
+        character if character in _SLUG_ALPHABET else "-" for character in full_name.casefold()
+    )
+    return folded.strip("-") or "repository"
 
 
 def _is_production_python(path: str) -> bool:
