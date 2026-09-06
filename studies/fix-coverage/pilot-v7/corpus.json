@@ -7621,7 +7621,7 @@
       "claim": "Fix spurious engine deprecation warning in write_image",
       "commit_date": "2026-02-24T23:31:20+00:00",
       "fix_sha": "21df90645848fcbadcbabd0bc057a83ac25d419c",
-      "id": "plotly-plotly.py-pr-5517",
+      "id": "plotly-plotly-py-pr-5517",
       "repository": "https://github.com/plotly/plotly.py.git",
       "selection_basis": [
         "fix_title_prefix"

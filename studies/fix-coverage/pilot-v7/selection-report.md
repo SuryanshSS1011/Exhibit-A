@@ -33,7 +33,16 @@ The 30 fixes span February 17 through August 16, 2026. Twenty-five qualified by 
 registered fix-title prefix alone and five by both that prefix and an exact `bug` label.
 Round-robin ordering limited every represented repository to at most two instances.
 
-The immutable execution corpus SHA-256 is
-`ac2ce71ad4a13d4c226c00f9ea6330211e9e14aa556586e0fe5337339675b99f`.
-The complete repository frame, every exclusion, pinned revision, claim, date, and
-selection basis are in `corpus.json`. No probe or provider outcome influenced this file.
+The amended execution corpus SHA-256 is
+`f0cc23ecd53c4289da248904a9f38f90de56a9f7613f4e7c80704fe0d2d74282`.
+The originally frozen corpus hash is preserved in `amendment-001.json`. The complete
+repository frame, every exclusion, pinned revision, claim, date, and selection basis are
+in `corpus.json`. No probe or provider outcome influenced the selection.
+# Administrative amendment before execution
+
+The first probe invocation stopped while parsing the corpus, before cloning or attempting
+any instance. The selector had generated `plotly-plotly.py-pr-5517`, but the runner's ID
+grammar excludes periods. The ID was normalized to `plotly-plotly-py-pr-5517`; the same
+PR remains selected in the same position with the same claim and revisions. The original
+hash and the zero-observation timing are recorded in
+[`amendment-001.json`](./amendment-001.json).

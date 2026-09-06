@@ -1,0 +1,22 @@
+{
+  "schema_version": "fix-coverage-preregistration-amendment/v1",
+  "recorded_at": "2026-09-06T08:48:49Z",
+  "prior_corpus_commit": "294c2c5103e0fa12f5827090e2c5499da239db16",
+  "prior_corpus_sha256": "ac2ce71ad4a13d4c226c00f9ea6330211e9e14aa556586e0fe5337339675b99f",
+  "trigger": "The provider-free probe rejected the manifest before instance one because the selector copied a period from the plotly.py repository name into an instance ID, while the study runner permits only lowercase letters, digits, hyphens, and underscores.",
+  "observations_before_amendment": {
+    "repositories_cloned": 0,
+    "instances_attempted": 0,
+    "probe_outcomes_observed": 0,
+    "provider_calls": 0
+  },
+  "change": {
+    "field": "instances[id]",
+    "source_url": "https://github.com/plotly/plotly.py/pull/5517",
+    "before": "plotly-plotly.py-pr-5517",
+    "after": "plotly-plotly-py-pr-5517"
+  },
+  "selection_effect": "None. The selected repository, PR, claim, revisions, commit date, order, and all 29 other instances are unchanged.",
+  "analysis_effect": "None. This is an identifier normalization required to make the already selected manifest readable; no outcome was available to influence it.",
+  "engine_change": "None. The selector defect is recorded but is not fixed during pilot v7."
+}

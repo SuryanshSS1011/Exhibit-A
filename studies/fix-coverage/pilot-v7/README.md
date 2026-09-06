@@ -19,3 +19,9 @@ hash-pinned [`corpus.json`](./corpus.json) and
 ordinary eligibility exclusions, and 937 eligible candidates outside the fixed sample.
 Twenty-seven selected instances use `uv.lock`, two use Poetry, and one uses pinned
 requirements. No probe outcome existed when the corpus was committed.
+
+Before instance one, the runner rejected the generated `plotly.py` instance ID because
+it contained a period. [`amendment-001.json`](./amendment-001.json) records the
+identifier-only correction made before any clone, execution, outcome, or provider call.
+The selected PR and every substantive corpus field remain unchanged; the selector itself
+was not changed during v7.
