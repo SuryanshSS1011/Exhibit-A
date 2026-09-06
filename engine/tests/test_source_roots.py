@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
+import pytest
+
+from exhibit_a.executor import source_roots as source_roots_module
 from exhibit_a.executor.source_roots import pythonpath, source_roots
 
 
@@ -97,3 +101,38 @@ def test_pythonpath_joins_under_the_given_prefix(tmp_path: Path):
     _package(tmp_path, "src", "two")
 
     assert pythonpath(tmp_path, prefix="/work/") == "/work/backend:/work/src"
+
+
+def test_a_checkout_that_is_itself_a_package_adds_nothing(tmp_path: Path):
+    # Its parent is outside the checkout, so reporting it would put the mount point's
+    # parent on the path -- and computing that path raises before it can. A run already
+    # has the root as its working directory, so there is nothing to add.
+    (tmp_path / "__init__.py").write_text("")
+    (tmp_path / "module.py").write_text("VALUE = 1\n")
+
+    assert source_roots(tmp_path) == ()
+
+
+def test_excluded_directories_are_pruned_rather_than_walked(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    # Discarding the results afterwards still pays for the whole subtree. One large
+    # node_modules dominated the time to start a run before this was pruned.
+    _package(tmp_path, "src", "mypkg")
+    buried = tmp_path / "node_modules" / "a" / "b"
+    buried.mkdir(parents=True)
+    (buried / "__init__.py").write_text("")
+
+    visited: list[str] = []
+    real_walk = os.walk
+
+    def counting_walk(top, *args, **kwargs):
+        for current, directories, files in real_walk(top, *args, **kwargs):
+            visited.append(str(current))
+            yield current, directories, files
+
+    monkeypatch.setattr(source_roots_module.os, "walk", counting_walk)
+
+    assert source_roots(tmp_path) == ("src",)
+    assert visited, "the walk did not run"
+    assert not any("node_modules" in path for path in visited)

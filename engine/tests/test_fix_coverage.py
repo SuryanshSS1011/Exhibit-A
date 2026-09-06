@@ -314,6 +314,7 @@ def test_study_keeps_partial_separate_and_resumes(tmp_path: Path) -> None:
         execution_source_revision="a" * 40,
     )
     assert public["headline"]["verified"] == 1
+    assert public["probe_only"] is False
     assert public["finished_at"] == "2026-09-04T00:00:01+00:00"
     assert public["execution_source_revision"] == "a" * 40
     assert public["selection"]["prior_corpus_exclusions"] == 1
@@ -992,3 +993,15 @@ def test_a_reach_probe_withholds_verified_figures_rather_than_reporting_zero(
     # The whole reason to run one: both instances reached the deterministic judge.
     assert headline["judged_denominator"] == 2
     assert headline["reached_judge_fraction"] == 1.0
+
+    # The flag has to survive into the artifact people actually read. Without it a
+    # published probe is a report full of nulls with no way to tell it apart from a run
+    # whose provider fell over.
+    public = create_public_fix_coverage_report(
+        corpus=corpus,
+        private_root=tmp_path / "run",
+        output=tmp_path / "public.json",
+        execution_source_revision="a" * 40,
+    )
+    assert public["probe_only"] is True
+    assert public["headline"]["verified"] is None

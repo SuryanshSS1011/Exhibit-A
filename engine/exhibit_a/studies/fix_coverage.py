@@ -387,6 +387,9 @@ def create_public_fix_coverage_report(
             "corpus_manifest_sha256": corpus.sha256,
             "private_report_sha256": hashlib.sha256(report_bytes).hexdigest(),
             "preregistration": corpus.preregistration,
+            # A published probe carries nulls where the verified figures would be. Without
+            # this flag a reader has no way to tell that from a run whose model failed.
+            "probe_only": private.get("probe_only", False),
             "headline": private["headline"],
             "runtime_platform": private.get("runtime_platform"),
             "verdict_counts": private["verdict_counts"],

@@ -13,6 +13,7 @@ which of its own directories get added.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 # Directories that hold tests, docs, or build output rather than the project's own
@@ -66,21 +67,31 @@ def source_roots(root: Path) -> tuple[str, ...]:
 
 
 def _top_level_packages(root: Path) -> list[Path]:
-    """Directories that are the outermost regular package of their own subtree."""
+    """Directories that are the outermost regular package of their own subtree.
+
+    The checkout root is never one of them even when it holds an ``__init__.py``: its
+    own parent is outside the checkout, and a run already has the root as its working
+    directory, so nothing needs adding for it.
+    """
     packages: list[Path] = []
-    for init in root.rglob("__init__.py"):
-        package = init.parent
-        try:
-            parts = package.relative_to(root).parts
-        except ValueError:  # pragma: no cover - rglob cannot leave the root
+    for current, directories, files in os.walk(root):
+        here = Path(current)
+        depth = len(here.relative_to(root).parts)
+        # Pruned rather than filtered afterwards. Descending into node_modules only to
+        # discard every result costs the whole subtree, and on a repository with a large
+        # one that walk dominates the time to start a run.
+        directories[:] = (
+            []
+            if depth >= _MAX_DEPTH
+            else [
+                name for name in directories if name not in _NON_SOURCE and not name.startswith(".")
+            ]
+        )
+        if depth == 0 or "__init__.py" not in files:
             continue
-        if len(parts) > _MAX_DEPTH:
-            continue
-        if any(part in _NON_SOURCE or part.startswith(".") for part in parts):
-            continue
-        if (package.parent / "__init__.py").exists():
+        if (here.parent / "__init__.py").is_file():
             continue  # not the outermost package; its parent will be reported
-        packages.append(package)
+        packages.append(here)
     return packages
 
 
