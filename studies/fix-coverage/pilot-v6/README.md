@@ -29,7 +29,7 @@ platform. `pinned_distribution_unavailable` fell from 7 in v5 to 3 in v6, and
 `dependency_resolution_conflict` fell from 4 to 2. Because the corpora are disjoint, those
 changes are descriptive rather than causal.
 
-Read the [full result and interpretation](../../../docs/FIX_COVERAGE_RESULTS.md), the
+Read the [historical full result and interpretation](../../../docs/FIX_COVERAGE_V6_RESULTS.md), the
 sanitized [`public-report.json`](./public-report.json), and the
 [`post-run-reporting-amendment.md`](./post-run-reporting-amendment.md) that records three
 reporting-only provenance corrections made before public export. Raw dependency reasons,

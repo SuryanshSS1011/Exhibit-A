@@ -32,3 +32,14 @@ does not measure verification. The result exceeds the preregistered 3/30 gate, a
 the provider pilot on the unchanged corpus. See the human-readable
 [`probe-result.md`](./probe-result.md) and machine-readable
 [`probe-report.json`](./probe-report.json).
+
+The completed provider run also reached the judge on **15/30 (50.0%)**. It produced
+**7/30 VERIFIED (23.3%)**, **0/30 PARTIAL**, and eight classified candidate rejections.
+Dependency installation blocked 15/30 on the recorded Docker `linux/arm64` platform.
+Minimization remained disabled. An explicit quota response halted after 16 completed
+instances; the identical command later resumed the unattempted next row and completed all
+30 without rerunning a finished outcome.
+
+Read the [full result and interpretation](../../../docs/FIX_COVERAGE_RESULTS.md) and the
+sanitized [`public-report.json`](./public-report.json). Raw dependency reasons, Cases,
+generated tests, provider diagnostics, and logs remain private.

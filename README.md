@@ -16,13 +16,12 @@
 
 ---
 
-> **Measured real-fix coverage (September 2026): the judge was reached on 2/30 fixes
-> (6.7%). Both reached VERIFIED; 0/30 were PARTIAL.** On the recorded Docker
-> `linux/arm64` platform, dependency installation blocked 17/30 instances and another
-> 11 stopped earlier in checkout, suite preflight, or timeout. This remains primarily a
-> measurement of plumbing. The current implementation should be treated as a
-> **research instrument**, not a broad-coverage product. [Read the complete preregistered
-> v6 pilot, dependency breakdown, and
+> **Measured real-fix coverage (September 2026): the judge was reached on 15/30 fixes
+> (50.0%); 7/30 VERIFIED (23.3%) and 0/30 were PARTIAL.** On the recorded Docker
+> `linux/arm64` platform, dependency installation blocked the other 15; eight judged
+> candidates were honestly rejected. This is the first credible product signal, but the
+> current implementation remains a **research instrument**, not a broad-coverage
+> product. [Read the complete preregistered v7 pilot, probe, dependency breakdown, and
 > exclusions.](./docs/FIX_COVERAGE_RESULTS.md)
 
 ## The problem
@@ -101,15 +100,12 @@ Verdicts are tiered so the tool never overclaims:
 | `UNCERTAIN` | Nothing cleared the gate. Honest silence. |
 
 **Intended scope:** deterministic functional bugs in Python repositories that build in a
-sandbox. The latest preregistered real-fix pilot reached the judge on 2/30 and found that
-current environment and suite support are the dominant practical limits, so this remains
-an empirical target rather than a demonstrated coverage claim. All three causes behind
-that figure have since been diagnosed and addressed: the repository-suite preflight is
-recorded rather than treated as a gate, a checkout's own source roots go on `PYTHONPATH`
-so a `src/` layout can import itself, and the sandbox installs the shared libraries that
-common wheels link against. The corrected figure awaits a fresh preregistered pilot and
-is deliberately not claimed here. It cannot speak to race conditions, performance
-regressions, or most security issues, and it stays silent instead of guessing.
+sandbox. In the latest preregistered, fresh-corpus pilot, 15/30 reached the judge and 7/30
+produced VERIFIED evidence. Dependency installation blocked the other 15, while eight
+judged candidates were rejected for infrastructure, vacuity, wrong failure signature, or
+tamper. That makes the scope measurable and promising, but not yet broadly demonstrated.
+It cannot speak to race conditions, performance regressions, or most security issues, and
+it stays silent instead of guessing.
 
 ## Open science
 
