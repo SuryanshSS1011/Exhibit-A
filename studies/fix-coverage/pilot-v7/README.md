@@ -25,3 +25,10 @@ it contained a period. [`amendment-001.json`](./amendment-001.json) records the
 identifier-only correction made before any clone, execution, outcome, or provider call.
 The selected PR and every substantive corpus field remain unchanged; the selector itself
 was not changed during v7.
+
+The completed provider-free probe reached the judge on **15/30 instances (50.0%)** and
+failed dependency installation on the other 15. It made zero provider calls and therefore
+does not measure verification. The result exceeds the preregistered 3/30 gate, authorizing
+the provider pilot on the unchanged corpus. See the human-readable
+[`probe-result.md`](./probe-result.md) and machine-readable
+[`probe-report.json`](./probe-report.json).
