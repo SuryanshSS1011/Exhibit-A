@@ -667,3 +667,70 @@ def test_flaky_rejection_retains_candidate_and_environment_for_private_quarantin
     assert case.silence_reason and case.silence_reason.startswith("flaky on target")
     assert case.test_file and case.test_file.path == "test_repro.py"
     assert case.environment_ref == "exhibit-a-env:flaky-fixture"
+
+
+class RecoveringGenerator:
+    """First candidate dies on an import error; the refinement proves a real flip.
+
+    This is the shape a real provider produced against a real repository: a rejected
+    candidate followed by a successful one.
+    """
+
+    def propose(self, claim: Claim, max_hypotheses: int = 3) -> list[Candidate]:
+        return [
+            Candidate(
+                hypothesis="first attempt imports a module that is not there",
+                test_path="test_repro.py",
+                test_code="import nonexistent_module_xyz\n\n\ndef test_x():\n    assert False\n",
+                run_command=f"{sys.executable} -m pytest -x -q test_repro.py",
+                expected_signature="AssertionError",
+            )
+        ]
+
+    def refine(self, claim: Claim, feedback: Feedback) -> Candidate:
+        return Candidate(
+            hypothesis="last_n drops the final element (off-by-one slice)",
+            test_path="test_repro.py",
+            test_code=FLIP_TEST,
+            run_command=f"{sys.executable} -m pytest -x -q test_repro.py",
+            expected_signature="AssertionError",
+        )
+
+
+def test_a_proof_after_a_rejected_candidate_is_internally_consistent():
+    engine = EvidenceEngine(
+        RecoveringGenerator(),
+        LocalExecutor(),
+        EngineConfig(
+            reruns=2,
+            max_refine=1,
+            check_existing_suite=False,
+            run_command=f"{sys.executable} -m pytest -x -q test_repro.py",
+            minimize_proven=False,
+            score_evidence_strength=False,
+        ),
+    )
+    claim = Claim(
+        text="last_n drops the last row",
+        repo_path=str(FIXTURES / "buggy_slice"),
+        expected_signature="AssertionError",
+    )
+
+    case = engine.investigate(
+        claim,
+        target=RepoState(path=str(FIXTURES / "buggy_slice"), label="target"),
+        base=RepoState(path=str(FIXTURES / "fixed_slice"), label="base"),
+    )
+
+    assert case.verdict is Verdict.VERIFIED, case.silence_reason
+    # The Case reports on the candidate that proved the flip, so its truth describes that
+    # candidate's executions and it carries no silence at all.
+    assert case.truth.execution is ExecutionTruth.COMPLETED
+    assert "execution failed" not in (case.truth.execution_reason or "")
+    assert case.truth.goal is GoalTruth.VERIFIED
+    assert case.silence_reason is None
+    # The rejected attempt is not erased; it stays where per-candidate history belongs.
+    assert len(case.hypotheses) == 2
+    assert case.hypotheses[0].rejected
+    assert "collection/usage error" in (case.hypotheses[0].reason or "")
+    assert not case.hypotheses[1].rejected

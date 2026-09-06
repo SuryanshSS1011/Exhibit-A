@@ -455,11 +455,15 @@ class EvidenceEngine:
             for state, outcome in state_outcomes
             if (reason := detect_infra_failure(outcome)) is not None
         ]
+        # Case-level truth describes the candidate the Case reports on, not the union of
+        # everything ever tried. A rejected candidate's execution failure is already
+        # recorded against that hypothesis; letting it stick here produced a VERIFIED Case
+        # whose truth.execution said FAILED, citing a candidate that was thrown away.
         if infra_failures:
             case.truth.execution = ExecutionTruth.FAILED
             state, reason = infra_failures[0]
             case.truth.execution_reason = f"{state} execution failed: {reason}"
-        elif case.truth.execution is not ExecutionTruth.FAILED:
+        else:
             case.truth.execution = ExecutionTruth.COMPLETED
             case.truth.execution_reason = f"completed {len(state_outcomes)} execution(s)"
         if flip.admissible and flip.tier == "flip":
@@ -475,6 +479,10 @@ class EvidenceEngine:
         if flip.admissible:
             verdict = Verdict.VERIFIED if flip.tier == "flip" else Verdict.PARTIAL
             case.verdict = verdict
+            # An earlier candidate's rejection is not this Case's silence. The Case speaks
+            # now, and a proof that still carries a silence reason is not a trustworthy
+            # artifact -- it ships that contradiction into every EEF archive and passport.
+            case.silence_reason = None
             case.run_command = spec.command
             case.test_file = TestArtifact(path=cand.test_path, code=cand.test_code)
             case.root_cause_narrative = cand.hypothesis

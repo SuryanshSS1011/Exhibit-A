@@ -354,3 +354,4 @@ def test_scratch_writes_are_pointed_off_the_read_only_mount(
         assert "COVERAGE_FILE=/tmp/.coverage" in argv
         assert "PYTHONDONTWRITEBYTECODE=1" in argv
         assert "PYTHONPYCACHEPREFIX=/tmp/pycache" in argv
+        assert "PYTEST_ADDOPTS=-o cache_dir=/tmp/pytest_cache" in argv

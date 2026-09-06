@@ -180,6 +180,12 @@ class DockerExecutor(Executor):
                 # That kills the run with an OSError that has nothing to do with the claim.
                 "--env",
                 "COVERAGE_FILE=/tmp/.coverage",
+                # Same reason, and this one is louder: pytest writes its cache into the
+                # rootdir and emits a warning block per failed write. Those logs are the
+                # evidence -- they get signed into EEF archives and read in the case file --
+                # so the noise is not cosmetic.
+                "--env",
+                "PYTEST_ADDOPTS=-o cache_dir=/tmp/pytest_cache",
             ]
             # A src/ or backend/ layout is not importable from the working directory
             # alone, and a test that cannot import the code under test fails for a
@@ -269,6 +275,8 @@ class DockerExecutor(Executor):
                 "PYTHONPYCACHEPREFIX=/tmp/pycache",
                 "--env",
                 "COVERAGE_FILE=/tmp/.coverage",
+                "--env",
+                "PYTEST_ADDOPTS=-o cache_dir=/tmp/pytest_cache",
             ]
             # The preflight gets the same import environment as the candidate, so a
             # recorded suite result describes the repository rather than our path setup.
