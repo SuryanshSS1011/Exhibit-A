@@ -11,7 +11,7 @@ from pathlib import Path
 from ..engine import EngineConfig, EvidenceEngine
 from ..executor.docker_exec import DockerExecutor
 from ..executor.instrumented import RecordingExecutor
-from ..hypothesis.generator import Claim, CodexGenerator
+from ..hypothesis.generator import Claim, CodexGenerator, StubGenerator
 from ..intake.git_checkout import checkout_pair
 from ..models.case import Mode
 from ..providers import ProviderRole, load_provider_config
@@ -43,7 +43,11 @@ def run_request(request: dict) -> WorkerResult:
     start = time.monotonic()
     executor = RecordingExecutor(DockerExecutor(), environment_root)
     try:
-        if config.provider_config is None:
+        if config.probe_only:
+            # No provider is constructed at all, so a probe cannot spend a model call even
+            # if credentials happen to be present in the environment.
+            generator = StubGenerator()
+        elif config.provider_config is None:
             generator = CodexGenerator(model=config.requested_model)
         else:
             provider = load_provider_config(config.provider_config).provider_for(

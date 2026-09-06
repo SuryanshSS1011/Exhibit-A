@@ -144,6 +144,11 @@ class RunConfig:
     check_existing_suite: bool = True
     minimize_verified: bool = False
     score_evidence_strength: bool = False
+    # Run the whole pipeline with a stub proposer and no provider at all. Nothing can be
+    # verified this way; what it measures is whether a candidate reaches the deterministic
+    # judge, which is the plumbing question, answerable for free before a real pilot spends
+    # a single model call on a corpus the harness cannot get through.
+    probe_only: bool = False
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -787,6 +792,8 @@ def _parse_instance(item: dict) -> FixInstance:
 def _validate_config(config: RunConfig) -> None:
     if not config.requested_model.strip():
         raise ValueError("requested model must not be empty")
+    if config.probe_only and config.provider_config is not None:
+        raise ValueError("a reach probe runs no provider; drop the provider configuration")
     if not 1 <= config.execution_timeout_s <= 600:
         raise ValueError("execution timeout must be between 1 and 600 seconds")
     if not 1 <= config.reruns <= 20:
@@ -987,23 +994,34 @@ def _aggregate(corpus: FixCorpus, config: RunConfig, state: dict, records: dict[
         "active_wall_time_s": round(
             sum(float(item["result"]["wall_time_s"]) for item in ordered), 6
         ),
+        # A probe runs a stub proposer, so nothing can clear the gate and a zero here would
+        # not be a coverage measurement. The verified figures are withheld rather than
+        # reported as zero, and `probe_only` travels with the report so a reader of the
+        # published artifact cannot mistake one kind of run for the other.
+        "probe_only": config.probe_only,
         "headline": {
             "denominator": requested,
-            "verified": verified,
-            "verified_fraction": verified / requested,
-            "verified_wilson_95": list(interval),
-            "partial": partial,
-            "partial_fraction": partial / requested,
+            "verified": None if config.probe_only else verified,
+            "verified_fraction": None if config.probe_only else verified / requested,
+            "verified_wilson_95": None if config.probe_only else list(interval),
+            "partial": None if config.probe_only else partial,
+            "partial_fraction": None if config.probe_only else partial / requested,
             "attempted_denominator": completed,
-            "verified_fraction_of_attempted": verified / completed if completed else None,
+            "verified_fraction_of_attempted": (
+                None if config.probe_only or not completed else verified / completed
+            ),
             # Conditional on the judge having ruled at all. The headline above measures the
             # whole pipeline; this measures the judge. A low headline with a high
             # `reached_judge_fraction` means the judge is weak; a low headline with a low
             # one means the plumbing never let it decide, which is a different problem.
             "judged_denominator": judged,
             "reached_judge_fraction": judged / requested if requested else None,
-            "verified_fraction_of_judged": verified / judged if judged else None,
-            "verified_judged_wilson_95": list(_wilson(verified, judged)) if judged else None,
+            "verified_fraction_of_judged": (
+                None if config.probe_only or not judged else verified / judged
+            ),
+            "verified_judged_wilson_95": (
+                None if config.probe_only or not judged else list(_wilson(verified, judged))
+            ),
             "provider_unavailable": provider_unavailable,
             # Surfaced rather than folded into either side: a large value here means the
             # split above is less trustworthy than it looks.

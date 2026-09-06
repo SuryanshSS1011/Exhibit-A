@@ -70,6 +70,32 @@ python3 -m exhibit_a.cli fix-coverage \
   --out ../.exhibit-a/research/fix-coverage/pilot-v6
 ```
 
+### Checking the plumbing first, for free
+
+A coverage run answers two questions at once, and one of them can be answered without
+spending anything. `--probe` runs the identical pipeline with a stub proposer and no
+provider at all:
+
+```bash
+python3 -m exhibit_a.cli fix-coverage \
+  ../studies/fix-coverage/pilot-v6/corpus.json --probe \
+  --instance-timeout-s 600 --execution-timeout-s 120 --reruns 1 --max-refine 0 \
+  --out ../.exhibit-a/research/fix-coverage/probe
+```
+
+The stub emits a test that imports nothing, so the deterministic judge rejects every
+candidate as vacuous. That rejection is the point: it proves a candidate got as far as the
+judge, which is exactly what `reached_judge_fraction` counts. No provider object is
+constructed, so a probe cannot spend a model call even where credentials are present, and
+supplying `--provider-config` alongside `--probe` is refused rather than ignored.
+
+Nothing can clear the gate this way, so a probe reports no verified figures at all rather
+than a zero that would read as a measured coverage result. `probe_only` travels with the
+report so the two kinds of run cannot be confused. Run one before a pilot: a low
+`reached_judge_fraction` here means the corpus will not exercise the judge no matter which
+model proposes, and that is worth knowing before the first model call rather than after
+thirty.
+
 Each instance runs in a separate process group. A hard per-instance ceiling can terminate
 the model, checkout, container build, and test descendants together. The parent writes an
 atomic checkpoint after every completed item and reconstructs the aggregate from those

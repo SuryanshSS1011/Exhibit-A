@@ -25,6 +25,7 @@ from exhibit_a.studies.fix_coverage import (
     WorkerResult,
     classify_environment_install_failure,
     _JUDGED_FAILURE_CATEGORIES,
+    _validate_config,
     classify_worker_result,
     create_public_fix_coverage_report,
     load_fix_corpus,
@@ -932,3 +933,62 @@ def test_a_harness_failure_without_a_loader_error_keeps_the_generic_category() -
     )
 
     assert classify_worker_result(result)[0] == "candidate_infrastructure_failure"
+
+
+def _probe_config(**updates: object) -> RunConfig:
+    base = {
+        "requested_model": "none (reach probe)",
+        "provider_config": None,
+        "instance_timeout_s": 60.0,
+        "total_ceiling_s": 600.0,
+        "execution_timeout_s": 30,
+        "reruns": 1,
+        "max_refine": 0,
+        "probe_only": True,
+    }
+    base.update(updates)
+    return RunConfig(**base)
+
+
+def test_a_reach_probe_refuses_to_carry_a_provider(tmp_path: Path) -> None:
+    # The point of a probe is that it cannot spend a model call. Accepting a provider
+    # configuration and then quietly ignoring it would make that promise unverifiable.
+    with pytest.raises(ValueError, match="runs no provider"):
+        _validate_config(_probe_config(provider_config=str(tmp_path / "provider.json")))
+
+
+def test_a_reach_probe_withholds_verified_figures_rather_than_reporting_zero(
+    tmp_path: Path,
+) -> None:
+    # A stub proposer cannot clear the gate, so a zero here would read as a measured
+    # coverage result and would be a lie. Reach is what a probe measures, so reach is
+    # what it reports.
+    corpus = _corpus_of(tmp_path, 2)
+    config = _probe_config()
+    # What a probe actually observes: a stub test that imports nothing, rejected as
+    # vacuous. The rejection is the proof that the judge got a turn.
+    vacuous = _silent("test imports nothing - it cannot exercise the code under test")
+
+    def runner(instance: FixInstance, root: Path, timeout_s: float) -> WorkerResult:
+        return replace(_result(case=vacuous), instance_id=instance.id)
+
+    report = run_fix_coverage_study(
+        corpus=corpus, output_root=tmp_path / "run", config=config, runner=runner
+    )
+
+    assert report["probe_only"] is True
+    headline = report["headline"]
+    for withheld in (
+        "verified",
+        "verified_fraction",
+        "verified_wilson_95",
+        "partial",
+        "partial_fraction",
+        "verified_fraction_of_attempted",
+        "verified_fraction_of_judged",
+        "verified_judged_wilson_95",
+    ):
+        assert headline[withheld] is None, withheld
+    # The whole reason to run one: both instances reached the deterministic judge.
+    assert headline["judged_denominator"] == 2
+    assert headline["reached_judge_fraction"] == 1.0

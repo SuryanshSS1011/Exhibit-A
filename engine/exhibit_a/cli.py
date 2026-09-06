@@ -1011,13 +1011,15 @@ def cmd_fix_coverage(args: argparse.Namespace) -> int:
                 )
             requested_model = provider_model
         config = FixCoverageRunConfig(
-            requested_model=requested_model or "gpt-5.6-sol",
+            requested_model=requested_model
+            or ("none (reach probe)" if args.probe else "gpt-5.6-sol"),
             provider_config=provider_config,
             instance_timeout_s=args.instance_timeout_s,
             total_ceiling_s=args.total_ceiling_s,
             execution_timeout_s=args.execution_timeout_s,
             reruns=args.reruns,
             max_refine=args.max_refine,
+            probe_only=args.probe,
         )
         corpus = load_fix_corpus(args.manifest)
         report = run_fix_coverage_study(
@@ -1038,14 +1040,17 @@ def cmd_fix_coverage(args: argparse.Namespace) -> int:
             f"REACHED JUDGE: {headline['judged_denominator']}/{headline['denominator']} "
             f"({headline['reached_judge_fraction']:.1%})"
         )
-        print(
-            f"VERIFIED: {headline['verified']}/{headline['denominator']} "
-            f"({headline['verified_fraction']:.1%})"
-        )
-        print(
-            f"PARTIAL: {headline['partial']}/{headline['denominator']} "
-            f"({headline['partial_fraction']:.1%}); never merged with VERIFIED"
-        )
+        if report["probe_only"]:
+            print("VERIFIED: not measured; a reach probe runs a stub proposer and no model")
+        else:
+            print(
+                f"VERIFIED: {headline['verified']}/{headline['denominator']} "
+                f"({headline['verified_fraction']:.1%})"
+            )
+            print(
+                f"PARTIAL: {headline['partial']}/{headline['denominator']} "
+                f"({headline['partial_fraction']:.1%}); never merged with VERIFIED"
+            )
         print(
             f"completed: {report['completed_instances']}/{report['requested_instances']}; "
             f"active wall time: {report['active_wall_time_s']:.1f}s"
@@ -1622,6 +1627,14 @@ def main(argv: list[str] | None = None) -> int:
         "--out",
         default=".exhibit-a/research/fix-coverage",
         help="private resumable study directory",
+    )
+    coverage.add_argument(
+        "--probe",
+        action="store_true",
+        help=(
+            "run the corpus with a stub proposer and no provider: measures whether "
+            "candidates reach the deterministic judge, verifies nothing, spends nothing"
+        ),
     )
     coverage.add_argument("--json", action="store_true", help="print the full report JSON")
     coverage.set_defaults(func=cmd_fix_coverage)
