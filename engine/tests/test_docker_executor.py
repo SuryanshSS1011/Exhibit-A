@@ -394,3 +394,45 @@ def test_prepare_refuses_an_interpreter_the_sandbox_does_not_provide(
     monkeypatch.setattr("exhibit_a.executor.docker_exec.subprocess.run", fake_run)
     with pytest.raises(EnvironmentSetupError, match="does not provide"):
         DockerExecutor().prepare(RepoState(str(tmp_path), "target", source="repo-a"))
+
+
+def test_the_mounted_copy_is_readable_by_the_container_user(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    """A 0700 checkout mounts as a tree uid 65534 cannot traverse.
+
+    Docker Desktop on macOS masks host ownership, so this fails only on Linux -- which
+    is exactly where CI runs. pytest then dies on a PermissionError for a config file it
+    was merely looking for, which reads as nothing to do with the test.
+    """
+    source = tmp_path / "checkout"
+    source.mkdir(mode=0o700)
+    (source / "pkg").mkdir(mode=0o700)
+    (source / "pkg" / "mod.py").write_text("VALUE = 1\n")
+    (source / "pkg" / "mod.py").chmod(0o600)
+    modes: dict[str, int] = {}
+
+    def fake_run(argv: list[str], **kwargs) -> subprocess.CompletedProcess:
+        # The copy is removed as soon as run() returns, so read it while it is mounted.
+        work = Path(argv[argv.index("-v") + 1].removesuffix(":/work:ro"))
+        for label, path in (("root", work), ("dir", work / "pkg"), ("file", work / "pkg/mod.py")):
+            modes[label] = path.stat().st_mode & 0o777
+        return subprocess.CompletedProcess(argv, 0, "1 passed", "")
+
+    monkeypatch.setattr("exhibit_a.executor.docker_exec.subprocess.run", fake_run)
+    DockerExecutor().run(
+        RepoState(str(source), "target"),
+        ExecSpec(
+            test_path="test_repro.py",
+            test_code="def test_x():\n    assert True\n",
+            command="python3 -m pytest -q test_repro.py",
+            image="exhibit-a-env:test",
+        ),
+    )
+
+    assert modes["root"] & 0o055 == 0o055
+    assert modes["dir"] & 0o055 == 0o055
+    assert modes["file"] & 0o044 == 0o044
+    # The source keeps the permissions it had; only our disposable copy is widened.
+    assert source.stat().st_mode & 0o777 == 0o700
+    assert (source / "pkg" / "mod.py").stat().st_mode & 0o777 == 0o600

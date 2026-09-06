@@ -15,8 +15,10 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import re
 import shlex
+import stat
 import shutil
 import subprocess
 import tempfile
@@ -155,6 +157,7 @@ class DockerExecutor(Executor):
         work = workdir / "repo"
         try:
             shutil.copytree(src, work, ignore=shutil.ignore_patterns("__pycache__", ".git"))
+            _grant_container_read(work)
             if mutation is not None:
                 apply_source_mutation(work, mutation, test_path=spec.test_path)
             test_abs = work / spec.test_path
@@ -259,6 +262,7 @@ class DockerExecutor(Executor):
         work = workdir / "repo"
         try:
             shutil.copytree(src, work, ignore=shutil.ignore_patterns("__pycache__", ".git"))
+            _grant_container_read(work)
             resolved_image = image or self.prepare(repo) or self.base_image
             container = f"exhibit-a-suite-{uuid.uuid4().hex}"
             docker_argv = [
@@ -335,6 +339,32 @@ class DockerExecutor(Executor):
                 )
         finally:
             shutil.rmtree(workdir, ignore_errors=True)
+
+
+def _grant_container_read(work: Path) -> None:
+    """Let the container's unprivileged user read the copy we are about to mount.
+
+    The container runs as uid 65534, which shares nothing with the host user that made
+    the copy, and a bind mount carries the host's modes through unchanged on Linux. A
+    tree that arrives mode 0700 -- a restrictive umask, or a scratch directory from a
+    test harness -- then mounts as something the container cannot traverse, and pytest
+    dies on a PermissionError for a config file it was only looking for. Docker Desktop
+    on macOS masks host ownership, so this fails on Linux alone and passes locally.
+
+    Only read and traverse bits are added, and the mount is read-only regardless, so
+    this opens no path to writing the source under test.
+    """
+    for current, directories, files in os.walk(work):
+        for name in (current, *(f"{current}/{entry}" for entry in directories + files)):
+            try:
+                mode = os.lstat(name).st_mode
+                if stat.S_ISLNK(mode):
+                    continue
+                os.chmod(name, stat.S_IMODE(mode) | (0o055 if stat.S_ISDIR(mode) else 0o044))
+            except OSError:
+                # A tree we cannot adjust is not worth failing the run over; the mount
+                # either works or reports its own error.
+                continue
 
 
 def _remove_container(docker_bin: str, name: str) -> None:
