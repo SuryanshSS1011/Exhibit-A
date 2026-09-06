@@ -1,0 +1,112 @@
+{
+  "schema_version": "fix-coverage-preregistration/v7",
+  "registered_at": "2026-09-06T08:41:08Z",
+  "parent_commit": "b20950d63e9f10a9d874b6b1fe58ab2a0d52df86",
+  "supersedes_for_future_collection": "studies/fix-coverage/pilot-v6/preregistration.json",
+  "pilot_v5_corpus_sha256": "b95789fa86a7c26268d8b237e9fe6656a77e661525536abecc332fcbbe653f58",
+  "pilot_v6_corpus_sha256": "64ca53193d5138200b98d21363cfd178e14fb49c8b87381d32a86e5026035aa8",
+  "pilot_v6_public_report_sha256": "1fb026eb43a5c1c9fc094c1e0f397a2c44ffa46b0126cbf0c65609eed222156e",
+  "prior_corpora_manifest": {
+    "path": "studies/fix-coverage/pilot-v7/prior-corpora.json",
+    "sha256": "a0a5720a6c5f889e5ca5dbb03d96a3792373b26f25603aad75f31bf7ce2dfa00",
+    "instances": 60
+  },
+  "reason_for_new_pilot": "Engine changes derived from v6 failures raised provider-free reach on the frozen v6 corpus from 2/30 to 13/30. That corpus is now optimistically biased and must not be rerun with a provider. Pilot v7 selects fixes absent from both v5 and v6, probes the fresh corpus without a provider, and only then measures whether the engine-side improvements generalize to unseen repositories and revisions.",
+  "selection": {
+    "repository_query": "language:Python fork:false archived:false",
+    "repository_order": "stargazers_count descending in the cached v5/v6 public source frame",
+    "source_frame": "Reuse the public GitHub metadata and clone cache used for v5 and v6 where present, rerun every current environment eligibility decision, and fetch only missing metadata under the registered retry rule.",
+    "repository_frame": "First 50 repositories accepted by the current root pinned-environment parser, scanning at most 1,000.",
+    "accepted_root_environment_sources_in_precedence_order": [
+      "uv.lock",
+      "poetry.lock",
+      "Pipfile.lock",
+      "requirements*.txt"
+    ],
+    "uv_lock_rule": "Start from uv.lock workspace roots; retain only registry packages reachable through production and development dependency edges; conjoin markers along each path and disjoin across paths; apply package resolution-markers; accept retained packages only when exactly versioned and carrying a sha256 artifact hash; skip local project entries; reject reachable git, URL, directory, editable, missing-version, or missing-hash entries. If no root can be identified, retain the conservative all-package behavior rather than silently constructing an empty environment.",
+    "candidate_search": "First 100 merged-PR results per retained repository in the date window, sorted updated ascending.",
+    "bug_indicator": "Exact case-insensitive bug label OR title beginning fix, fixed, fixes, or fixing.",
+    "date_window": "2026-02-17 through 2026-08-31 inclusive",
+    "claim": "Verbatim PR title with no added expected signature.",
+    "revisions": "GitHub merge_commit_sha and its first parent.",
+    "instance_checks": "Commit date, production Python diff, accepted pinned environment on both revisions, and resolvable Git relationship.",
+    "candidate_order": "merged_at ascending within repository, round-robin by repository star rank.",
+    "per_repository_cap": 5,
+    "target_instances": 30,
+    "fresh_corpus_rule": "Mechanically exclude every source_url in the hash-pinned 60-row union of the frozen v5 and v6 manifests before applying the repository cap. Do not add or remove an instance after observing probe or provider outcomes.",
+    "github_transport_attempts": 5,
+    "github_transport_backoff_seconds": [1, 2, 4, 8],
+    "outcome_based_exclusions": "forbidden"
+  },
+  "probe": {
+    "required_before_provider_run": true,
+    "mode": "fix-coverage --probe with the built-in stub proposer and no provider configuration",
+    "purpose": "Measure fresh-corpus plumbing reach before spending model calls. A probe cannot VERIFY and its null verification fields must not be interpreted as zero coverage.",
+    "requested_model": "none (reach probe)",
+    "provider_calls": 0,
+    "reruns": 1,
+    "max_refine": 0,
+    "execution_timeout_seconds": 120,
+    "per_instance_wall_clock_ceiling_seconds": 720,
+    "total_active_wall_clock_ceiling_seconds": 21600,
+    "near_zero_definition": "fewer than 3 of 30 instances reach the deterministic judge",
+    "decision_rule": "If judged_denominator is below 3, stop before any provider call and publish the probe as the v7 finding. If at least 3 reach the judge, freeze and publish the probe report, then run the provider pilot on the identical corpus without changing the engine, environment logic, selection, taxonomy, or budgets.",
+    "no_fix_rule": "Do not change environment or harness code in response to probe outcomes during v7. Any defect discovered is reported for a later preregistered pilot."
+  },
+  "model": {
+    "requested_model": "gpt-5.6-sol",
+    "provider": "codex_cli",
+    "knowledge_cutoff": "2026-02-16",
+    "confirmed_identity_rule": "Record backend telemetry when present; otherwise preserve unknown_no_telemetry explicitly.",
+    "source": "https://developers.openai.com/api/docs/models/gpt-5.6-sol"
+  },
+  "execution": {
+    "sandbox": "Docker, unprivileged, network disabled during test execution, credentials unavailable.",
+    "platform_rule": "Record host machine/system and Docker daemon OS/architecture. Docker fields describe the dependency-build sandbox and remain null rather than falling back to host values when the daemon cannot be identified.",
+    "existing_suite_preflight": true,
+    "reruns": 5,
+    "max_refine": 3,
+    "execution_timeout_seconds": 120,
+    "per_instance_wall_clock_ceiling_seconds": 720,
+    "total_active_wall_clock_ceiling_seconds": 21600,
+    "minimize_verified": false,
+    "score_evidence_strength": false,
+    "outcome_retry_rule": "One completed attempt per instance. Resume skips completed checkpoints. An interrupted attempt may be resumed only while its incomplete attempt remains recorded; never retry merely to seek a better verdict.",
+    "provider_quota_rule": "An explicit quota or usage-limit response halts the study immediately and is not checkpointed. The affected instance remains unattempted and is the first instance on resume after capacity returns.",
+    "completion_rule": "Do not publish a final provider result until complete is true, halted_reason is null, and all 30 instances have completed checkpoints. Intermediate halted reports remain private operational state.",
+    "no_fix_rule": "Do not modify environment construction, suite handling, execution, proposal, classification, Case, or verdict code after the v7 corpus is selected. Record failures as measured and defer fixes to a future preregistration."
+  },
+  "analysis": {
+    "primary_metric": "reached_judge_fraction = judged_denominator / all 30 included instances; report this first for both probe and provider runs.",
+    "judged_definition": "VERIFIED, PARTIAL, or a classified candidate rejection produced after a candidate was considered by the deterministic judge. Plumbing failures, proposal silence, provider unavailability, and catch-all rejections are not judged.",
+    "conditional_verification": "For the provider run, report VERIFIED / judged_denominator and its two-sided 95% Wilson interval immediately after judge reach.",
+    "whole_pipeline_headline": "For the provider run, report VERIFIED / all 30 included instances and PARTIAL separately; never merge PARTIAL into VERIFIED. Probe verification fields remain null.",
+    "provider_unavailable": "Report separately and do not absorb it into judged or proposal silence.",
+    "failure_taxonomy": "fix-coverage-failure-taxonomy/v3 with the 20% catch-all refinement trigger; preserve both preregistered and any refined view without changing Cases or verdicts.",
+    "runtime_platform": "Publish the recorded host and Docker sandbox platform immediately beside the environment dependency-install breakdown.",
+    "environment_dependency_install_breakdown": {
+      "schema_version": "fix-coverage-environment-install-taxonomy/v1",
+      "raw_reason_policy": "Raw environment diagnostics remain private. Publish only the per-instance category and aggregate counts.",
+      "categories": [
+        "python_version_incompatible",
+        "pinned_distribution_unavailable",
+        "dependency_resolution_conflict",
+        "artifact_hash_or_integrity_failure",
+        "package_index_or_network_failure",
+        "native_distribution_build_failure",
+        "package_build_backend_or_metadata_failure",
+        "other_install_failure"
+      ],
+      "classification_precedence": "The category order above is binding; first matching category wins.",
+      "refinement_rule": "If other_install_failure exceeds 20% of dependency-install failures, publish the registered catch-all warning and describe the raw reasons privately, but do not modify the classifier during v7."
+    },
+    "generalization_comparison": {
+      "v6_observed_provider_reach": "2/30",
+      "v6_post-fix_provider_free_probe_reach": "13/30",
+      "rule": "Compare v7 probe and provider reach descriptively with these fixed values. V7 is disjoint, so neither difference is a paired or causal estimate. Do not run the v6 corpus with a provider."
+    },
+    "selection_exclusions": "Report repository exclusions, v5/v6 prior-corpus exclusions, revision/environment eligibility exclusions, and sampling-boundary exclusions separately.",
+    "cost": "Report active and calendar wall time plus provider-reported spend only. Unavailable model telemetry is not zero and must not be estimated from incomplete data.",
+    "interpretation": "Rank the constraints and make a product-versus-research-instrument judgment without changing the corpus or rerunning completed outcomes."
+  }
+}
