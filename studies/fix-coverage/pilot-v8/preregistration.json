@@ -1,0 +1,100 @@
+{
+  "schema_version": "fix-coverage-preregistration/v8",
+  "registered_at": "2026-09-07T21:05:11Z",
+  "parent_commit": "dcc6b82",
+  "supersedes_for_future_collection": "studies/fix-coverage/pilot-v7/preregistration.json",
+  "pilot_v5_corpus_sha256": "b95789fa86a7c26268d8b237e9fe6656a77e661525536abecc332fcbbe653f58",
+  "pilot_v6_corpus_sha256": "64ca53193d5138200b98d21363cfd178e14fb49c8b87381d32a86e5026035aa8",
+  "pilot_v7_corpus_sha256": "f0cc23ecd53c4289da248904a9f38f90de56a9f7613f4e7c80704fe0d2d74282",
+  "pilot_v7_preregistration_sha256": "319b1112c0868b7377d340e5e0a863b23ad8dbce8830786436507ec893c089ae",
+  "pilot_v7_public_report_sha256": "e40c0283b24dc1fe89aa14ce271380f465c62e90aadea0e01cb18c0a69edd237",
+  "reason_for_new_pilot": "Pilot v7 measured 7/30 VERIFIED on a corpus that is instance-disjoint from v5 and v6 but not repository-disjoint: 17 of its 21 repositories also appear in v6, and 5 of its 7 verified instances come from repositories whose failures the engine changes were derived from. That is a sound measurement of the product and cannot answer whether those changes generalize, because the repositories are the ones they were fitted to. Pilot v8 holds the date window and every other selection rule fixed and changes exactly one thing: no repository named by v5, v6 or v7 may be selected at all.",
+  "engine_changes_since_v7": [
+    "783a837 environments build on the interpreter the project declares rather than always python:3.12-slim; an interpreter the sandbox cannot serve is refused",
+    "0f104c0 instance identifiers fold any repository name into the corpus alphabet, fixing the selector defect recorded in v7 amendment-001",
+    "dcc6b82 the disposable copy is made readable by the container's unprivileged user"
+  ],
+  "prior_corpora": {
+    "rule": "Every repository appearing in any listed corpus is excluded before eligibility is evaluated, not merely its individual pull requests.",
+    "manifests": [
+      {
+        "path": "studies/fix-coverage/pilot-v5/corpus.json",
+        "sha256": "b95789fa86a7c26268d8b237e9fe6656a77e661525536abecc332fcbbe653f58"
+      },
+      {
+        "path": "studies/fix-coverage/pilot-v6/corpus.json",
+        "sha256": "64ca53193d5138200b98d21363cfd178e14fb49c8b87381d32a86e5026035aa8"
+      },
+      {
+        "path": "studies/fix-coverage/pilot-v7/corpus.json",
+        "sha256": "f0cc23ecd53c4289da248904a9f38f90de56a9f7613f4e7c80704fe0d2d74282"
+      }
+    ],
+    "distinct_repositories_excluded": 29
+  },
+  "selection": {
+    "repository_query": "language:Python fork:false archived:false",
+    "repository_order": "stargazers_count descending",
+    "repository_freshness": "A repository named by the v5, v6 or v7 corpus is skipped before its clone and before its pinned-environment eligibility is evaluated, and does not count toward the retained repository frame.",
+    "repository_frame": "First 50 repositories accepted by the current root pinned-environment parser and not named by a prior corpus, scanning at most 600.",
+    "scan_limit_basis": "v7 scanned 192 repositories to retain 50 eligible, so roughly one in four passes the pinned-environment parser. 29 already-used repositories must now be skipped, so reaching 50 fresh eligible repositories is expected to need on the order of 300 scanned. 600 is registered as headroom, fixed before selection runs so a thin yield cannot motivate widening it afterwards.",
+    "accepted_root_environment_sources_in_precedence_order": [
+      "uv.lock",
+      "poetry.lock",
+      "Pipfile.lock",
+      "requirements*.txt"
+    ],
+    "candidate_search": "First 100 merged-PR results per retained repository in the date window, sorted updated ascending.",
+    "bug_indicator": "Exact case-insensitive bug label OR title beginning fix, fixed, fixes, or fixing.",
+    "date_window": "2026-02-17 through 2026-08-31 inclusive, unchanged from v6 and v7",
+    "date_window_basis": "Held constant so the repository frame is the only variable that moves between v7 and v8.",
+    "claim": "Verbatim PR title with no added expected signature.",
+    "revisions": "GitHub merge_commit_sha and its first parent.",
+    "instance_checks": "Commit date, production Python diff, accepted pinned environment on both revisions, and resolvable Git relationship.",
+    "target_instances": 30,
+    "per_repository_cap": 5,
+    "short_yield_rule": "If the registered frame yields fewer than 30 instances, the shortfall is published as the v8 result with its exclusion counts. Widening the frame afterwards requires a recorded pre-execution amendment and is permitted only while no instance outcome has been observed, as in v2 and v3."
+  },
+  "probe": {
+    "required_before_provider_run": true,
+    "mode": "fix-coverage --probe with the built-in stub proposer and no provider configuration",
+    "purpose": "Measure fresh-repository plumbing reach before spending model calls. A probe cannot VERIFY and its null verification fields must not be read as zero coverage.",
+    "requested_model": "none (reach probe)",
+    "provider_calls": 0,
+    "reruns": 1,
+    "max_refine": 0,
+    "execution_timeout_seconds": 120,
+    "per_instance_wall_clock_ceiling_seconds": 720,
+    "near_zero_definition": "fewer than 3 of the selected instances reach the deterministic judge",
+    "decision_rule": "If judged_denominator is below 3, stop before any provider call and publish the probe as the v8 finding. Otherwise freeze and publish the probe report, then run the provider pilot on the identical corpus without changing the engine, environment logic, selection, taxonomy, or budgets.",
+    "no_fix_rule": "Do not change environment or harness code in response to probe outcomes during v8. Any defect discovered is reported for a later preregistered pilot."
+  },
+  "model": {
+    "requested_model": "gpt-5.6-sol",
+    "provider": "codex_cli",
+    "confirmed_identity_rule": "Record backend telemetry when present; otherwise record the unverified-backend sentinel rather than assuming the requested identity."
+  },
+  "execution": {
+    "sandbox": "Docker, unprivileged, network disabled during test execution, credentials unavailable.",
+    "platform_rule": "Record host machine/system and Docker daemon OS/architecture. Every pilot so far ran on linux/arm64; results are scoped to the recorded platform and must not be presented as platform-independent.",
+    "interpreter_rule": "The environment is built on the interpreter the project declares via uv.lock requires-python, else pyproject.toml. A declared interpreter the sandbox does not provide is a recorded environment failure, never a silent substitution.",
+    "existing_suite_preflight": true,
+    "existing_suite_rule": "Recorded, never a gate. A red or unrunnable repository suite does not end an investigation.",
+    "reruns": 5,
+    "max_refine": 3,
+    "execution_timeout_seconds": 120,
+    "per_instance_wall_clock_ceiling_seconds": 720,
+    "total_active_wall_clock_ceiling_seconds": 21600,
+    "minimize_verified": false,
+    "score_evidence_strength": false,
+    "outcome_retry_rule": "One completed attempt per instance. Resume skips completed checkpoints. Never retry merely to seek a better verdict.",
+    "provider_quota_rule": "An explicit quota or usage-limit response halts the study immediately and is not checkpointed.",
+    "completion_rule": "Do not publish a final v8 result until complete is true, halted_reason is null, and every selected instance has a completed checkpoint."
+  },
+  "analysis": {
+    "primary_metric": "verified_fraction over the selected instances, with a Wilson 95% interval.",
+    "secondary_metric": "reached_judge_fraction, reported alongside so a low headline separates a weak judge from plumbing that never let it decide.",
+    "generalization_claim": "v8 is the first corpus whose repositories were never examined while building the engine changes under test. Its verified_fraction is the figure that may be compared with v7's 7/30 as evidence of generalization; v7's own figure may not be presented that way.",
+    "comparison_rule": "v7 and v8 are separate corpora, not a paired sample. Report both with intervals and do not compute a difference test across them."
+  }
+}

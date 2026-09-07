@@ -16,6 +16,7 @@ import urllib.request
 from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Sequence
 
 from ..executor.base import EnvironmentSetupError, RepoState
 from ..executor.docker_exec import _environment_spec
@@ -96,7 +97,8 @@ def select_fix_corpus(
     target_instances: int,
     per_repository_cap: int,
     token_env: str = "GITHUB_TOKEN",
-    exclude_manifest: str | Path | None = None,
+    exclude_manifest: str | Path | Sequence[str | Path] | None = None,
+    exclude_prior_repositories: bool = False,
 ) -> dict:
     """Select a stable manifest without executing Exhibit A or observing outcomes."""
     if not 1 <= repository_count <= 100:
@@ -113,7 +115,9 @@ def select_fix_corpus(
         raise ValueError("date_to must not precede date_from")
 
     selected_at = datetime.now(timezone.utc).isoformat()
-    excluded_sources, exclusion_provenance = _load_exclusion_manifest(exclude_manifest)
+    excluded_sources, excluded_repositories, exclusion_provenance = _load_exclusion_manifests(
+        exclude_manifest, exclude_prior_repositories
+    )
     cache_root = Path(cache).resolve()
     api = GitHubClient(cache_root / "github-api", token_env)
     repositories = _top_repositories(api, repository_scan_limit)
@@ -131,6 +135,20 @@ def select_fix_corpus(
             "stars_at_selection": repository["stargazers_count"],
             "default_branch": repository["default_branch"],
         }
+        if str(repository["full_name"]).casefold() in excluded_repositories:
+            # Instance-level freshness lets a corpus re-select the same repositories under
+            # different PRs, which is fine for measuring the product and useless for asking
+            # whether a change generalizes. Applied before the clone so a used repository
+            # costs nothing.
+            record.update(
+                {
+                    "eligible": False,
+                    "reason_code": "prior_corpus_repository",
+                    "detail": "mechanically excluded by the registered fresh-repository rule",
+                }
+            )
+            repository_records.append(record)
+            continue
         clone = cache_root / "repositories" / str(repository["full_name"]).replace("/", "--")
         try:
             _ensure_default_clone(repository, clone)
@@ -306,29 +324,68 @@ def select_fix_corpus(
     return payload
 
 
-def _load_exclusion_manifest(path: str | Path | None) -> tuple[set[str], dict | None]:
-    if path is None:
-        return set(), None
-    manifest = Path(path).resolve(strict=True)
-    raw = manifest.read_bytes()
-    payload = json.loads(raw)
-    if not isinstance(payload, dict) or payload.get("schema_version") != CORPUS_SCHEMA:
-        raise ValueError("prior corpus exclusion manifest has an incompatible schema")
-    instances = payload.get("instances")
-    if not isinstance(instances, list):
-        raise TypeError("prior corpus exclusion manifest instances must be a list")
-    sources = set()
-    for item in instances:
-        source = item.get("source_url") if isinstance(item, dict) else None
-        if not isinstance(source, str) or not source.startswith("https://"):
-            raise ValueError("prior corpus exclusion manifest has an invalid source URL")
-        sources.add(source)
-    return sources, {
-        "path": str(path),
-        "sha256": hashlib.sha256(raw).hexdigest(),
-        "instances": len(instances),
-        "rule": "exclude matching source_url before applying the per-repository cap",
-    }
+def _load_exclusion_manifests(
+    paths: str | Path | Sequence[str | Path] | None, exclude_repositories: bool
+) -> tuple[set[str], set[str], dict | None]:
+    """Read every prior corpus into the source URLs, and optionally repositories, to skip."""
+    if paths is None:
+        return set(), set(), None
+    if isinstance(paths, (str, Path)):
+        paths = [paths]
+    sources: set[str] = set()
+    repositories: set[str] = set()
+    manifests = []
+    for path in paths:
+        manifest = Path(path).resolve(strict=True)
+        raw = manifest.read_bytes()
+        payload = json.loads(raw)
+        if not isinstance(payload, dict) or payload.get("schema_version") != CORPUS_SCHEMA:
+            raise ValueError("prior corpus exclusion manifest has an incompatible schema")
+        instances = payload.get("instances")
+        if not isinstance(instances, list):
+            raise TypeError("prior corpus exclusion manifest instances must be a list")
+        for item in instances:
+            source = item.get("source_url") if isinstance(item, dict) else None
+            if not isinstance(source, str) or not source.startswith("https://"):
+                raise ValueError("prior corpus exclusion manifest has an invalid source URL")
+            sources.add(source)
+            if not exclude_repositories:
+                continue
+            repository = item.get("repository") if isinstance(item, dict) else None
+            if not isinstance(repository, str) or not repository.startswith("https://"):
+                raise ValueError("prior corpus exclusion manifest has an invalid repository")
+            repositories.add(_repository_full_name(repository))
+        manifests.append(
+            {
+                "path": str(path),
+                "sha256": hashlib.sha256(raw).hexdigest(),
+                "instances": len(instances),
+            }
+        )
+    rule = "exclude matching source_url before applying the per-repository cap"
+    if exclude_repositories:
+        rule = "exclude every repository named by a prior corpus before eligibility"
+    return (
+        sources,
+        repositories,
+        {
+            "manifests": manifests,
+            "path": str(manifests[0]["path"]) if len(manifests) == 1 else None,
+            "sha256": manifests[0]["sha256"] if len(manifests) == 1 else None,
+            "instances": sum(item["instances"] for item in manifests),
+            "repositories": len(repositories),
+            "excludes_repositories": exclude_repositories,
+            "rule": rule,
+        },
+    )
+
+
+def _repository_full_name(repository_url: str) -> str:
+    """``https://github.com/owner/name.git`` -> ``owner/name``, folded for comparison."""
+    path = urllib.parse.urlsplit(repository_url).path.strip("/")
+    if path.endswith(".git"):
+        path = path[: -len(".git")]
+    return path.casefold()
 
 
 def _exclude_prior_candidates(

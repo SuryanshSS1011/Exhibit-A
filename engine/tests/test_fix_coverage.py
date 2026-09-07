@@ -13,7 +13,7 @@ from exhibit_a.studies.fix_corpus import (
     _date,
     _exclude_prior_candidates,
     _is_production_python,
-    _load_exclusion_manifest,
+    _load_exclusion_manifests,
     _top_repositories,
 )
 from exhibit_a.studies.fix_coverage import (
@@ -524,7 +524,7 @@ def test_prior_corpus_members_are_excluded_before_the_repository_cap(tmp_path: P
     }
     manifest = tmp_path / "prior.json"
     manifest.write_text(json.dumps(prior))
-    sources, provenance = _load_exclusion_manifest(manifest)
+    sources, repositories, provenance = _load_exclusion_manifests(manifest, False)
     candidates = [
         {"number": 1, "html_url": "https://github.com/owner/repo/pull/1"},
         {"number": 2, "html_url": "https://github.com/owner/repo/pull/2"},
@@ -539,6 +539,8 @@ def test_prior_corpus_members_are_excluded_before_the_repository_cap(tmp_path: P
     assert provenance["rule"] == (
         "exclude matching source_url before applying the per-repository cap"
     )
+    # Instance-level freshness collects no repositories, so nothing is skipped wholesale.
+    assert repositories == set()
 
 
 def test_github_client_retries_transient_transport_errors(
@@ -1022,3 +1024,42 @@ def test_repository_names_outside_the_id_alphabet_still_select() -> None:
     # Names that were already valid keep the identifiers they had.
     assert fix_corpus._slug("HKUDS/LightRAG") == "hkuds-lightrag"
     assert fix_corpus._slug("virattt/ai-hedge-fund") == "virattt-ai-hedge-fund"
+
+
+def test_repository_level_freshness_reads_every_prior_corpus(tmp_path: Path) -> None:
+    """Instance-level freshness let v7 reuse 17 of v6's 21 repositories.
+
+    That is fine for measuring the product and useless for asking whether an engine
+    change generalizes, because the repositories were the ones the change was derived
+    from. A corpus that wants an answer to the second question has to drop them whole.
+    """
+    manifests = []
+    for index, (owner, pull) in enumerate((("oraios/serena", 1), ("HKUDS/LightRAG", 2))):
+        path = tmp_path / f"prior-{index}.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "schema_version": CORPUS_SCHEMA,
+                    "instances": [
+                        {
+                            "source_url": f"https://github.com/{owner}/pull/{pull}",
+                            "repository": f"https://github.com/{owner}.git",
+                        }
+                    ],
+                }
+            )
+        )
+        manifests.append(path)
+
+    sources, repositories, provenance = _load_exclusion_manifests(manifests, True)
+
+    assert len(sources) == 2
+    # Case-folded and stripped of the .git suffix, so it compares against GitHub's full_name.
+    assert repositories == {"oraios/serena", "hkuds/lightrag"}
+    assert provenance["excludes_repositories"] is True
+    assert provenance["instances"] == 2
+    assert provenance["repositories"] == 2
+    assert len(provenance["manifests"]) == 2
+    assert (
+        provenance["rule"] == "exclude every repository named by a prior corpus before eligibility"
+    )

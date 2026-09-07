@@ -983,6 +983,7 @@ def cmd_select_fix_corpus(args: argparse.Namespace) -> int:
             per_repository_cap=args.per_repository_cap,
             token_env=args.github_token_env,
             exclude_manifest=args.exclude_manifest,
+            exclude_prior_repositories=args.exclude_prior_repositories,
         )
     except (OSError, RuntimeError, TypeError, ValueError, subprocess.SubprocessError) as exc:
         print(f"error: fix-coverage corpus selection failed: {exc}", file=sys.stderr)
@@ -1591,7 +1592,20 @@ def main(argv: list[str] | None = None) -> int:
     )
     select_corpus.add_argument(
         "--exclude-manifest",
-        help="prior corpus whose PRs are mechanically excluded before the repository cap",
+        action="append",
+        default=None,
+        help=(
+            "prior corpus whose PRs are mechanically excluded before the repository cap; "
+            "repeat to exclude several"
+        ),
+    )
+    select_corpus.add_argument(
+        "--exclude-prior-repositories",
+        action="store_true",
+        help=(
+            "drop every repository named by a prior corpus, not just its PRs: the frame "
+            "a study needs when asking whether an engine change generalizes"
+        ),
     )
     select_corpus.add_argument("--out", required=True, help="corpus manifest path")
     select_corpus.set_defaults(func=cmd_select_fix_corpus)
