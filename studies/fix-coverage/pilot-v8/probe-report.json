@@ -1,0 +1,731 @@
+{
+  "active_wall_time_s": 1970.225636,
+  "complete": true,
+  "corpus_manifest_sha256": "edfbd4f423901b8729eaad6210c87c2d3ad5765610a04090f1d6defc0cc838af",
+  "engine_version": "0.1.0",
+  "environment_dependency_install_breakdown": {
+    "categories": [
+      {
+        "category": "pinned_distribution_unavailable",
+        "count": 5,
+        "fraction_of_dependency_install_failures": 0.5
+      },
+      {
+        "category": "other_install_failure",
+        "count": 3,
+        "fraction_of_dependency_install_failures": 0.3
+      },
+      {
+        "category": "package_build_backend_or_metadata_failure",
+        "count": 2,
+        "fraction_of_dependency_install_failures": 0.2
+      },
+      {
+        "category": "artifact_hash_or_integrity_failure",
+        "count": 0,
+        "fraction_of_dependency_install_failures": 0.0
+      },
+      {
+        "category": "dependency_resolution_conflict",
+        "count": 0,
+        "fraction_of_dependency_install_failures": 0.0
+      },
+      {
+        "category": "native_distribution_build_failure",
+        "count": 0,
+        "fraction_of_dependency_install_failures": 0.0
+      },
+      {
+        "category": "package_index_or_network_failure",
+        "count": 0,
+        "fraction_of_dependency_install_failures": 0.0
+      },
+      {
+        "category": "python_version_incompatible",
+        "count": 0,
+        "fraction_of_dependency_install_failures": 0.0
+      }
+    ],
+    "other_fraction": 0.3,
+    "schema_version": "fix-coverage-environment-install-taxonomy/v1",
+    "total": 10,
+    "warning": "other_install_failure exceeds 20%; refine before interpreting constraints"
+  },
+  "execution_segments": [
+    {
+      "first_instance": 1,
+      "first_instance_id": "moesnow-march7thassistant-pr-888",
+      "last_instance": 30,
+      "last_instance_id": "omnigent-ai-omnigent-pr-23",
+      "source_revision": "e4a6be0d61400bf013e7f589cc5986faaa2cc61f"
+    }
+  ],
+  "execution_segments_schema": "fix-coverage-execution-segments/v1",
+  "execution_source_revision": "e4a6be0d61400bf013e7f589cc5986faaa2cc61f",
+  "execution_source_revisions": [
+    "e4a6be0d61400bf013e7f589cc5986faaa2cc61f"
+  ],
+  "finished_at": "2026-09-08T02:17:55.933200+00:00",
+  "halted_reason": null,
+  "headline": {
+    "attempted_denominator": 30,
+    "denominator": 30,
+    "judged_denominator": 17,
+    "partial": null,
+    "partial_fraction": null,
+    "provider_unavailable": 0,
+    "reached_judge_fraction": 0.5666666666666667,
+    "unclassified": 0,
+    "verified": null,
+    "verified_fraction": null,
+    "verified_fraction_of_attempted": null,
+    "verified_fraction_of_judged": null,
+    "verified_judged_wilson_95": null,
+    "verified_wilson_95": null
+  },
+  "items": [
+    {
+      "buggy_sha": "d029d4fcb4e146c787f3ed3541bdc5bd0c30d480",
+      "claim": "fix: \u4fee\u590d\u57f9\u517b\u76ee\u6807\u65e0\u6cd5\u6b63\u786e\u8bc6\u522b\u62df\u9020\u82b1\u843c\u91d1\u7684\u95ee\u9898",
+      "commit_date": "2026-02-18T03:48:36+00:00",
+      "environment_install_category": "other_install_failure",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "d6648e498ae0bd538d2193efcf56d58775aceeba",
+      "id": "moesnow-march7thassistant-pr-888",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/moesnow/March7thAssistant.git",
+      "source_url": "https://github.com/moesnow/March7thAssistant/pull/888",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 99.548158
+    },
+    {
+      "buggy_sha": "167d5325f14b143d306d6c8ddcc0272a316896a0",
+      "claim": "fix: Revert \"docs: Remove API reference docs and link to subpackage guides\"",
+      "commit_date": "2026-02-17T03:37:44+00:00",
+      "failure_category": "candidate_vacuous",
+      "fix_sha": "57d9e4590508b78ac3ae95bb1ad60ef2228a62ce",
+      "id": "arize-ai-phoenix-pr-11511",
+      "model_calls": 0,
+      "preregistered_failure_category": "candidate_vacuous",
+      "repository": "https://github.com/Arize-ai/phoenix.git",
+      "source_url": "https://github.com/Arize-ai/phoenix/pull/11511",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 261.679586
+    },
+    {
+      "buggy_sha": "893053ede7713a1809afee57c99cafd3b89efee2",
+      "claim": "fix(arch): remove all deprecated concepts and deadcodes",
+      "commit_date": "2026-02-19T04:32:24+00:00",
+      "failure_category": "candidate_vacuous",
+      "fix_sha": "132d84c5291fd096e64a0ff48f3993273d23b047",
+      "id": "aden-hive-hive-pr-5058",
+      "model_calls": 0,
+      "preregistered_failure_category": "candidate_vacuous",
+      "repository": "https://github.com/aden-hive/hive.git",
+      "source_url": "https://github.com/aden-hive/hive/pull/5058",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 135.979482
+    },
+    {
+      "buggy_sha": "a773916dcf5bed8fdcd9c492dd552d4044ff568f",
+      "claim": "fix mask patterns",
+      "commit_date": "2026-07-04T12:06:11+00:00",
+      "environment_install_category": "package_build_backend_or_metadata_failure",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "d1b4d3ff736031dd79d123545533048ba5fafa23",
+      "id": "x-hw-amazing-qr-pr-45",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/x-hw/amazing-qr.git",
+      "source_url": "https://github.com/x-hw/amazing-qr/pull/45",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 9.491613
+    },
+    {
+      "buggy_sha": "1a8b30ed3eeb66941845924ff560e0bcbc6ee762",
+      "claim": "fix: cast unknown to avoid TS2769 in sandbox approval UI",
+      "commit_date": "2026-02-27T11:25:46+00:00",
+      "failure_category": "checkout_failed",
+      "fix_sha": "a5956d704cb2c63da4bb5c731c93a319994e11a3",
+      "id": "huggingface-ml-intern-pr-29",
+      "model_calls": 0,
+      "preregistered_failure_category": "checkout_failed",
+      "repository": "https://github.com/huggingface/ml-intern.git",
+      "source_url": "https://github.com/huggingface/ml-intern/pull/29",
+      "verdict": null,
+      "wall_time_s": 1.429384
+    },
+    {
+      "buggy_sha": "30fb8a06b7f7e913bc6c8f660d3b183466f7d62c",
+      "claim": "fix(menu): \u4fee\u590d\u6a21\u7cca\u641c\u7d22\u3001\u65e5\u63a8\u767b\u51fa\u4e0e\u7f13\u5b58 KeyError",
+      "commit_date": "2026-06-02T07:46:03+00:00",
+      "failure_category": "candidate_vacuous",
+      "fix_sha": "ca269ccf0a8fc9ed81394fcbaf2f8f7627e01f2d",
+      "id": "darknessomi-musicbox-pr-972",
+      "model_calls": 0,
+      "preregistered_failure_category": "candidate_vacuous",
+      "repository": "https://github.com/darknessomi/musicbox.git",
+      "source_url": "https://github.com/darknessomi/musicbox/pull/972",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 27.979718
+    },
+    {
+      "buggy_sha": "dd939c5cf3df5308b1aee29901cab15ac392025c",
+      "claim": "Fix AttributeError in warn_about_older_operating_systems when device_state not yet set",
+      "commit_date": "2026-04-12T11:50:10+00:00",
+      "failure_category": "candidate_vacuous",
+      "fix_sha": "44e7c63f6c9cb49e0d9a40c7660b22cdfe8bb1ee",
+      "id": "sensepost-objection-pr-788",
+      "model_calls": 0,
+      "preregistered_failure_category": "candidate_vacuous",
+      "repository": "https://github.com/sensepost/objection.git",
+      "source_url": "https://github.com/sensepost/objection/pull/788",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 43.243164
+    },
+    {
+      "buggy_sha": "32608017671aaf1d37e40ace61e44dd1c4f6f255",
+      "claim": "fix: resolve circular import conflict with external mcp package",
+      "commit_date": "2026-03-09T13:08:14+00:00",
+      "failure_category": "candidate_vacuous",
+      "fix_sha": "c5bc5e70f9ce65f5e2d9ca23c1b1f41fbaeb2349",
+      "id": "droidrun-mobilerun-pr-279",
+      "model_calls": 0,
+      "preregistered_failure_category": "candidate_vacuous",
+      "repository": "https://github.com/droidrun/mobilerun.git",
+      "source_url": "https://github.com/droidrun/mobilerun/pull/279",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 179.71436
+    },
+    {
+      "buggy_sha": "1456e8be6bb869f4d7edd5d7c70060d649da3f5e",
+      "claim": "fix: use getattr for max_pages in create command web routing",
+      "commit_date": "2026-02-23T05:59:48+00:00",
+      "failure_category": "candidate_vacuous",
+      "fix_sha": "1ebf797b34da9160903954bac39666cdd7bdb7d7",
+      "id": "yusufkaraaslan-skill-seekers-pr-294",
+      "model_calls": 0,
+      "preregistered_failure_category": "candidate_vacuous",
+      "repository": "https://github.com/yusufkaraaslan/Skill_Seekers.git",
+      "source_url": "https://github.com/yusufkaraaslan/Skill_Seekers/pull/294",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 356.365598
+    },
+    {
+      "buggy_sha": "03acc9e625362e05731c2955e62b97d71851da44",
+      "claim": "Fix native build Python selection",
+      "commit_date": "2026-08-13T20:17:00+00:00",
+      "failure_category": "candidate_vacuous",
+      "fix_sha": "a94b1d666cff71dcca7ea2555413fdf10fd57f20",
+      "id": "maurosoria-dirsearch-pr-1577",
+      "model_calls": 0,
+      "preregistered_failure_category": "candidate_vacuous",
+      "repository": "https://github.com/maurosoria/dirsearch.git",
+      "source_url": "https://github.com/maurosoria/dirsearch/pull/1577",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 27.879542
+    },
+    {
+      "buggy_sha": "76351b25fa1d4663b2bd8db29fd92922ebf0b9c1",
+      "claim": "fix: STT fallback does not skip main_stream when recovering streams fail",
+      "commit_date": "2026-02-17T00:09:37+00:00",
+      "failure_category": "checkout_failed",
+      "fix_sha": "3281d1160e42d25fb58bfcc3722f2e287e544aaa",
+      "id": "livekit-agents-pr-4835",
+      "model_calls": 0,
+      "preregistered_failure_category": "checkout_failed",
+      "repository": "https://github.com/livekit/agents.git",
+      "source_url": "https://github.com/livekit/agents/pull/4835",
+      "verdict": null,
+      "wall_time_s": 3.220932
+    },
+    {
+      "buggy_sha": "a74060e9bd366471893949d910de8d5f40ea6508",
+      "claim": "Fix: \u7cfb\u7edf\u4f11\u7720\u540e\u5faa\u73af\u6a21\u5f0f\u672a\u6309\u65f6\u6267\u884c\u7684\u95ee\u9898",
+      "commit_date": "2026-02-21T11:06:52+00:00",
+      "environment_install_category": "other_install_failure",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "d2e8b82e21c0200de0ffc8d2792115ba7b7f13e2",
+      "id": "moesnow-march7thassistant-pr-898",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/moesnow/March7thAssistant.git",
+      "source_url": "https://github.com/moesnow/March7thAssistant/pull/898",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 44.235398
+    },
+    {
+      "buggy_sha": "6c093c9f5e8fe7a38de69dc049dfc219e15b2201",
+      "claim": "fix(compaction): estimate context usage after compaction and show 0.1% precision",
+      "commit_date": "2026-02-27T07:48:32+00:00",
+      "failure_category": "candidate_vacuous",
+      "fix_sha": "dc5f94b8d8eb9fabc40d92bf841c0589bc118897",
+      "id": "moonshotai-kimi-cli-pr-1269",
+      "model_calls": 0,
+      "preregistered_failure_category": "candidate_vacuous",
+      "repository": "https://github.com/MoonshotAI/kimi-cli.git",
+      "source_url": "https://github.com/MoonshotAI/kimi-cli/pull/1269",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 75.891442
+    },
+    {
+      "buggy_sha": "682c10e873a646cdfb1d58c43edf7cafeaea740b",
+      "claim": "Fix(micro-fix)/credential error types",
+      "commit_date": "2026-02-20T00:23:31+00:00",
+      "failure_category": "candidate_vacuous",
+      "fix_sha": "cf877f2b49e987eba08727ceefd8e03a47b19bd5",
+      "id": "aden-hive-hive-pr-5121",
+      "model_calls": 0,
+      "preregistered_failure_category": "candidate_vacuous",
+      "repository": "https://github.com/aden-hive/hive.git",
+      "source_url": "https://github.com/aden-hive/hive/pull/5121",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 18.926057
+    },
+    {
+      "buggy_sha": "d0a9a6f9cea35587173b6f71d19731b900cbe5df",
+      "claim": "Fix HF router auth failure on CLI (issue #36)",
+      "commit_date": "2026-04-21T17:19:16+00:00",
+      "failure_category": "candidate_vacuous",
+      "fix_sha": "182ddeef0cdc2fae602586fe847b81198b546dc8",
+      "id": "huggingface-ml-intern-pr-39",
+      "model_calls": 0,
+      "preregistered_failure_category": "candidate_vacuous",
+      "repository": "https://github.com/huggingface/ml-intern.git",
+      "source_url": "https://github.com/huggingface/ml-intern/pull/39",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 190.068145
+    },
+    {
+      "buggy_sha": "e044482a2f553ceb170d0f6d8d1a1e0b18dc86f1",
+      "claim": "Fix IndexError in GroupByFeatureGenerator on all-NaN categorical columns",
+      "commit_date": "2026-06-19T16:34:40+00:00",
+      "environment_install_category": "pinned_distribution_unavailable",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "3b352d0ce63cffba1385d4e257ba6f9130d18de4",
+      "id": "autogluon-autogluon-pr-5700",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/autogluon/autogluon.git",
+      "source_url": "https://github.com/autogluon/autogluon/pull/5700",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 22.891401
+    },
+    {
+      "buggy_sha": "ca269ccf0a8fc9ed81394fcbaf2f8f7627e01f2d",
+      "claim": "fix(ui): \u4fee\u590d\u4e2d\u6587\u641c\u7d22\u9000\u683c\u540e UnicodeDecodeError",
+      "commit_date": "2026-06-02T07:50:31+00:00",
+      "failure_category": "candidate_vacuous",
+      "fix_sha": "7c66bc33e170e35b8cdb2344be8e458277f4f484",
+      "id": "darknessomi-musicbox-pr-973",
+      "model_calls": 0,
+      "preregistered_failure_category": "candidate_vacuous",
+      "repository": "https://github.com/darknessomi/musicbox.git",
+      "source_url": "https://github.com/darknessomi/musicbox/pull/973",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 6.968236
+    },
+    {
+      "buggy_sha": "98290d23cbf5aaa542791a0dda99084b0c0d91d2",
+      "claim": "fix(state): improve state retrieval reliability with retries and a11y recovery",
+      "commit_date": "2026-03-12T17:24:38+00:00",
+      "failure_category": "candidate_vacuous",
+      "fix_sha": "baa19dfe60cafc313305854c892474dee38072d6",
+      "id": "droidrun-mobilerun-pr-289",
+      "model_calls": 0,
+      "preregistered_failure_category": "candidate_vacuous",
+      "repository": "https://github.com/droidrun/mobilerun.git",
+      "source_url": "https://github.com/droidrun/mobilerun/pull/289",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 8.088262
+    },
+    {
+      "buggy_sha": "c725a6421e4aa714cd078f819ed266c8e79e859c",
+      "claim": "fix: unify scraper argument interface and fix create command forwarding",
+      "commit_date": "2026-02-24T03:14:36+00:00",
+      "failure_category": "candidate_vacuous",
+      "fix_sha": "63968c05f61a14193d86c7388b117e9593cc3ee9",
+      "id": "yusufkaraaslan-skill-seekers-pr-297",
+      "model_calls": 0,
+      "preregistered_failure_category": "candidate_vacuous",
+      "repository": "https://github.com/yusufkaraaslan/Skill_Seekers.git",
+      "source_url": "https://github.com/yusufkaraaslan/Skill_Seekers/pull/297",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 68.297082
+    },
+    {
+      "buggy_sha": "29f39ff825eedbebc41cd9e2c32ea3acbb4b6c45",
+      "claim": "fix: prevent hang if participant never joins",
+      "commit_date": "2026-02-17T00:49:15+00:00",
+      "failure_category": "checkout_failed",
+      "fix_sha": "5ddfd313fadcaebf48f45d99a8ce838cd029bdd1",
+      "id": "livekit-agents-pr-4864",
+      "model_calls": 0,
+      "preregistered_failure_category": "checkout_failed",
+      "repository": "https://github.com/livekit/agents.git",
+      "source_url": "https://github.com/livekit/agents/pull/4864",
+      "verdict": null,
+      "wall_time_s": 3.186665
+    },
+    {
+      "buggy_sha": "a0d8a02b948271a2b369f7d65f28805189a22970",
+      "claim": "fix: disable ph telemetry still calls posthog",
+      "commit_date": "2026-03-03T22:25:34+00:00",
+      "environment_install_category": "pinned_distribution_unavailable",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "34c797d2850c33b45ec28d6f8748bda05473b637",
+      "id": "mem0ai-mem0-pr-4203",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/mem0ai/mem0.git",
+      "source_url": "https://github.com/mem0ai/mem0/pull/4203",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 16.303683
+    },
+    {
+      "buggy_sha": "afee8804d3da259aa190f99f4b860e872491ce74",
+      "claim": "Fix `RestException` crash on null `error_code` and incorrect except clause",
+      "commit_date": "2026-02-17T02:36:18+00:00",
+      "environment_install_category": "pinned_distribution_unavailable",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "1824478edbc7a117a612fbed371ea87fa3e0563d",
+      "id": "mlflow-mlflow-pr-20903",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/mlflow/mlflow.git",
+      "source_url": "https://github.com/mlflow/mlflow/pull/20903",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 162.115745
+    },
+    {
+      "buggy_sha": "5518551e293052ae9450233b181d4d3b262f91a7",
+      "claim": "fix(server): preserve requests without valid prompt token IDs",
+      "commit_date": "2026-08-28T08:28:42+00:00",
+      "environment_install_category": "pinned_distribution_unavailable",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "88528bf4b7360d852f5bc5d023943697953ec332",
+      "id": "microsoft-agent-lightning-pr-573",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/microsoft/agent-lightning.git",
+      "source_url": "https://github.com/microsoft/agent-lightning/pull/573",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 42.273161
+    },
+    {
+      "buggy_sha": "0711fffe70d495573d4d41be931f49e6369ffeb6",
+      "claim": "fix: \u4fee\u590d\u961f\u4f0d\u6709\u7a7a\u4f4d\u65f6\u4f7f\u7528\u652f\u63f4\u89d2\u8272\u8bef\u79fb\u9664\u6700\u540e\u4e00\u4f4d\u89d2\u8272\u7684\u95ee\u9898",
+      "commit_date": "2026-02-28T07:43:43+00:00",
+      "environment_install_category": "other_install_failure",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "19fea0ca30f8472590e3e14beb5e926ec9dcec5d",
+      "id": "moesnow-march7thassistant-pr-900",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/moesnow/March7thAssistant.git",
+      "source_url": "https://github.com/moesnow/March7thAssistant/pull/900",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 97.885288
+    },
+    {
+      "buggy_sha": "f27b4501eec3b9ccb43de7b181dd375b9b7cc124",
+      "claim": "fix(logo): update ASCII logo to a new styled banner",
+      "commit_date": "2026-02-27T10:50:05+00:00",
+      "failure_category": "candidate_vacuous",
+      "fix_sha": "15c806f4088c7c86594c12ee825ba27ec665cd90",
+      "id": "moonshotai-kimi-cli-pr-1278",
+      "model_calls": 0,
+      "preregistered_failure_category": "candidate_vacuous",
+      "repository": "https://github.com/MoonshotAI/kimi-cli.git",
+      "source_url": "https://github.com/MoonshotAI/kimi-cli/pull/1278",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 12.19047
+    },
+    {
+      "buggy_sha": "cf877f2b49e987eba08727ceefd8e03a47b19bd5",
+      "claim": "fix(graph): harden JSON parsing for async safety and large LLM outputs",
+      "commit_date": "2026-02-20T09:23:25+00:00",
+      "failure_category": "candidate_vacuous",
+      "fix_sha": "67cbd312804bfd9c23f37a857104384805e90909",
+      "id": "aden-hive-hive-pr-4869",
+      "model_calls": 0,
+      "preregistered_failure_category": "candidate_vacuous",
+      "repository": "https://github.com/aden-hive/hive.git",
+      "source_url": "https://github.com/aden-hive/hive/pull/4869",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 16.950408
+    },
+    {
+      "buggy_sha": "7ee9270b1a106967452adc01c6cc0cf1219077da",
+      "claim": "Fix typos",
+      "commit_date": "2026-07-06T06:45:52+00:00",
+      "environment_install_category": "package_build_backend_or_metadata_failure",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "b0400277a650fbe865e9b392f760b0fd1ffe2232",
+      "id": "x-hw-amazing-qr-pr-105",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/x-hw/amazing-qr.git",
+      "source_url": "https://github.com/x-hw/amazing-qr/pull/105",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 8.277762
+    },
+    {
+      "buggy_sha": "1c0de34ce920e5fcf85d22a324a1fc0341b6841f",
+      "claim": "Fix CLI particle logo text: ML AGENT \u2192 ML INTERN",
+      "commit_date": "2026-04-22T10:01:23+00:00",
+      "failure_category": "candidate_vacuous",
+      "fix_sha": "8b5b1bf05c5215f887cf4c54ae4ff78d80122c85",
+      "id": "huggingface-ml-intern-pr-46",
+      "model_calls": 0,
+      "preregistered_failure_category": "candidate_vacuous",
+      "repository": "https://github.com/huggingface/ml-intern.git",
+      "source_url": "https://github.com/huggingface/ml-intern/pull/46",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 9.707653
+    },
+    {
+      "buggy_sha": "7c66bc33e170e35b8cdb2344be8e458277f4f484",
+      "claim": "fix(menu): \u65e0\u64ad\u653e\u65f6\u6309 i \u4e0d\u518d\u8bef\u6253\u5f00\u6b4c\u66f2\u9875",
+      "commit_date": "2026-06-02T07:52:42+00:00",
+      "failure_category": "candidate_vacuous",
+      "fix_sha": "9aefc95f290bda90608dc47d34ee580301e46247",
+      "id": "darknessomi-musicbox-pr-974",
+      "model_calls": 0,
+      "preregistered_failure_category": "candidate_vacuous",
+      "repository": "https://github.com/darknessomi/musicbox.git",
+      "source_url": "https://github.com/darknessomi/musicbox/pull/974",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 5.831104
+    },
+    {
+      "buggy_sha": "1fdd91f7dd629b4362aeaf8e5166a496a508793f",
+      "claim": "Fix host list-dir backward pagination",
+      "commit_date": "2026-06-13T20:57:52+00:00",
+      "environment_install_category": "pinned_distribution_unavailable",
+      "failure_category": "environment_dependency_install_failed",
+      "fix_sha": "8781bc103511e83ea164d58ba0af7f56695dd880",
+      "id": "omnigent-ai-omnigent-pr-23",
+      "model_calls": 0,
+      "preregistered_failure_category": "environment_dependency_install_failed",
+      "repository": "https://github.com/omnigent-ai/omnigent.git",
+      "source_url": "https://github.com/omnigent-ai/omnigent/pull/23",
+      "verdict": "UNCERTAIN",
+      "wall_time_s": 13.606137
+    }
+  ],
+  "model_telemetry": {
+    "actual_model_spend_usd": null,
+    "calls": 0,
+    "identities": [],
+    "input_tokens": {
+      "reported_calls": 0,
+      "total": null
+    },
+    "output_tokens": {
+      "reported_calls": 0,
+      "total": null
+    },
+    "reported_cost_calls": 0,
+    "reported_cost_usd": null,
+    "spend_basis": "unavailable: at least one model call did not report billable cost",
+    "total_tokens": {
+      "reported_calls": 0,
+      "total": null
+    }
+  },
+  "preregistered_failure_taxonomy": [
+    {
+      "category": "candidate_vacuous",
+      "count": 17,
+      "fraction_of_failures": 0.5666666666666667
+    },
+    {
+      "category": "environment_dependency_install_failed",
+      "count": 10,
+      "fraction_of_failures": 0.3333333333333333
+    },
+    {
+      "category": "checkout_failed",
+      "count": 3,
+      "fraction_of_failures": 0.1
+    }
+  ],
+  "preregistration": {
+    "path": "../studies/fix-coverage/pilot-v8/preregistration.json",
+    "sha256": "cba96e1865975e207cc8ad47dde9acd50c11e5d23bb499a545a33d998fc6a5a3"
+  },
+  "private_report_sha256": "de136e81d2ef9c773263bd8ef60a79276773c21ba9bb4c8de06e53d724997e3c",
+  "probe_only": true,
+  "refined_failure_taxonomy": [
+    {
+      "category": "candidate_vacuous",
+      "count": 17,
+      "fraction_of_failures": 0.5666666666666667,
+      "unique_repositories": 9
+    },
+    {
+      "category": "environment_dependency_install_failed",
+      "count": 10,
+      "fraction_of_failures": 0.3333333333333333,
+      "unique_repositories": 7
+    },
+    {
+      "category": "checkout_failed",
+      "count": 3,
+      "fraction_of_failures": 0.1,
+      "unique_repositories": 2
+    },
+    {
+      "category": "candidate_did_not_fail_on_buggy",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "candidate_failed_on_fixed",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "candidate_flaky",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "candidate_infrastructure_failure",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "candidate_other_rejection",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "candidate_policy_rejection",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "candidate_system_library_missing",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "candidate_tamper",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "candidate_wrong_failure_signature",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "environment_no_supported_lockfile",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "environment_other_setup_failed",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "existing_suite_failed",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "no_candidate_proposed",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "provider_generation_failed",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "provider_quota_exhausted",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "study_error",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "suite_infrastructure_failure",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "suite_requires_unavailable_services",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    },
+    {
+      "category": "timed_out",
+      "count": 0,
+      "fraction_of_failures": 0.0,
+      "unique_repositories": 0
+    }
+  ],
+  "refined_failure_taxonomy_schema": "fix-coverage-failure-taxonomy/v3",
+  "run_id": "8108447f51cf",
+  "runtime_platform": {
+    "host_machine": "arm64",
+    "host_system": "darwin",
+    "sandbox_architecture": "arm64",
+    "sandbox_os": "linux"
+  },
+  "schema_version": "fix-coverage-public-report/v3",
+  "selection": {
+    "candidate_exclusion_counts": {
+      "no_production_python_change": 32,
+      "per_repository_cap": 635,
+      "sample_size_reached": 54,
+      "unsupported_or_invalid_pinned_environment": 16
+    },
+    "eligibility_exclusions": 48,
+    "end_to_end_verified_fraction": 0.0,
+    "environment_eligible_repositories": 50,
+    "included_instances": 30,
+    "prior_corpus_exclusions": 0,
+    "repositories_scanned": 333,
+    "repository_exclusion_counts": {
+      "prior_corpus_repository": 29,
+      "repository_no_matching_bug_prs": 21,
+      "repository_no_supported_pinned_lock": 254
+    },
+    "represented_repositories": 17,
+    "screened_candidates": 78,
+    "unselected_eligible_candidates": 689
+  },
+  "started_at": "2026-09-08T01:44:56.854055+00:00",
+  "verdict_counts": {
+    "ERROR": 3,
+    "UNCERTAIN": 27
+  }
+}

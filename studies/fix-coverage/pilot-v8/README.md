@@ -27,3 +27,11 @@ corpus members. The hash-pinned [`corpus.json`](./corpus.json) and
 
 Results are scoped to the recorded platform. Every pilot so far has run on `linux/arm64`,
 and that is recorded in the report rather than assumed away.
+
+## Probe result
+
+The frozen provider-free probe reached the deterministic judge on **17/30 instances
+(56.7%)**, clearing the preregistered 3/30 provider-run gate without a model call. See the
+human-readable [`probe-result.md`](./probe-result.md) and privacy-filtered,
+machine-readable [`probe-report.json`](./probe-report.json). The probe measures plumbing
+reach, not verification coverage.
