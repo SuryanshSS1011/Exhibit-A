@@ -39,20 +39,26 @@ category-only dependency-install breakdown. Pilot v6 keeps that discipline, corr
 `uv.lock` workspace reachability and markers, records the host and Docker platform, and
 selects a corpus disjoint from v5 under a pre-execution amendment. Pilot v7 selects a
 corpus disjoint from both v5 and v6, requires a provider-free reach probe before model
-spend, and freezes that probe before the provider run on the unchanged corpus.
+spend, and freezes that probe before the provider run on the unchanged corpus. Pilot v8
+excludes every repository named by v5, v6, or v7 before eligibility, producing the first
+corpus whose repositories were not examined while the engine changes under test were
+developed.
 
 Corpus selection is executable:
 
 ```bash
 cd engine
 python3 -m exhibit_a.cli select-fix-corpus \
-  --preregistration ../studies/fix-coverage/pilot-v7/preregistration.json \
+  --preregistration ../studies/fix-coverage/pilot-v8/preregistration.json \
   --date-from 2026-02-17 --date-to 2026-08-31 \
-  --repositories 50 --repository-scan-limit 1000 \
+  --repositories 50 --repository-scan-limit 600 \
   --instances 30 --per-repository-cap 5 \
   --cache ../.exhibit-a/research/fix-coverage-selection-cache-v2 \
-  --exclude-manifest ../studies/fix-coverage/pilot-v7/prior-corpora.json \
-  --out ../studies/fix-coverage/pilot-v7/corpus.json
+  --exclude-manifest ../studies/fix-coverage/pilot-v5/corpus.json \
+  --exclude-manifest ../studies/fix-coverage/pilot-v6/corpus.json \
+  --exclude-manifest ../studies/fix-coverage/pilot-v7/corpus.json \
+  --exclude-prior-repositories \
+  --out ../studies/fix-coverage/pilot-v8/corpus.json
 ```
 
 Selection uses GitHub's public API and Git transport. `GITHUB_TOKEN` is optional and is
@@ -65,11 +71,11 @@ Run the registered pilot from `engine/`:
 
 ```bash
 python3 -m exhibit_a.cli fix-coverage \
-  ../studies/fix-coverage/pilot-v7/corpus.json \
+  ../studies/fix-coverage/pilot-v8/corpus.json \
   --model gpt-5.6-sol \
   --instance-timeout-s 720 --total-ceiling-s 21600 \
   --execution-timeout-s 120 --reruns 5 --max-refine 3 \
-  --out ../.exhibit-a/research/fix-coverage/pilot-v7
+  --out ../.exhibit-a/research/fix-coverage/pilot-v8
 ```
 
 ### Checking the plumbing first, for free
@@ -80,10 +86,10 @@ provider at all:
 
 ```bash
 python3 -m exhibit_a.cli fix-coverage \
-  ../studies/fix-coverage/pilot-v7/corpus.json --probe \
+  ../studies/fix-coverage/pilot-v8/corpus.json --probe \
   --instance-timeout-s 720 --total-ceiling-s 21600 \
   --execution-timeout-s 120 --reruns 1 --max-refine 0 \
-  --out ../.exhibit-a/research/fix-coverage/pilot-v7-probe
+  --out ../.exhibit-a/research/fix-coverage/pilot-v8-probe
 ```
 
 The stub emits a test that imports nothing, so the deterministic judge rejects every
@@ -137,10 +143,10 @@ private checkpoints:
 
 ```bash
 python3 -m exhibit_a.cli fix-coverage-report \
-  ../studies/fix-coverage/pilot-v7/corpus.json \
-  ../.exhibit-a/research/fix-coverage/pilot-v7 \
-  --execution-source-revision f939dc926af6118a8287218d9ebe01276ef210f4 \
-  --out ../studies/fix-coverage/pilot-v7/public-report.json
+  ../studies/fix-coverage/pilot-v8/corpus.json \
+  ../.exhibit-a/research/fix-coverage/pilot-v8 \
+  --execution-source-revision 5fc98e04087dca6c7911001a9e46401baef9900d \
+  --out ../studies/fix-coverage/pilot-v8/public-report.json
 ```
 
 The exporter requires a complete run and matching corpus hash. It carries aggregate and
@@ -160,16 +166,19 @@ VERIFIED that one case. The fresh v5 and v6 corpora each reached the judge on **
 reached 13/30, but v6 could not be rerun with a provider because the fixes were derived
 from its failures.
 
-V7 therefore selected 30 PRs absent from both prior corpora. Its provider-free probe
-reached the judge on **15/30 (50.0%)** with zero model calls. The provider run on the
-unchanged corpus also reached **15/30**, producing **7/30 VERIFIED (23.3%)** and **0/30
-PARTIAL**. Dependency installation blocked 15/30 on Docker `linux/arm64`; the other eight
-judged candidates were rejected for infrastructure, vacuity, wrong signature, or tamper.
-This is the first credible product signal, but half the corpus still stopped before the
-judge, so the implementation remains a research instrument rather than a broad-coverage
-product.
+V7 selected new PRs but reused 17 of v6's 21 repositories, so it measured the product but
+could not establish that engine changes generalized beyond repositories they were fitted
+to. V8 excludes prior-corpus repositories whole. Its provider-free probe reached the
+judge on **17/30 (56.7%)** with zero model calls. The provider run reached **15/30** and
+produced **9/30 VERIFIED (30.0%)**, **9/15 VERIFIED among judged instances (60.0%)**, and
+**0/30 PARTIAL**. Ten dependency installations, three checkouts, and two provider-run
+timeouts stopped before the judge; six judged candidates were honestly rejected.
 
-Read the [complete v7 result, ranked taxonomy, dependency breakdown, constraints, and
+V8 is the first repository-disjoint generalization result. It supports a narrow,
+silence-tolerant product claim, not broad Python-fix coverage: half the selected corpus
+still received no judgment, the interval is wide, and only Linux/arm64 was measured.
+
+Read the [complete v8 result, ranked taxonomy, dependency breakdown, constraints, and
 limitations](./FIX_COVERAGE_RESULTS.html), or the preserved
-[v6](./FIX_COVERAGE_V6_RESULTS.html), [v5](./FIX_COVERAGE_V5_RESULTS.html), and
-[v4](./FIX_COVERAGE_V4_RESULTS.html) reports.
+[v7](./FIX_COVERAGE_V7_RESULTS.html), [v6](./FIX_COVERAGE_V6_RESULTS.html),
+[v5](./FIX_COVERAGE_V5_RESULTS.html), and [v4](./FIX_COVERAGE_V4_RESULTS.html) reports.

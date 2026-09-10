@@ -35,3 +35,14 @@ The frozen provider-free probe reached the deterministic judge on **17/30 instan
 human-readable [`probe-result.md`](./probe-result.md) and privacy-filtered,
 machine-readable [`probe-report.json`](./probe-report.json). The probe measures plumbing
 reach, not verification coverage.
+
+## Provider result
+
+The completed provider pilot reached the judge on **15/30 instances (50.0%)** and produced
+**9/30 VERIFIED results (30.0%)**, with **0/30 PARTIAL**. Nine of the 15 judged instances
+verified. The repository-disjoint design makes v8 the first pilot that can support a
+generalization claim about the engine changes under test.
+
+Read the self-contained [`provider-result.md`](./provider-result.md) or inspect the
+privacy-filtered [`public-report.json`](./public-report.json). Raw Cases, generated tests,
+dependency diagnostics, and provider output remain private.

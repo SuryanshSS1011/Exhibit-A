@@ -17,11 +17,11 @@
 ---
 
 > **Measured real-fix coverage (September 2026): the judge was reached on 15/30 fixes
-> (50.0%); 7/30 VERIFIED (23.3%) and 0/30 were PARTIAL.** On the recorded Docker
-> `linux/arm64` platform, dependency installation blocked the other 15; eight judged
-> candidates were honestly rejected. This is the first credible product signal, but the
-> current implementation remains a **research instrument**, not a broad-coverage
-> product. [Read the complete preregistered v7 pilot, probe, dependency breakdown, and
+> (50.0%); 9/30 VERIFIED (30.0%) and 0/30 were PARTIAL.** Pilot v8's 17 repositories
+> were excluded whole from every prior corpus, so this is the first result that measures
+> generalization beyond repositories used to develop the engine changes. The defensible
+> position is a **narrow, silence-tolerant product backed by research instrumentation**,
+> not a broad Python verifier. [Read the complete preregistered v8 pilot, probe, and
 > exclusions.](./docs/FIX_COVERAGE_RESULTS.md)
 
 ## The problem
@@ -100,10 +100,10 @@ Verdicts are tiered so the tool never overclaims:
 | `UNCERTAIN` | Nothing cleared the gate. Honest silence. |
 
 **Intended scope:** deterministic functional bugs in Python repositories that build in a
-sandbox. In the latest preregistered, fresh-corpus pilot, 15/30 reached the judge and 7/30
-produced VERIFIED evidence. Dependency installation blocked the other 15, while eight
-judged candidates were rejected for infrastructure, vacuity, wrong failure signature, or
-tamper. That makes the scope measurable and promising, but not yet broadly demonstrated.
+sandbox. In the latest preregistered, repository-disjoint pilot, 15/30 reached the judge
+and 9/30 produced VERIFIED evidence. Ten dependency installations, three checkouts, and
+two provider-run timeouts stopped before the judge; six judged candidates were honestly
+rejected. That makes the scope measurable and promising, but not yet broadly demonstrated.
 It cannot speak to race conditions, performance regressions, or most security issues, and
 it stays silent instead of guessing.
 
@@ -316,8 +316,9 @@ execution is allowed to speak.
 
 ## Status
 
-This is a working research prototype with a verified deterministic core, not yet a
-broad-coverage product. The engine and typed web test suites are green in CI, which runs
+This is a working narrow product with a verified deterministic core and research-grade
+measurement, not yet a broad-coverage verifier. The engine and typed web test suites are
+green in CI, which runs
 engine lint, format, and tests alongside the web build.
 The deterministic verdict core, Docker sandboxing, two-SHA git intake, git-bisect culprit
 attribution, mutation scoring, evidence minimization, and a full research-instrumentation
