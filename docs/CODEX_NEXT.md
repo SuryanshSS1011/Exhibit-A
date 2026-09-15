@@ -298,7 +298,7 @@ Time-boxed on purpose. The remaining wins here are worth about two instances in 
 and the platform ceilings are not winnable at all. The point of this milestone is to
 separate our defects from the ceilings and then stop paying the tax.
 
-- [ ] **13. Evaluate environment markers against the target platform**
+- [x] **13. Evaluate environment markers against the target platform**
   Source refs: `executor/docker_exec.py` uv-lock marker handling, and the v8 checkpoint for
   `mem0ai-mem0-pr-4203`.
   What to build: That instance failed on `No matching distribution found for pywin32==310`,
@@ -312,7 +312,7 @@ separate our defects from the ceilings and then stop paying the tax.
   inventing one.
   Verify: a lockfile fixture with platform-scoped edges; no network.
 
-- [ ] **14. Name the platform and index ceilings instead of pooling them**
+- [x] **14. Name the platform and index ceilings instead of pooling them**
   Source refs: `studies/fix_coverage.py` environment-install taxonomy, and the v8 checkpoints
   for `autogluon-autogluon-pr-5700`, `omnigent-ai-omnigent-pr-23`,
   `microsoft-agent-lightning-pr-573`, and `mlflow-mlflow-pr-20903`.

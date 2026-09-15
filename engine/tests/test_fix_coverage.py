@@ -1063,3 +1063,45 @@ def test_repository_level_freshness_reads_every_prior_corpus(tmp_path: Path) -> 
     assert (
         provenance["rule"] == "exclude every repository named by a prior corpus before eligibility"
     )
+
+
+def test_a_local_version_pin_is_an_index_gap_not_a_missing_distribution() -> None:
+    """`torch==2.10.0+cpu` is on PyTorch's index, never on PyPI.
+
+    Pilot v8 pooled two of these with two distributions that have no artifact for the
+    build platform at all, under one label that said "unavailable" about both. One is a
+    gap we could close by honouring the lockfile's declared index; the other is a ceiling.
+    A reader deciding what to fix next cannot tell them apart from the pooled count.
+    """
+    for text in (
+        "ERROR: Could not find a version that satisfies the requirement "
+        "torch==2.13.0+cpu (from versions: 2.2.0, 2.10.0, 2.12.1)",
+        "ERROR: Could not find a version that satisfies the requirement torch==2.10.0+cpu",
+        "ERROR: No matching distribution found for nvidia-cudnn==9.1.0+cu121",
+    ):
+        assert classify_environment_install_failure(text) == (
+            "distribution_requires_alternate_index"
+        ), text
+
+
+def test_a_distribution_with_no_artifact_keeps_the_unavailable_category() -> None:
+    # autogluon pins Intel's daal and omnigent pins cel-expr-python; neither has a build
+    # for this platform anywhere, so neither is an index gap.
+    for text in (
+        "ERROR: No matching distribution found for daal==2025.9.0",
+        "ERROR: No matching distribution found for cel-expr-python==0.1.2",
+        "ERROR: Could not find a version that satisfies the requirement widget==1.2.3",
+    ):
+        assert classify_environment_install_failure(text) == ("pinned_distribution_unavailable"), (
+            text
+        )
+
+
+def test_the_index_split_does_not_capture_ordinary_version_text() -> None:
+    # A build metadata suffix is the signal, not the mere presence of a plus sign.
+    assert (
+        classify_environment_install_failure(
+            "ERROR: No matching distribution found for thing==1.2.3 (c++ toolchain absent)"
+        )
+        == "pinned_distribution_unavailable"
+    )

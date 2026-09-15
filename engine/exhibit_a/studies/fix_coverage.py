@@ -34,11 +34,12 @@ RUN_STATE_SCHEMA = "fix-coverage-run-state/v1"
 TAXONOMY_SCHEMA = "fix-coverage-failure-taxonomy/v3"
 PUBLIC_REPORT_SCHEMA = "fix-coverage-public-report/v3"
 EXECUTION_SEGMENTS_SCHEMA = "fix-coverage-execution-segments/v1"
-ENVIRONMENT_INSTALL_TAXONOMY_SCHEMA = "fix-coverage-environment-install-taxonomy/v1"
+ENVIRONMENT_INSTALL_TAXONOMY_SCHEMA = "fix-coverage-environment-install-taxonomy/v2"
 
 _ENVIRONMENT_INSTALL_CATEGORIES = (
     "python_version_incompatible",
     "pinned_distribution_unavailable",
+    "distribution_requires_alternate_index",
     "dependency_resolution_conflict",
     "artifact_hash_or_integrity_failure",
     "package_index_or_network_failure",
@@ -74,6 +75,13 @@ _PUBLIC_FAILURE_CATEGORIES = (
 
 _ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,79}$")
 _SHA = re.compile(r"^[0-9a-f]{40}$")
+# A PEP 440 local version identifier -- the `+cpu` in `torch==2.10.0+cpu` -- is never
+# published to PyPI. It names a build served by a project's own index, which the lockfile
+# records and our generated requirements do not use. Pooling that with a distribution that
+# has no artifact anywhere hides the difference between a gap we could close by honouring
+# the lockfile's index and a platform ceiling we cannot close at all.
+_LOCAL_VERSION_PIN = re.compile(r"==\s*[0-9][^\s;,+)]*\+[0-9a-z][0-9a-z.]*", re.IGNORECASE)
+
 _CATCH_ALL = frozenset({"candidate_other_rejection", "study_error"})
 # The dynamic loader's own wording when a shared object a wheel links against is absent
 # from the image. This is our ceiling rather than a defect in the candidate, and it is
@@ -616,6 +624,8 @@ def classify_environment_install_failure(reason: object) -> str:
             "could not find a version that satisfies",
         )
     ):
+        if _LOCAL_VERSION_PIN.search(text):
+            return "distribution_requires_alternate_index"
         return "pinned_distribution_unavailable"
     if any(
         marker in text
