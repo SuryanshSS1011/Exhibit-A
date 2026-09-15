@@ -24,6 +24,7 @@ from pathlib import Path
 
 from .source_roots import pythonpath
 from .base import (
+    copy_for_sandbox,
     ExecOutcome,
     ExecSpec,
     Executor,
@@ -68,7 +69,7 @@ class LocalExecutor(Executor):
         try:
             # Copy the checkout so the candidate test never touches the source tree.
             work = workdir / "repo"
-            shutil.copytree(src, work, ignore=shutil.ignore_patterns("__pycache__", ".git"))
+            copy_for_sandbox(src, work)
             if mutation is not None:
                 apply_source_mutation(work, mutation, test_path=spec.test_path)
 
@@ -98,7 +99,7 @@ class LocalExecutor(Executor):
         workdir = Path(tempfile.mkdtemp(prefix="exhibit-a-suite-"))
         try:
             work = workdir / "repo"
-            shutil.copytree(src, work, ignore=shutil.ignore_patterns("__pycache__", ".git"))
+            copy_for_sandbox(src, work)
             return _run_capped(
                 argv,
                 cwd=work,

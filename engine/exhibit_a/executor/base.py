@@ -15,6 +15,8 @@ Security posture the interface assumes (enforced by concrete executors):
 
 from __future__ import annotations
 
+import shutil
+
 import abc
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -175,3 +177,21 @@ def apply_source_mutation(root: Path, mutation: SourceMutation, *, test_path: st
         line[: mutation.start_col] + mutation.replacement + line[mutation.end_col :]
     )
     resolved_target.write_text("".join(lines))
+
+
+# The checkout under test is a working directory, not a fresh clone, once Prosecutor mode
+# reviews a repository where CI has already installed things. `.exhibit-a` is our own
+# runtime output living inside it, and copying our scratch into the sandbox is never
+# right. Dangling symlinks are tolerated because an unreadable entry in someone else's
+# tree is not a reason to abandon their review.
+SANDBOX_IGNORED = ("__pycache__", ".git", ".exhibit-a")
+
+
+def copy_for_sandbox(src: Path, work: Path) -> None:
+    """Copy a checkout into the disposable tree a run executes against."""
+    shutil.copytree(
+        src,
+        work,
+        ignore=shutil.ignore_patterns(*SANDBOX_IGNORED),
+        ignore_dangling_symlinks=True,
+    )

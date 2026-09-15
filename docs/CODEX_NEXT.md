@@ -358,7 +358,7 @@ mode that does not pay the environment tax is also the mode nobody can run.
   repository-local path, no credential, and no model prose presented as a finding.
   Verify: snapshot tests over sealed Cases, including the negative cases.
 
-- [ ] **17. Ship the action that runs it in a repository's own CI**
+- [x] **17. Ship the action that runs it in a repository's own CI**
   Source refs: `.github/workflows/ci.yml` for the existing job shape, and `should_trigger`.
   What to build: A composite action triggered on `ready_for_review` or an explicit review
   command, running inside the repository's existing environment, posting a comment only on a

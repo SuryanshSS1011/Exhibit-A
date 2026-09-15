@@ -1,0 +1,106 @@
+name: Exhibit A review
+description: >-
+  Review a pull request inside the environment its own CI already built, and produce a
+  comment only when a test has been found that fails on the change and passes without it.
+
+inputs:
+  base-ref:
+    description: Revision the pull request merges into. Must already be fetched.
+    required: true
+  head-ref:
+    description: Revision under review. Must already be checked out.
+    required: false
+    default: HEAD
+  claim:
+    description: What the change is meant to do. The pull request title is the usual value.
+    required: true
+  provider-config:
+    description: Strict provider configuration JSON. Omit to run the stub proposer.
+    required: false
+    default: ''
+  image:
+    description: >-
+      A prebuilt container image to review in. Omit to review on this runner, which is the
+      point of the action: the job has already installed the repository's dependencies.
+    required: false
+    default: ''
+
+outputs:
+  verdict:
+    description: The Case verdict. Only VERIFIED earns a comment.
+    value: ${{ steps.review.outputs.verdict }}
+  comment-path:
+    description: Path to the rendered comment, empty when none was earned.
+    value: ${{ steps.review.outputs.comment-path }}
+
+runs:
+  using: composite
+  steps:
+    # The policy lives in operations.policy.should_trigger. Asking it here rather than
+    # restating it in YAML keeps one policy instead of two that drift.
+    - id: trigger
+      shell: bash
+      run: |
+        if python3 -m exhibit_a.cli review-trigger \
+             --event-name "$GITHUB_EVENT_NAME" \
+             --event-path "$GITHUB_EVENT_PATH"; then
+          echo "review=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "review=false" >> "$GITHUB_OUTPUT"
+          echo "Not a reviewable event; doing nothing." >> "$GITHUB_STEP_SUMMARY"
+        fi
+
+    - id: review
+      if: steps.trigger.outputs.review == 'true'
+      shell: bash
+      env:
+        EXHIBIT_A_BASE_REF: ${{ inputs.base-ref }}
+        EXHIBIT_A_HEAD_REF: ${{ inputs.head-ref }}
+        EXHIBIT_A_CLAIM: ${{ inputs.claim }}
+        EXHIBIT_A_IMAGE: ${{ inputs.image }}
+        EXHIBIT_A_PROVIDER_CONFIG: ${{ inputs.provider-config }}
+      run: |
+        set -euo pipefail
+        base_dir="$RUNNER_TEMP/exhibit-a-base"
+        rm -rf "$base_dir"
+        # The base revision is needed as a tree to diff and to run against. It is code
+        # that is already in the repository, not the contribution under review.
+        git worktree add --detach "$base_dir" "$EXHIBIT_A_BASE_REF"
+
+        args=(review "$PWD" --base "$base_dir" --claim "$EXHIBIT_A_CLAIM"
+              --out "$RUNNER_TEMP/exhibit-a-reviews"
+              --comment-out "$RUNNER_TEMP/exhibit-a-comment.md")
+        if [ -n "$EXHIBIT_A_IMAGE" ]; then
+          args+=(--image "$EXHIBIT_A_IMAGE")
+        else
+          args+=(--no-sandbox)
+        fi
+        if [ -n "$EXHIBIT_A_PROVIDER_CONFIG" ]; then
+          args+=(--provider-config "$EXHIBIT_A_PROVIDER_CONFIG")
+        else
+          args+=(--offline)
+        fi
+
+        # Proving nothing is the ordinary outcome and exits 1, which must not fail the
+        # job. An operational error exits 2 and must, or a broken review would look
+        # exactly like a clean one.
+        set +e
+        python3 -m exhibit_a.cli "${args[@]}" --json > "$RUNNER_TEMP/exhibit-a-case.json"
+        rc=$?
+        set -e
+        if [ "$rc" -gt 1 ]; then
+          echo "Exhibit A could not complete the review (exit $rc)." >> "$GITHUB_STEP_SUMMARY"
+          git worktree remove --force "$base_dir" || true
+          exit "$rc"
+        fi
+        verdict=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['verdict'])" \
+                  "$RUNNER_TEMP/exhibit-a-case.json")
+        echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
+        if [ -f "$RUNNER_TEMP/exhibit-a-comment.md" ]; then
+          echo "comment-path=$RUNNER_TEMP/exhibit-a-comment.md" >> "$GITHUB_OUTPUT"
+          cat "$RUNNER_TEMP/exhibit-a-comment.md" >> "$GITHUB_STEP_SUMMARY"
+        else
+          echo "comment-path=" >> "$GITHUB_OUTPUT"
+          echo "Exhibit A proved nothing and therefore says nothing." >> "$GITHUB_STEP_SUMMARY"
+        fi
+        git worktree remove --force "$base_dir" || true

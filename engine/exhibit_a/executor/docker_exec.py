@@ -32,6 +32,7 @@ from ..replay_environment import PINNED_PYTEST_VERSION
 from .python_version import declared_python, image_for, select_python
 from .source_roots import pythonpath
 from .base import (
+    copy_for_sandbox,
     EnvironmentSetupError,
     ExecOutcome,
     ExecSpec,
@@ -156,7 +157,7 @@ class DockerExecutor(Executor):
         workdir = Path(tempfile.mkdtemp(prefix="exhibit-a-"))
         work = workdir / "repo"
         try:
-            shutil.copytree(src, work, ignore=shutil.ignore_patterns("__pycache__", ".git"))
+            copy_for_sandbox(src, work)
             _grant_container_read(work)
             if mutation is not None:
                 apply_source_mutation(work, mutation, test_path=spec.test_path)
@@ -261,7 +262,7 @@ class DockerExecutor(Executor):
         workdir = Path(tempfile.mkdtemp(prefix="exhibit-a-suite-"))
         work = workdir / "repo"
         try:
-            shutil.copytree(src, work, ignore=shutil.ignore_patterns("__pycache__", ".git"))
+            copy_for_sandbox(src, work)
             _grant_container_read(work)
             resolved_image = image or self.prepare(repo) or self.base_image
             container = f"exhibit-a-suite-{uuid.uuid4().hex}"

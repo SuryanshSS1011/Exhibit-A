@@ -46,6 +46,7 @@ from .hypothesis.generator import Candidate, Claim, CodexGenerator, Feedback, St
 from .hypothesis.property import CodexPropertyGenerator
 from .intake.git_bisect import bisect_reproduction
 from .intake.git_checkout import checkout_context, checkout_pair, checkout_triplet
+from .operations.policy import should_trigger
 from .operations.review_comment import render_review_comment
 from .models.case import Case, Mode, ReleaseTruth, Verdict, normalize_case_payload
 from .passport import create_passport, create_public_passport
@@ -125,6 +126,38 @@ def _build_engine(
         generator = CodexGenerator()
     config = EngineConfig(allow_reproduced=allow_reproduced)
     return EvidenceEngine(generator, executor, config, event_sink=event_sink)
+
+
+def cmd_review_trigger(args: argparse.Namespace) -> int:
+    """Decide whether a webhook event earns a review, using the library's own policy.
+
+    The policy lives in `operations.policy.should_trigger`, and a workflow that reimplemented
+    it in YAML would be a second policy that drifts from the first. So the boundary asks
+    the same function: exit 0 means review, exit 1 means do not, and neither is an error.
+    """
+    payload: dict[str, Any] = {}
+    if args.event_path:
+        try:
+            payload = json.loads(Path(args.event_path).read_text())
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"error: cannot read the event payload: {exc}", file=sys.stderr)
+            return 2
+        if not isinstance(payload, dict):
+            print("error: the event payload is not an object", file=sys.stderr)
+            return 2
+    action = payload.get("action")
+    comment = (
+        (payload.get("comment") or {}).get("body")
+        if isinstance(payload.get("comment"), dict)
+        else None
+    )
+    triggered = should_trigger(
+        args.event_name,
+        action=action if isinstance(action, str) else None,
+        comment=comment if isinstance(comment, str) else None,
+    )
+    print("review" if triggered else "skip")
+    return 0 if triggered else 1
 
 
 def cmd_review(args: argparse.Namespace) -> int:
@@ -1727,6 +1760,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     select_corpus.add_argument("--out", required=True, help="corpus manifest path")
     select_corpus.set_defaults(func=cmd_select_fix_corpus)
+
+    review_trigger = sub.add_parser(
+        "review-trigger",
+        help="decide whether a webhook event earns a review; exit 0 to review, 1 to skip",
+    )
+    review_trigger.add_argument("--event-name", required=True, help="the webhook event name")
+    review_trigger.add_argument("--event-path", help="path to the event payload JSON")
+    review_trigger.set_defaults(func=cmd_review_trigger)
 
     review = sub.add_parser(
         "review",

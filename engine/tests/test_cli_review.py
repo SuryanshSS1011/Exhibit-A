@@ -211,3 +211,30 @@ def test_silence_writes_no_comment_file_at_all(capsys: pytest.CaptureFixture[str
 
     assert code == 1
     assert not comment_out.exists()
+
+
+def test_our_own_runtime_output_is_never_copied_into_the_sandbox(tmp_path: Path):
+    """Prosecutor mode reviews a working directory, not a fresh clone.
+
+    `.exhibit-a` is where this tool writes its own output, and in a repository it has
+    been run in that directory holds study caches measured in gigabytes. Copying our
+    scratch into the sandbox is slow at best; here it aborted the run outright, because
+    a cached clone inside it contained a dangling symlink.
+    """
+    from exhibit_a.executor.base import copy_for_sandbox
+
+    src = tmp_path / "checkout"
+    (src / ".exhibit-a" / "research").mkdir(parents=True)
+    (src / ".exhibit-a" / "research" / "big.json").write_text("{}")
+    (src / "__pycache__").mkdir()
+    (src / "mod.py").write_text("VALUE = 1\n")
+    (src / "dangling").symlink_to(tmp_path / "gone")
+
+    work = tmp_path / "work"
+    copy_for_sandbox(src, work)
+
+    assert (work / "mod.py").is_file()
+    assert not (work / ".exhibit-a").exists()
+    assert not (work / "__pycache__").exists()
+    # A broken symlink in someone else's tree is not a reason to abandon their review.
+    assert not (work / "dangling").exists()
