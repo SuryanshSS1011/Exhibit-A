@@ -1,0 +1,126 @@
+name: Reach probe
+
+# Provider-free by construction: the probe runs a stub proposer, so this workflow needs
+# no model credential and spends nothing. It exists because the workstation both agent
+# sessions run on has 8 GiB of RAM and gives Docker 3.83 GiB, which is below the study
+# gate and cannot be raised. A hosted runner has 16 GiB and is x86_64, which also puts a
+# result on a platform other than the linux/arm64 every pilot so far has recorded.
+on:
+  workflow_dispatch:
+    inputs:
+      corpus:
+        description: Corpus manifest to probe
+        required: false
+        default: studies/fix-coverage/pilot-v8/corpus.json
+      instance-timeout-s:
+        description: Per-instance wall-clock ceiling
+        required: false
+        default: '720'
+      execution-timeout-s:
+        description: Ceiling for each test or suite execution
+        required: false
+        default: '120'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    # Below the six-hour hard limit, so the disk and timing measurements below are still
+    # uploaded when a cold corpus takes longer than expected.
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Reclaim runner disk
+        # Every instance builds its own pinned environment image, 0.7-2 GB each, and the
+        # study does not prune between them. A hosted runner starts with about 14 GB free,
+        # which 30 images would exhaust. These toolchains are preinstalled and unused here.
+        run: |
+          set -euo pipefail
+          echo "before:"; df -h / | tail -1
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+                      /usr/local/share/boost /usr/share/swift || true
+          sudo docker image prune -af >/dev/null 2>&1 || true
+          echo "after:"; df -h / | tail -1
+
+      - name: Install
+        working-directory: engine
+        run: pip install -e ".[dev,public-signatures]"
+
+      - name: Record the environment this result is scoped to
+        run: |
+          set -euo pipefail
+          {
+            echo "### Environment"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Docker memory | $(docker info --format '{{.MemTotal}}' | awk '{printf "%.2f GiB", $1/1073741824}') |"
+            echo "| CPUs | $(docker info --format '{{.NCPU}}') |"
+            echo "| Architecture | $(docker info --format '{{.Architecture}}') |"
+            echo "| Disk free | $(df -h / | tail -1 | awk '{print $4}') |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Probe
+        id: probe
+        working-directory: engine
+        env:
+          CORPUS: ${{ inputs.corpus }}
+          INSTANCE_TIMEOUT: ${{ inputs.instance-timeout-s }}
+          EXECUTION_TIMEOUT: ${{ inputs.execution-timeout-s }}
+        run: |
+          set -euo pipefail
+          start=$(date +%s)
+          # A probe proves nothing by design, so exit 1 means it ran and every instance
+          # stayed silent. Only an operational failure should fail this job.
+          set +e
+          python3 -m exhibit_a.cli fix-coverage "../$CORPUS" --probe \
+            --instance-timeout-s "$INSTANCE_TIMEOUT" \
+            --total-ceiling-s 18000 \
+            --execution-timeout-s "$EXECUTION_TIMEOUT" \
+            --reruns 1 --max-refine 0 \
+            --out "$RUNNER_TEMP/probe" | tee "$RUNNER_TEMP/probe.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          echo "elapsed-s=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
+          if [ "$rc" -gt 1 ]; then exit "$rc"; fi
+
+      - name: Report
+        if: always()
+        run: |
+          set -euo pipefail
+          {
+            echo
+            echo "### Probe"
+            echo
+            echo '```'
+            cat "$RUNNER_TEMP/probe.log" 2>/dev/null || echo "no probe output"
+            echo '```'
+            echo
+            echo "Elapsed: ${{ steps.probe.outputs.elapsed-s }}s"
+            echo
+            echo "### Cost on the runner"
+            echo
+            echo '```'
+            df -h / | tail -1
+            docker system df 2>/dev/null || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reach-probe
+          # Checkpoints included: a probe that hits the job ceiling resumes from them.
+          path: |
+            ${{ runner.temp }}/probe/report.json
+            ${{ runner.temp }}/probe/state.json
+            ${{ runner.temp }}/probe/checkpoints
+            ${{ runner.temp }}/probe.log
+          if-no-files-found: warn
