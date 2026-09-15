@@ -278,12 +278,22 @@ superseded, only reordered behind work the evidence says matters more.
 Some items need a live provider or real compute and some do not. The split is not a
 preference, it is a capability boundary, and mixing them wastes the scarce side.
 
-**Provider-backed or compute-heavy work belongs to the Codex session.** Any preregistered
-pilot that spends model calls, any 30-instance study run, and any measurement over real
-pull requests. A 30-instance study builds 30 environment images at roughly 0.7-2 GB each;
-it must not run on a workstation whose Docker allocation is under 8 GB, because memory
-exhaustion is then recorded as an environment failure and quietly corrupts the taxonomy
-the study depends on. Report the daemon's memory allocation with any study result.
+**Provider-backed work belongs to the Codex session,** which has the model access the
+Claude session does not: any preregistered pilot that spends model calls, and any
+measurement over real pull requests.
+
+**Compute-heavy work belongs to neither, and that is a hardware fact rather than a
+policy.** Both sessions run on the same workstation, which has 8 GiB of physical memory
+and gives Docker 3.83 GiB of it. A 30-instance study builds 30 environment images at
+roughly 0.7-2 GB each, and two pilot v7 instances have already died with `cannot allocate
+memory` there -- recorded, wrongly, as environment failures. The 8 GB minimum below cannot
+be met on this machine by reconfiguring anything, so a study that needs it runs somewhere
+else. A GitHub-hosted runner is the obvious candidate: 16 GB, and x86_64 Linux, which
+would also retire the `linux/arm64` caveat attached to every pilot so far.
+
+Report the daemon's memory allocation with any study result, and stop rather than produce
+findings that are really memory failures. Codex correctly stopped at this gate on
+2026-09-15 before selecting a corpus or spending a call.
 
 **Everything else belongs to the Claude session.** Engine, CLI and action code; the
 deterministic judge and taxonomy; tests and gates; preregistrations; corpus selection; and
