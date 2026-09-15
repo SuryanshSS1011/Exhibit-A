@@ -181,17 +181,47 @@ def apply_source_mutation(root: Path, mutation: SourceMutation, *, test_path: st
 
 # The checkout under test is a working directory, not a fresh clone, once Prosecutor mode
 # reviews a repository where CI has already installed things. `.exhibit-a` is our own
-# runtime output living inside it, and copying our scratch into the sandbox is never
-# right. Dangling symlinks are tolerated because an unreadable entry in someone else's
-# tree is not a reason to abandon their review.
-SANDBOX_IGNORED = ("__pycache__", ".git", ".exhibit-a")
+# runtime output living inside it, and copying our scratch into the sandbox is never right.
+SANDBOX_IGNORED = ("__pycache__", ".git")
+# Only at the root. `shutil.ignore_patterns` matches at every depth, and reserving this
+# name throughout a third-party tree would silently delete a tracked directory from the
+# revision under test.
+SANDBOX_IGNORED_AT_ROOT = (".exhibit-a",)
 
 
 def copy_for_sandbox(src: Path, work: Path) -> None:
-    """Copy a checkout into the disposable tree a run executes against."""
+    """Copy a checkout into the disposable tree a run executes against.
+
+    Symlinks are copied as symlinks rather than followed, and any link resolving outside
+    the checkout is dropped. `shutil.copytree` dereferences by default, so a checkout
+    containing `innocent.txt -> ~/.codex/auth.json` had that file's *contents* copied into
+    the tree the test then reads. The repository under test is assumed hostile, so it must
+    not be able to name a host file and have the sandbox fetch it.
+    """
+    root = src.resolve()
+
+    def ignore(directory: str, entries: list[str]) -> set[str]:
+        here = Path(directory)
+        dropped = {entry for entry in entries if entry in SANDBOX_IGNORED}
+        if here.resolve() == root:
+            dropped |= {entry for entry in entries if entry in SANDBOX_IGNORED_AT_ROOT}
+        for entry in entries:
+            path = here / entry
+            if not path.is_symlink():
+                continue
+            try:
+                target = path.resolve()
+            except OSError:
+                dropped.add(entry)
+                continue
+            if not target.is_relative_to(root):
+                dropped.add(entry)
+        return dropped
+
     shutil.copytree(
         src,
         work,
-        ignore=shutil.ignore_patterns(*SANDBOX_IGNORED),
+        ignore=ignore,
+        symlinks=True,
         ignore_dangling_symlinks=True,
     )

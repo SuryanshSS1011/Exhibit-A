@@ -7,10 +7,6 @@ inputs:
   base-ref:
     description: Revision the pull request merges into. Must already be fetched.
     required: true
-  head-ref:
-    description: Revision under review. Must already be checked out.
-    required: false
-    default: HEAD
   claim:
     description: What the change is meant to do. The pull request title is the usual value.
     required: true
@@ -20,10 +16,10 @@ inputs:
     default: ''
   image:
     description: >-
-      A prebuilt container image to review in. Omit to review on this runner, which is the
-      point of the action: the job has already installed the repository's dependencies.
-    required: false
-    default: ''
+      Container image to review in. Required, and never built here. The host executor
+      declares credential_access "ambient_host" and unrestricted network, so it is not a
+      way to run a contribution; build the image in an earlier step and name it here.
+    required: true
 
 outputs:
   verdict:
@@ -41,9 +37,18 @@ runs:
     - id: trigger
       shell: bash
       run: |
-        if python3 -m exhibit_a.cli review-trigger \
-             --event-name "$GITHUB_EVENT_NAME" \
-             --event-path "$GITHUB_EVENT_PATH"; then
+        set +e
+        python3 -m exhibit_a.cli review-trigger \
+          --event-name "$GITHUB_EVENT_NAME" --event-path "$GITHUB_EVENT_PATH"
+        rc=$?
+        set -e
+        # Exit 2 means the payload could not be read. Folding that into "not requested"
+        # would hide an operational failure as a decision not to review.
+        if [ "$rc" -gt 1 ]; then
+          echo "::error::Could not evaluate the trigger policy (exit $rc)."
+          exit "$rc"
+        fi
+        if [ "$rc" -eq 0 ]; then
           echo "review=true" >> "$GITHUB_OUTPUT"
         else
           echo "review=false" >> "$GITHUB_OUTPUT"
@@ -55,7 +60,6 @@ runs:
       shell: bash
       env:
         EXHIBIT_A_BASE_REF: ${{ inputs.base-ref }}
-        EXHIBIT_A_HEAD_REF: ${{ inputs.head-ref }}
         EXHIBIT_A_CLAIM: ${{ inputs.claim }}
         EXHIBIT_A_IMAGE: ${{ inputs.image }}
         EXHIBIT_A_PROVIDER_CONFIG: ${{ inputs.provider-config }}
@@ -67,14 +71,14 @@ runs:
         # that is already in the repository, not the contribution under review.
         git worktree add --detach "$base_dir" "$EXHIBIT_A_BASE_REF"
 
+        if [ -z "$EXHIBIT_A_IMAGE" ]; then
+          echo "::error::image is required; the host executor is not a sandbox."
+          exit 2
+        fi
         args=(review "$PWD" --base "$base_dir" --claim "$EXHIBIT_A_CLAIM"
+              --image "$EXHIBIT_A_IMAGE"
               --out "$RUNNER_TEMP/exhibit-a-reviews"
               --comment-out "$RUNNER_TEMP/exhibit-a-comment.md")
-        if [ -n "$EXHIBIT_A_IMAGE" ]; then
-          args+=(--image "$EXHIBIT_A_IMAGE")
-        else
-          args+=(--no-sandbox)
-        fi
         if [ -n "$EXHIBIT_A_PROVIDER_CONFIG" ]; then
           args+=(--provider-config "$EXHIBIT_A_PROVIDER_CONFIG")
         else

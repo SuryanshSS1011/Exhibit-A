@@ -70,12 +70,23 @@ class DockerExecutor(Executor):
     isolation = "container"
     credential_access = "none"
 
-    def __init__(self, base_image: str = DEFAULT_IMAGE, docker_bin: str = "docker"):
+    def __init__(
+        self,
+        base_image: str = DEFAULT_IMAGE,
+        docker_bin: str = "docker",
+        *,
+        prebuilt: bool = False,
+    ):
         self.base_image = base_image
         self.docker_bin = docker_bin
+        # Whether the caller supplied an environment, asked as a question rather than
+        # inferred from the image name. Comparing against the default name meant
+        # `--image exhibit-a-python-pytest:3.12` read as "no image supplied" and built
+        # one, which broke the review command's promise never to.
+        self.prebuilt = prebuilt
 
     def prepare(self, repo: RepoState) -> str | None:
-        if self.base_image != DEFAULT_IMAGE:
+        if self.prebuilt or self.base_image != DEFAULT_IMAGE:
             return self.base_image
         root = Path(repo.path).resolve()
         if not root.is_dir():

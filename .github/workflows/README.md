@@ -6,25 +6,31 @@
 | `reach-probe.yml` | manual | nothing | none |
 | `coverage-pilot.yml` | manual, confirmed | model calls | `EXHIBIT_A_PROVIDER_KEY` |
 
-## Why the studies run here
+## Why the probe runs here and pilots do not
 
-Both agent sessions working on this repository share a workstation with 8 GiB of memory
-that gives Docker 3.83 GiB. A thirty-instance study builds thirty environment images of
-0.7-2 GB each, and two pilot v7 instances have already died with `cannot allocate memory`
-and been recorded, wrongly, as environment failures. That limit cannot be raised on an
-8 GiB machine, so studies run on a hosted runner instead.
+Pilots run on the workstation, on the ChatGPT subscription that already pays for the
+model. An API key would bill a second time for that, and transporting the Codex credential
+cache to a runner is worse: it holds access and refresh tokens, so it is standing account
+access rather than a scoped secret, and the runner refreshes it mid-run. An earlier
+version of this file sent paid pilots here on the strength of an 8 GB memory rule that has
+since been removed: pilot v8 completed all thirty instances on that 3.83 GiB workstation
+and none of its environment failures was memory.
 
-It is also the only x86_64 evidence this project has. Pilots v5 through v8 all recorded
+The probe runs here because it is free to run anywhere and this is the only x86_64
+evidence this project has. Pilots v5 through v8 all recorded
 `linux/arm64`, and the first probe run here reached the judge on 24 of 30 instances where
 the same corpus reached 17 on arm64 — two of them blocked by distributions that have no
 arm64 build at all. Platform is recorded in every report for that reason.
 
 ## Running a pilot
 
-1. Run `reach-probe` on the corpus first. It is free, needs no credential, and a corpus
-   that does not reach the judge will not reach it with a model attached either.
-2. Add the provider credential as the `EXHIBIT_A_PROVIDER_KEY` repository secret.
-3. Dispatch `coverage-pilot` with the corpus path and `confirm` set to `spend`.
+Pilots run on the workstation with the Codex CLI. `coverage-pilot.yml` remains for a
+hosted provider that bills separately, and is not the default path: it needs the
+`EXHIBIT_A_PROVIDER_KEY` secret and `confirm` set to `spend`, and it does not support
+`codex_cli`, whose adapter authenticates from a session rather than a named variable.
+
+Run `reach-probe` on any corpus first either way. It is free, needs no credential, and a
+corpus that does not reach the judge without a model will not reach it with one.
 
 The confirmation gate is the first step and runs before checkout, so a misdispatch costs
 nothing. The credential is never written to the provider configuration file: the file

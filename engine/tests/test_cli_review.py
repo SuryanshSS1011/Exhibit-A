@@ -213,6 +213,37 @@ def test_silence_writes_no_comment_file_at_all(capsys: pytest.CaptureFixture[str
     assert not comment_out.exists()
 
 
+def test_a_symlink_cannot_fetch_a_host_file_into_the_sandbox(tmp_path: Path):
+    """The repository under test is assumed hostile, so it must not name a host file.
+
+    `shutil.copytree` dereferences by default, so a checkout containing
+    `innocent.txt -> ~/.codex/auth.json` had that file's contents copied into the tree the
+    contributed test then reads. Inside a container that is a credential the sandbox
+    fetched on the contribution's behalf.
+    """
+    from exhibit_a.executor.base import copy_for_sandbox
+
+    secret = tmp_path / "host-secret.txt"
+    secret.write_text("PRETEND-CREDENTIAL-VALUE")
+    src = tmp_path / "checkout"
+    src.mkdir()
+    (src / "mod.py").write_text("VALUE = 1\n")
+    (src / "escape.txt").symlink_to(secret)
+    (src / "inside.txt").write_text("ok\n")
+    (src / "ok-link").symlink_to(src / "inside.txt")
+
+    work = tmp_path / "work"
+    copy_for_sandbox(src, work)
+
+    assert not (work / "escape.txt").exists()
+    assert "PRETEND-CREDENTIAL-VALUE" not in "".join(
+        p.read_text() for p in work.rglob("*") if p.is_file() and not p.is_symlink()
+    )
+    # A link that stays inside the checkout is part of the tree and is preserved as a link.
+    assert (work / "ok-link").is_symlink()
+    assert (work / "mod.py").is_file()
+
+
 def test_our_own_runtime_output_is_never_copied_into_the_sandbox(tmp_path: Path):
     """Prosecutor mode reviews a working directory, not a fresh clone.
 
@@ -229,6 +260,9 @@ def test_our_own_runtime_output_is_never_copied_into_the_sandbox(tmp_path: Path)
     (src / "__pycache__").mkdir()
     (src / "mod.py").write_text("VALUE = 1\n")
     (src / "dangling").symlink_to(tmp_path / "gone")
+    nested = src / "vendor" / ".exhibit-a"
+    nested.mkdir(parents=True)
+    (nested / "tracked.py").write_text("Y = 2\n")
 
     work = tmp_path / "work"
     copy_for_sandbox(src, work)
@@ -236,5 +270,19 @@ def test_our_own_runtime_output_is_never_copied_into_the_sandbox(tmp_path: Path)
     assert (work / "mod.py").is_file()
     assert not (work / ".exhibit-a").exists()
     assert not (work / "__pycache__").exists()
+    # Only ours, and only at the root. Reserving the name throughout a third-party tree
+    # would silently delete a tracked directory from the revision under test.
+    assert (work / "vendor" / ".exhibit-a" / "tracked.py").is_file()
     # A broken symlink in someone else's tree is not a reason to abandon their review.
     assert not (work / "dangling").exists()
+
+
+def test_a_supplied_image_is_used_even_when_it_is_the_default_name(tmp_path: Path):
+    # The default image name used to double as the signal for "build one", so naming it
+    # explicitly meant review built an environment while claiming it never does.
+    from exhibit_a.executor.docker_exec import DEFAULT_IMAGE
+
+    engine = cli._build_engine(use_docker=True, offline=True, base_image=DEFAULT_IMAGE)
+
+    assert engine.executor.prebuilt is True
+    assert engine.executor.prepare(object()) == DEFAULT_IMAGE  # type: ignore[arg-type]

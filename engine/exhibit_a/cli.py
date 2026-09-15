@@ -110,7 +110,9 @@ def _build_engine(
         # A named image is used as given. DockerExecutor.prepare returns any base image
         # that is not its own default without building anything, which is what lets a
         # review run inside an environment the caller already has.
-        executor = DockerExecutor(base_image=base_image or DEFAULT_IMAGE)
+        executor = DockerExecutor(
+            base_image=base_image or DEFAULT_IMAGE, prebuilt=base_image is not None
+        )
     else:
         executor = LocalExecutor()
     if environment_root is not None:

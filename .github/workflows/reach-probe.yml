@@ -1,10 +1,11 @@
 name: Reach probe
 
 # Provider-free by construction: the probe runs a stub proposer, so this workflow needs
-# no model credential and spends nothing. It exists because the workstation both agent
-# sessions run on has 8 GiB of RAM and gives Docker 3.83 GiB, which is below the study
-# gate and cannot be raised. A hosted runner has 16 GiB and is x86_64, which also puts a
-# result on a platform other than the linux/arm64 every pilot so far has recorded.
+# no model credential and spends nothing anywhere. It runs here rather than on the
+# workstation because it is the project's only x86_64 evidence -- every pilot from v5 to
+# v8 recorded linux/arm64, and the same v8 corpus reached the judge on 24 of 30 instances
+# here against 17 there. Paid pilots stay on the workstation, on the subscription that
+# already covers them.
 on:
   workflow_dispatch:
     inputs:

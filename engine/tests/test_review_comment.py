@@ -154,3 +154,62 @@ def test_a_long_log_keeps_its_tail_where_the_failure_is():
     assert "E   KeyError: 'x'" in comment
     assert "[...]" in comment
     assert len(comment) < 20000
+
+
+def test_execution_output_cannot_break_out_of_its_fence():
+    """Logs are attacker-influenced, and a fence inside one ends ours early.
+
+    Everything after that renders as Markdown or HTML in the pull request, which turns a
+    log line into arbitrary comment content.
+    """
+    case = _proven(
+        evidence=Evidence(
+            fail_log="```\n</details><img src=x onerror=alert(1)>\n@everyone\n```",
+            fail_signature="KeyError",
+            pass_log="1 passed",
+            reruns=1,
+            deterministic=True,
+        )
+    )
+
+    comment = render_review_comment(case)
+
+    assert comment is not None
+    # Our fence is longer than any run of backticks inside the body, so the body stays
+    # inside it rather than closing it.
+    for line in comment.splitlines():
+        if "onerror" in line:
+            break
+    else:
+        raise AssertionError("the log was dropped rather than fenced")
+    assert "````" in comment
+
+
+def test_untrusted_claim_text_is_fenced_too():
+    # The claim is a pull request title, which anyone opening a pull request controls.
+    case = _proven(claim_text="nice change\n</details>\n\n# Injected heading")
+
+    comment = render_review_comment(case)
+
+    assert comment is not None
+    heading_at = comment.index("# Injected heading")
+    fence_before = comment.rindex("```", 0, heading_at)
+    assert fence_before > comment.index("Change under review")
+
+
+def test_more_host_path_shapes_are_removed():
+    case = _proven(
+        evidence=Evidence(
+            fail_log="/root/.ssh/id_rsa\nC:\\\\Users\\\\runneradmin\\\\secrets.txt",
+            fail_signature="KeyError",
+            pass_log="1 passed",
+            reruns=1,
+            deterministic=True,
+        )
+    )
+
+    comment = render_review_comment(case)
+
+    assert comment is not None
+    assert "/root/" not in comment
+    assert "runneradmin" not in comment
