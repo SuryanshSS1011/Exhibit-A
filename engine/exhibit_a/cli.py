@@ -100,11 +100,15 @@ def _build_engine(
     event_sink: Callable[[dict[str, Any]], None] | None = None,
     environment_root: str | Path | None = None,
     provider_config: str | Path | None = None,
+    base_image: str | None = None,
 ) -> EvidenceEngine:
     if use_docker:
-        from .executor.docker_exec import DockerExecutor
+        from .executor.docker_exec import DEFAULT_IMAGE, DockerExecutor
 
-        executor = DockerExecutor()
+        # A named image is used as given. DockerExecutor.prepare returns any base image
+        # that is not its own default without building anything, which is what lets a
+        # review run inside an environment the caller already has.
+        executor = DockerExecutor(base_image=base_image or DEFAULT_IMAGE)
     else:
         executor = LocalExecutor()
     if environment_root is not None:
@@ -120,6 +124,105 @@ def _build_engine(
         generator = CodexGenerator()
     config = EngineConfig(allow_reproduced=allow_reproduced)
     return EvidenceEngine(generator, executor, config, event_sink=event_sink)
+
+
+def cmd_review(args: argparse.Namespace) -> int:
+    """Review one pull request inside an environment somebody else already built.
+
+    Detective mode against an arbitrary repository spends most of its budget rebuilding
+    an environment from a lockfile, and that is where it most often loses. A pull request
+    is reviewed where its own CI already runs, so the environment is there for the taking.
+    This command therefore refuses to construct one: `--image` names a prebuilt container
+    and `--no-sandbox` uses the host the job is already running on, and neither is a
+    default, because silently building one would reintroduce exactly the cost this mode
+    exists to avoid.
+    """
+    claim_text = args.claim or ""
+    if args.claim_file:
+        try:
+            claim_text = Path(args.claim_file).read_text()
+        except OSError as exc:
+            print(f"error: cannot read --claim-file: {exc}", file=sys.stderr)
+            return 2
+    if not claim_text.strip():
+        print("error: provide --claim or --claim-file describing the change", file=sys.stderr)
+        return 2
+    if bool(args.image) == bool(args.no_sandbox):
+        print(
+            "error: name the environment to review in with exactly one of --image or "
+            "--no-sandbox; review never builds one",
+            file=sys.stderr,
+        )
+        return 2
+    if bool(args.base_sha) != bool(args.head_sha):
+        print("error: --base-sha and --head-sha must be provided together", file=sys.stderr)
+        return 2
+    if bool(args.base) == bool(args.base_sha):
+        print(
+            "error: provide either --base for local checkouts or --base-sha/--head-sha",
+            file=sys.stderr,
+        )
+        return 2
+
+    event_sink = _print_event if args.events else None
+    try:
+        engine = _build_engine(
+            use_docker=not args.no_sandbox,
+            offline=args.offline,
+            event_sink=event_sink,
+            environment_root=Path(args.out).parent / "environment-attempts",
+            provider_config=getattr(args, "provider_config", None),
+            base_image=args.image,
+        )
+    except (OSError, TypeError, ValueError) as exc:
+        print(f"error: cannot initialize review engine: {exc}", file=sys.stderr)
+        return 2
+
+    try:
+        if args.base_sha:
+            if event_sink:
+                event_sink(
+                    {"event": "phase", "phase": "checkout", "message": "Cloning both revisions"}
+                )
+            with checkout_pair(args.repo, args.head_sha, args.base_sha) as (head, base):
+                case = engine.investigate(
+                    Claim(text=claim_text, repo_path=head.path),
+                    mode=Mode.PROSECUTOR,
+                    target=head,
+                    base=base,
+                    repo_source=args.repo,
+                )
+        else:
+            head_path = Path(args.repo).resolve()
+            base_path = Path(args.base).resolve()
+            for label, path in (("head", head_path), ("--base", base_path)):
+                if not path.is_dir():
+                    print(f"error: {label} checkout not found: {path}", file=sys.stderr)
+                    return 2
+            case = engine.investigate(
+                Claim(text=claim_text, repo_path=str(head_path)),
+                mode=Mode.PROSECUTOR,
+                target=RepoState(path=str(head_path), label="target", source=str(head_path)),
+                base=RepoState(path=str(base_path), label="base", source=str(base_path)),
+            )
+    except (ValueError, OSError, subprocess.SubprocessError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+
+    path = JsonCaseStore(args.out).save(case)
+    payload = case.to_dict()
+    if args.events:
+        _print_event({"event": "case", "case": payload})
+    elif args.json:
+        print(json.dumps(payload, indent=2, default=str))
+    else:
+        print(f"\n=== REVIEW VERDICT: {case.verdict.value} ===")
+        print(f"case file: {path}")
+        if case.verdict is not Verdict.VERIFIED:
+            print(f"no comment: {case.silence_reason or 'nothing cleared the gate'}")
+    # Matches `repro`: the exit code reports whether evidence was produced, not whether
+    # the pull request is sound. A caller deciding a check's outcome reads the verdict.
+    return 0 if case.verdict in {Verdict.VERIFIED, Verdict.PARTIAL} else 1
 
 
 def cmd_repro(args: argparse.Namespace) -> int:
@@ -1609,6 +1712,32 @@ def main(argv: list[str] | None = None) -> int:
     )
     select_corpus.add_argument("--out", required=True, help="corpus manifest path")
     select_corpus.set_defaults(func=cmd_select_fix_corpus)
+
+    review = sub.add_parser(
+        "review",
+        help="review a pull request inside an environment that already exists",
+    )
+    review.add_argument("repo", help="repository URL, or the head checkout when using --base")
+    review.add_argument("--base", help="base checkout directory, for local review")
+    review.add_argument("--base-sha", help="revision the pull request merges into")
+    review.add_argument("--head-sha", help="revision under review")
+    review.add_argument("--claim", help="what the change is meant to do, usually the PR title")
+    review.add_argument("--claim-file", help="read the claim from a file instead")
+    review.add_argument(
+        "--image",
+        help="prebuilt container image to review in; never built, only used",
+    )
+    review.add_argument(
+        "--no-sandbox",
+        action="store_true",
+        help="review on this host, for a CI job already running in the repository's environment",
+    )
+    review.add_argument("--provider-config", help="strict provider configuration JSON")
+    review.add_argument("--offline", action="store_true", help="stub proposer, no provider")
+    review.add_argument("--events", action="store_true", help="stream newline-delimited events")
+    review.add_argument("--json", action="store_true", help="print the full Case JSON")
+    review.add_argument("--out", default=".exhibit-a/reviews", help="Case output directory")
+    review.set_defaults(func=cmd_review)
 
     coverage = sub.add_parser(
         "fix-coverage",

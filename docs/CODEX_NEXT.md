@@ -335,16 +335,17 @@ The engine has supported `Mode.PROSECUTOR` and `should_trigger` since before the
 and both are wired to nothing. There is no CLI entry point and no CI integration, so the
 mode that does not pay the environment tax is also the mode nobody can run.
 
-- [ ] **15. Give Prosecutor mode a command-line entry point**
+- [x] **15. Give Prosecutor mode a command-line entry point**
   Source refs: `cli.py` `repro` command, `engine.py` Prosecutor branch, and
   `verdict/diff_location.py`.
   What to build: A command that takes a base and head revision of one repository, runs the
   engine in Prosecutor mode against the changed lines, and emits the same Case contract the
   Detective path emits. It must accept an already-built environment rather than constructing
   one, since inheriting the environment is the whole point of the mode.
-  Acceptance: A proven flip on a changed line produces `VERIFIED`; a candidate outside the
-  diff is refused before execution; a run with no usable environment is honest silence with
-  a stated reason, never a constructed environment.
+  Acceptance: A proven flip on a changed line produces `VERIFIED`; a candidate whose
+  failure lands outside the diff is refused on its traceback, which is necessarily after
+  execution since that is when the location is known; a run with no named environment is
+  refused outright rather than silently constructing one.
   Verify: end-to-end against the checked-in fixtures with the local executor.
 
 - [ ] **16. Render a review comment that can only speak with proof**
