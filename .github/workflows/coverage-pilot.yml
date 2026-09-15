@@ -1,0 +1,171 @@
+name: Coverage pilot
+
+# Spends real model calls against a real budget, so it is manually dispatched, gated on a
+# typed confirmation, and reachable from no pull request. The reach probe should always be
+# run first: it costs nothing and tells you whether the corpus will exercise the judge at
+# all before any of this is paid for.
+on:
+  workflow_dispatch:
+    inputs:
+      corpus:
+        description: Frozen corpus manifest to run
+        required: true
+      confirm:
+        description: Type "spend" to confirm this run will make paid model calls
+        required: true
+        default: ''
+      provider:
+        description: Provider type
+        required: true
+        default: anthropic
+        type: choice
+        options: [anthropic, openai_compatible]
+      model:
+        description: Model identifier to request
+        required: true
+        default: claude-sonnet-5
+      base-url:
+        description: Base URL, for openai_compatible only
+        required: false
+        default: ''
+      instance-timeout-s:
+        required: false
+        default: '720'
+      total-ceiling-s:
+        description: Cumulative instance-time ceiling; the run halts and can be resumed
+        required: false
+        default: '18000'
+      reruns:
+        required: false
+        default: '5'
+      max-refine:
+        required: false
+        default: '3'
+
+permissions:
+  contents: read
+
+jobs:
+  pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - name: Refuse an unconfirmed run
+        # Before checkout, so a misdispatch costs nothing at all.
+        if: inputs.confirm != 'spend'
+        run: |
+          echo "::error::This workflow makes paid model calls. Re-dispatch with confirm=spend."
+          exit 1
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Reclaim runner disk
+        run: |
+          set -euo pipefail
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+                      /usr/local/share/boost /usr/share/swift || true
+          df -h / | tail -1
+
+      - name: Install
+        working-directory: engine
+        run: pip install -e ".[dev,public-signatures]"
+
+      - name: Write the provider configuration
+        # The credential is never written to the file. The engine reads it from the named
+        # environment variable at request time, which is the contract every adapter uses.
+        env:
+          PROVIDER: ${{ inputs.provider }}
+          MODEL: ${{ inputs.model }}
+          BASE_URL: ${{ inputs.base-url }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' > "$RUNNER_TEMP/provider.json"
+          import json, os
+          provider = os.environ["PROVIDER"]
+          spec = {
+              "type": provider,
+              "model": os.environ["MODEL"],
+              "api_key_env": "EXHIBIT_A_PROVIDER_KEY",
+              "roles": ["proposer"],
+          }
+          if provider == "openai_compatible":
+              base = os.environ.get("BASE_URL", "").strip()
+              if not base:
+                  raise SystemExit("openai_compatible requires base-url")
+              spec["base_url"] = base
+          print(json.dumps({"providers": {"p": spec}, "roles": {"proposer": "p"}}, indent=2))
+          PY
+          # Printed to prove no credential is in it; the key lives only in the environment.
+          cat "$RUNNER_TEMP/provider.json"
+
+      - name: Record the environment this result is scoped to
+        run: |
+          set -euo pipefail
+          {
+            echo "### Environment"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Docker memory | $(docker info --format '{{.MemTotal}}' | awk '{printf "%.2f GiB", $1/1073741824}') |"
+            echo "| CPUs | $(docker info --format '{{.NCPU}}') |"
+            echo "| Architecture | $(docker info --format '{{.Architecture}}') |"
+            echo "| Model requested | ${{ inputs.model }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Pilot
+        working-directory: engine
+        env:
+          EXHIBIT_A_PROVIDER_KEY: ${{ secrets.EXHIBIT_A_PROVIDER_KEY }}
+          CORPUS: ${{ inputs.corpus }}
+        run: |
+          set -euo pipefail
+          if [ -z "${EXHIBIT_A_PROVIDER_KEY:-}" ]; then
+            echo "::error::Set the EXHIBIT_A_PROVIDER_KEY repository secret first."
+            exit 1
+          fi
+          set +e
+          python3 -m exhibit_a.cli fix-coverage "../$CORPUS" \
+            --provider-config "$RUNNER_TEMP/provider.json" \
+            --instance-timeout-s "${{ inputs.instance-timeout-s }}" \
+            --total-ceiling-s "${{ inputs.total-ceiling-s }}" \
+            --execution-timeout-s 120 \
+            --reruns "${{ inputs.reruns }}" --max-refine "${{ inputs.max-refine }}" \
+            --out "$RUNNER_TEMP/pilot" | tee "$RUNNER_TEMP/pilot.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          # Exit 1 means instances remain, which a resume continues. Only a higher code is
+          # an operational failure.
+          if [ "$rc" -gt 1 ]; then exit "$rc"; fi
+
+      - name: Report
+        if: always()
+        run: |
+          set -euo pipefail
+          {
+            echo
+            echo "### Pilot"
+            echo
+            echo '```'
+            cat "$RUNNER_TEMP/pilot.log" 2>/dev/null || echo "no pilot output"
+            echo '```'
+            echo
+            echo '```'
+            df -h / | tail -1
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-pilot
+          # Checkpoints and worker records are the private study state a resume needs and
+          # a published report is derived from. They stay in the artifact, never in git.
+          path: |
+            ${{ runner.temp }}/pilot
+            ${{ runner.temp }}/pilot.log
+          if-no-files-found: warn
+          retention-days: 30
