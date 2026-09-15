@@ -246,7 +246,145 @@ the interface without provider conditionals leaking into the policy evaluator.
 **Milestone 4 checkpoint:** stop and assess evidence quality before starting migration
 reversibility. A third deep claim is more valuable than a fourth shallow one.
 
-## Deferred until the four milestones are complete
+## Reordering after the coverage pilots (2026-09-15)
+
+Milestones 1-4 were ordered on the premise that the next bottleneck was the strength of
+the trust artifact. Four preregistered coverage pilots have since measured where the
+engine actually loses, and the answer reorders what comes next.
+
+Pilot v8 is the first repository-disjoint corpus: its 17 repositories appear in no prior
+corpus, so its numbers measure generalization rather than fit. It found 9/30 VERIFIED and
+15/30 reaching the deterministic judge. Of the instances that reached the judge, 60%
+verified. Every one of the nine verified Cases is internally consistent, and four of them
+recovered from a rejected candidate first.
+
+So the judge works. The loss is entirely upstream of it: 15 of 30 instances never reach
+the judge, and 10 of those fail to build an environment. That tail decomposes into three
+kinds of thing, only some of which are ours.
+
+Reconstructing an arbitrary project's environment from a lockfile in a clean container is
+the hard problem of this space, which is why benchmark suites ship curated per-instance
+images rather than building them. Detective mode against arbitrary repositories will stay
+environment-bound however many of these are fixed. Prosecutor mode does not have that
+ceiling: reviewing a pull request inside the repository's own CI inherits a working
+environment for free, and the honesty guarantee is unchanged because the judge does not
+care where the environment came from.
+
+Milestones 5-7 follow from that. Items 9-12 remain valid and unstarted; they are not
+superseded, only reordered behind work the evidence says matters more.
+
+## Division of labor
+
+Some items need a live provider or real compute and some do not. The split is not a
+preference, it is a capability boundary, and mixing them wastes the scarce side.
+
+**Provider-backed or compute-heavy work belongs to the Codex session.** Any preregistered
+pilot that spends model calls, any 30-instance study run, and any measurement over real
+pull requests. A 30-instance study builds 30 environment images at roughly 0.7-2 GB each;
+it must not run on a workstation whose Docker allocation is under 8 GB, because memory
+exhaustion is then recorded as an environment failure and quietly corrupts the taxonomy
+the study depends on. Report the daemon's memory allocation with any study result.
+
+**Everything else belongs to the Claude session.** Engine, CLI and action code; the
+deterministic judge and taxonomy; tests and gates; preregistrations; corpus selection; and
+independent verification of every published study before it is pushed. Selection needs
+only a zero-scope GitHub token, never a model.
+
+Verification is deliberately not assigned to whoever produced the result.
+
+## Milestone 5 — Close the environment failures that are ours, then stop
+
+Time-boxed on purpose. The remaining wins here are worth about two instances in thirty,
+and the platform ceilings are not winnable at all. The point of this milestone is to
+separate our defects from the ceilings and then stop paying the tax.
+
+- [ ] **13. Evaluate environment markers against the target platform**
+  Source refs: `executor/docker_exec.py` uv-lock marker handling, and the v8 checkpoint for
+  `mem0ai-mem0-pr-4203`.
+  What to build: That instance failed on `No matching distribution found for pywin32==310`,
+  a Windows-only package installed into a Linux container. Establish whether the lockfile
+  carries a `sys_platform` marker we are dropping, or whether the entry genuinely has none.
+  If the marker exists, conjoin it the way dependency-edge markers already are and exclude
+  entries that cannot apply to the target platform.
+  Acceptance: A package reachable only under a marker that is false for the build platform
+  is not installed, and a package with no marker is installed exactly as before. If the
+  lockfile carries no marker, record that in the taxonomy as an upstream defect rather than
+  inventing one.
+  Verify: a lockfile fixture with platform-scoped edges; no network.
+
+- [ ] **14. Name the platform and index ceilings instead of pooling them**
+  Source refs: `studies/fix_coverage.py` environment-install taxonomy, and the v8 checkpoints
+  for `autogluon-autogluon-pr-5700`, `omnigent-ai-omnigent-pr-23`,
+  `microsoft-agent-lightning-pr-573`, and `mlflow-mlflow-pr-20903`.
+  What to build: `pinned_distribution_unavailable` currently holds two unrelated things. Two
+  instances pin `torch==2.13.0+cpu` and `torch==2.10.0+cpu`, local version identifiers served
+  by PyTorch's own index rather than PyPI; two pin distributions with no artifact for the
+  build platform at all. Split them so a reader can tell a fixable index gap from an
+  architecture ceiling.
+  Acceptance: A local version identifier or a lockfile-declared alternate index classifies
+  as an index category; a distribution absent for the platform classifies as a platform
+  category; neither claims to be the other.
+  Non-goal: Do not install from alternate indexes in this item. Honoring a lockfile's index
+  under `--require-hashes` extends trust to a third-party host and is its own decision with
+  its own threat model, not a taxonomy change.
+  Verify: classifier tests over recorded v8 diagnostics.
+
+## Milestone 6 — Make Prosecutor mode reachable
+
+The engine has supported `Mode.PROSECUTOR` and `should_trigger` since before the pilots,
+and both are wired to nothing. There is no CLI entry point and no CI integration, so the
+mode that does not pay the environment tax is also the mode nobody can run.
+
+- [ ] **15. Give Prosecutor mode a command-line entry point**
+  Source refs: `cli.py` `repro` command, `engine.py` Prosecutor branch, and
+  `verdict/diff_location.py`.
+  What to build: A command that takes a base and head revision of one repository, runs the
+  engine in Prosecutor mode against the changed lines, and emits the same Case contract the
+  Detective path emits. It must accept an already-built environment rather than constructing
+  one, since inheriting the environment is the whole point of the mode.
+  Acceptance: A proven flip on a changed line produces `VERIFIED`; a candidate outside the
+  diff is refused before execution; a run with no usable environment is honest silence with
+  a stated reason, never a constructed environment.
+  Verify: end-to-end against the checked-in fixtures with the local executor.
+
+- [ ] **16. Render a review comment that can only speak with proof**
+  Source refs: `passport.py` for the credential-free projection discipline, and
+  `operations/policy.py`.
+  What to build: A renderer from a Case to a pull-request comment containing the failing
+  test, the command to reproduce it, and both execution logs. Silence renders nothing at
+  all, not a comment reporting that nothing was found.
+  Acceptance: A non-VERIFIED Case renders no comment. A rendered comment contains no
+  repository-local path, no credential, and no model prose presented as a finding.
+  Verify: snapshot tests over sealed Cases, including the negative cases.
+
+- [ ] **17. Ship the action that runs it in a repository's own CI**
+  Source refs: `.github/workflows/ci.yml` for the existing job shape, and `should_trigger`.
+  What to build: A composite action triggered on `ready_for_review` or an explicit review
+  command, running inside the repository's existing environment, posting a comment only on a
+  proven flip. Untrusted pull-request content reaches the engine as argv only, and the action
+  requests the narrowest token that can comment.
+  Acceptance: The trigger policy is enforced in the action, not merely in the library; a
+  fork pull request cannot obtain write credentials; a run that proves nothing exits zero
+  and comments nothing.
+  Verify: exercise the action against this repository before any external one.
+
+## Milestone 7 — Measure Prosecutor precision the way coverage was measured
+
+- [ ] **18. Preregister and run a Prosecutor precision pilot**
+  Owner: the Codex session. Needs a live provider and real compute.
+  Source refs: `operations/policy.py` `semantic_precision`, `studies/self_audit.py`, and the
+  v8 preregistration for the discipline to copy.
+  What to build: A preregistered study over real merged pull requests with known outcomes,
+  reporting human-confirmed regressions divided by all human-judged flags, with Wilson
+  intervals. Silence is the default and is not a failure. Report the count of pull requests
+  on which the engine said nothing alongside the precision figure, because a precise
+  reviewer that never speaks is not a product either.
+  Acceptance: The corpus is repository-disjoint from v5 through v8, selection precedes any
+  provider call, and the report records the platform and the daemon's memory allocation.
+  Non-goal: Do not compare this figure with the Detective coverage figures. They measure
+  different claims on different populations.
+
+## Deferred until the milestones are complete
 
 - Migration reversibility needs an explicit database threat model, engine/version pinning,
   schema and selected-data digests, transactional semantics, and cleanup guarantees. It
