@@ -1105,3 +1105,48 @@ def test_the_index_split_does_not_capture_ordinary_version_text() -> None:
         )
         == "pinned_distribution_unavailable"
     )
+
+
+def test_a_memory_kill_is_named_rather_than_counted_as_a_dependency_problem() -> None:
+    """An 8 GiB workstation cannot build the largest dependency trees.
+
+    Two pilot v7 instances died with `cannot allocate memory` and were recorded as
+    dependency-install failures, which makes the taxonomy partly a description of the
+    machine the study ran on. The observation is unusable either way; the point is that a
+    reader can see which ones they are instead of counting them as findings about
+    repositories.
+    """
+    for text in (
+        'process "/bin/sh -c python -m pip install -r reqs.txt" did not complete '
+        "successfully: cannot allocate memory",
+        "did not complete successfully: exit code: 137",
+        "Container OOMKilled while resolving dependencies",
+    ):
+        assert classify_environment_install_failure(text) == "host_memory_exhausted", text
+
+
+def test_a_memory_kill_outranks_whatever_it_was_doing_when_it_died() -> None:
+    # A build killed for memory also prints the step it was on, and would otherwise be
+    # filed under that step.
+    assert (
+        classify_environment_install_failure(
+            "metadata-generation-failed: subprocess-exited-with-error; MemoryError"
+        )
+        == "host_memory_exhausted"
+    )
+
+
+def test_ordinary_install_failures_keep_their_categories() -> None:
+    # The new category must not swallow anything that is a real finding.
+    assert (
+        classify_environment_install_failure("ERROR: No matching distribution found for daal==1.0")
+        == "pinned_distribution_unavailable"
+    )
+    assert (
+        classify_environment_install_failure("error: command 'gcc' failed: No such file")
+        == "native_distribution_build_failure"
+    )
+    assert (
+        classify_environment_install_failure("metadata-generation-failed for widget")
+        == "package_build_backend_or_metadata_failure"
+    )

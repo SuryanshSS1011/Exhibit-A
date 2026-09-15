@@ -34,9 +34,10 @@ RUN_STATE_SCHEMA = "fix-coverage-run-state/v1"
 TAXONOMY_SCHEMA = "fix-coverage-failure-taxonomy/v3"
 PUBLIC_REPORT_SCHEMA = "fix-coverage-public-report/v3"
 EXECUTION_SEGMENTS_SCHEMA = "fix-coverage-execution-segments/v1"
-ENVIRONMENT_INSTALL_TAXONOMY_SCHEMA = "fix-coverage-environment-install-taxonomy/v2"
+ENVIRONMENT_INSTALL_TAXONOMY_SCHEMA = "fix-coverage-environment-install-taxonomy/v3"
 
 _ENVIRONMENT_INSTALL_CATEGORIES = (
+    "host_memory_exhausted",
     "python_version_incompatible",
     "pinned_distribution_unavailable",
     "distribution_requires_alternate_index",
@@ -80,6 +81,18 @@ _SHA = re.compile(r"^[0-9a-f]{40}$")
 # records and our generated requirements do not use. Pooling that with a distribution that
 # has no artifact anywhere hides the difference between a gap we could close by honouring
 # the lockfile's index and a platform ceiling we cannot close at all.
+# A container killed by the kernel out-of-memory killer exits 137, and pip reports the
+# allocation failure verbatim. Both were observed on an 8 GiB workstation whose Docker
+# daemon holds 3.83 GiB, which is not enough for the largest dependency trees.
+_MEMORY_EXHAUSTION_MARKERS = (
+    "cannot allocate memory",
+    "out of memory",
+    "memoryerror",
+    "oomkilled",
+    "oom-kill",
+    "exit code: 137",
+)
+
 _LOCAL_VERSION_PIN = re.compile(r"==\s*[0-9][^\s;,+)]*\+[0-9a-z][0-9a-z.]*", re.IGNORECASE)
 
 _CATCH_ALL = frozenset({"candidate_other_rejection", "study_error"})
@@ -597,6 +610,12 @@ def classify_worker_result(result: WorkerResult) -> tuple[str | None, str | None
 def classify_environment_install_failure(reason: object) -> str:
     """Classify a private dependency-build reason into a publishable stable category."""
     text = str(reason or "").lower()
+    # First, because a build killed for memory also prints whatever it was doing when it
+    # died, and would otherwise be counted as that. This category says the observation is
+    # unusable -- it describes the machine the study ran on, not the repository -- and a
+    # reader should treat the instance as unattempted rather than as a finding.
+    if any(marker in text for marker in _MEMORY_EXHAUSTION_MARKERS):
+        return "host_memory_exhausted"
     if any(
         marker in text
         for marker in (

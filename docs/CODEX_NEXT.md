@@ -282,18 +282,36 @@ preference, it is a capability boundary, and mixing them wastes the scarce side.
 Claude session does not: any preregistered pilot that spends model calls, and any
 measurement over real pull requests.
 
-**Compute-heavy work belongs to neither, and that is a hardware fact rather than a
-policy.** Both sessions run on the same workstation, which has 8 GiB of physical memory
-and gives Docker 3.83 GiB of it. A 30-instance study builds 30 environment images at
-roughly 0.7-2 GB each, and two pilot v7 instances have already died with `cannot allocate
-memory` there -- recorded, wrongly, as environment failures. The 8 GB minimum below cannot
-be met on this machine by reconfiguring anything, so a study that needs it runs somewhere
-else. A GitHub-hosted runner is the obvious candidate: 16 GB, and x86_64 Linux, which
-would also retire the `linux/arm64` caveat attached to every pilot so far.
+**Pilots run on the workstation, on the subscription that already pays for the model.**
+An API key would authenticate more cleanly in CI and would bill a second time for work the
+ChatGPT subscription already covers, so it is not worth buying. Transporting the Codex
+credential cache to a runner is worse: `~/.codex/auth.json` holds access *and refresh*
+tokens, which is standing account access rather than a scoped secret, and the runner
+refreshes it during use so a stored copy goes stale mid-study.
 
-Report the daemon's memory allocation with any study result, and stop rather than produce
-findings that are really memory failures. Codex correctly stopped at this gate on
-2026-09-15 before selecting a corpus or spending a call.
+**An earlier version of this section set an 8 GB minimum and told Codex to stop below it.
+That was wrong and it cost a run.** The workstation gives Docker 3.83 GiB, and pilot v8
+nonetheless completed all thirty instances there: its ten environment failures were
+pinned-distribution, build-backend and other-install problems, and not one was memory. The
+two `cannot allocate memory` deaths that motivated the rule came from ad-hoc reruns of
+unusually heavy dependency trees, not from a study. Generalising two data points into a
+refusal blocked work the hardware had already done.
+
+The real damage was never the failure. It was that an out-of-memory kill was recorded as
+`environment_dependency_install_failed`, which makes the taxonomy partly a description of
+the machine. `host_memory_exhausted` now names it, and it is classified before the other
+patterns because a build killed for memory also prints whatever step it died on. An
+instance in that category is an unusable observation rather than a finding about a
+repository, and should be read as unattempted.
+
+So: record the daemon's memory allocation with every study result, and let an exhausted
+build be visible rather than refused in advance.
+
+**The reach probe runs on a hosted runner**, because it is provider-free and therefore
+costs nothing to run anywhere, and because it is the project's only x86_64 evidence.
+`.github/workflows/reach-probe.yml` returned 24/30 on the v8 corpus where the same corpus
+returned 17/30 on arm64, two of those instances blocked by distributions with no arm64
+build at all. Platform belongs in every report for that reason.
 
 **Everything else belongs to the Claude session.** Engine, CLI and action code; the
 deterministic judge and taxonomy; tests and gates; preregistrations; corpus selection; and
