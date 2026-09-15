@@ -58,6 +58,15 @@ def test_checkout_rejects_unsafe_repo_urls(repo_url: str):
         git_checkout.checkout(repo_url, SHA)
 
 
+def _subcommand(argv: list[str]) -> str:
+    """The git subcommand, past any number of -c/-C option pairs."""
+    index = 1
+    while index < len(argv) and argv[index] in {"-c", "-C"}:
+        index += 2
+    assert index < len(argv), f"no subcommand in {argv}"
+    return argv[index]
+
+
 def test_checkout_uses_argv_disables_hooks_and_fetches_only_sha(
     monkeypatch: pytest.MonkeyPatch,
 ):
@@ -75,12 +84,21 @@ def test_checkout_uses_argv_disables_hooks_and_fetches_only_sha(
         assert state.commit == _full(SHA)
         assert state.label == "checkout"
         assert len(calls) == 3
-        assert calls[0][:4] == ["git", "-c", "core.hooksPath=/dev/null", "clone"]
+        # Subcommand position moves as config flags are added, so name it rather than
+        # indexing: every invocation is git, then -c/-C pairs, then the subcommand.
+        assert [_subcommand(call) for call in calls] == ["clone", "fetch", "checkout"]
+        assert all(call[0] == "git" for call in calls)
         assert calls[0][-2:] == [REPO_URL, state.path]
         assert calls[1][-2:] == ["origin", SHA]
         assert calls[2][-2:] == ["--detach", SHA]
         assert all(isinstance(call, list) for call in calls)
         assert all("core.hooksPath=/dev/null" in call for call in calls)
+        # Without this, checkout invokes git-lfs for any repository whose .gitattributes
+        # declares a filter, and a machine without git-lfs loses the instance to an
+        # unexplained exit 128. Three of pilot v8's thirty went that way.
+        assert all("filter.lfs.smudge=cat" in call for call in calls)
+        assert all("filter.lfs.process=" in call for call in calls)
+        assert all("filter.lfs.required=false" in call for call in calls)
     finally:
         scratch = Path(state.path).parent
         git_checkout.cleanup(state)

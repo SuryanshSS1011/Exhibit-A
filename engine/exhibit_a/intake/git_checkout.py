@@ -22,6 +22,21 @@ logger = logging.getLogger(__name__)
 _SHA_RE = re.compile(r"^[0-9a-fA-F]{7,40}$")
 _FULL_SHA_RE = re.compile(r"[0-9a-f]{40}")
 _HOOKS_DISABLED = ["-c", "core.hooksPath=/dev/null"]
+# `git checkout` runs the Git LFS smudge filter for any repository whose .gitattributes
+# declares one, and without git-lfs on PATH the filter process dies and takes the checkout
+# with it -- "fatal: the remote end hung up unexpectedly", surfacing only as exit 128.
+# Three of pilot v8's thirty instances were lost that way. LFS holds assets rather than the
+# Python under test, and both revisions are treated identically, so the pointer files that
+# remain cost the comparison nothing and this avoids requiring a system tool of everyone
+# who runs the engine.
+_LFS_DISABLED = [
+    "-c",
+    "filter.lfs.smudge=cat",
+    "-c",
+    "filter.lfs.process=",
+    "-c",
+    "filter.lfs.required=false",
+]
 _GIT_TIMEOUT_S = 300
 
 
@@ -43,6 +58,7 @@ def checkout(repo_url: str, sha: str) -> RepoState:
             [
                 "git",
                 *_HOOKS_DISABLED,
+                *_LFS_DISABLED,
                 "clone",
                 "--filter=blob:none",
                 "--no-checkout",
@@ -59,6 +75,7 @@ def checkout(repo_url: str, sha: str) -> RepoState:
                 "-C",
                 str(repo_path),
                 *_HOOKS_DISABLED,
+                *_LFS_DISABLED,
                 "fetch",
                 "--filter=blob:none",
                 "--depth=1",
@@ -73,6 +90,7 @@ def checkout(repo_url: str, sha: str) -> RepoState:
                 "-C",
                 str(repo_path),
                 *_HOOKS_DISABLED,
+                *_LFS_DISABLED,
                 "checkout",
                 "--detach",
                 sha,
@@ -130,7 +148,9 @@ def _resolve_head(repo_path: Path, requested: str) -> str:
     can resolve differently as a repository grows. Evidence should name the commit, so the
     abbreviation is accepted at intake and resolved here, before it reaches a Case.
     """
-    resolved = _git_output(["git", "-C", str(repo_path), *_HOOKS_DISABLED, "rev-parse", "HEAD"])
+    resolved = _git_output(
+        ["git", "-C", str(repo_path), *_HOOKS_DISABLED, *_LFS_DISABLED, "rev-parse", "HEAD"]
+    )
     if not _FULL_SHA_RE.fullmatch(resolved):
         raise ValueError(f"git resolved HEAD to something that is not a commit: {resolved!r}")
     if not resolved.startswith(requested.lower()):
