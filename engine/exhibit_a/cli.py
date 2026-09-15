@@ -46,6 +46,7 @@ from .hypothesis.generator import Candidate, Claim, CodexGenerator, Feedback, St
 from .hypothesis.property import CodexPropertyGenerator
 from .intake.git_bisect import bisect_reproduction
 from .intake.git_checkout import checkout_context, checkout_pair, checkout_triplet
+from .operations.review_comment import render_review_comment
 from .models.case import Case, Mode, ReleaseTruth, Verdict, normalize_case_payload
 from .passport import create_passport, create_public_passport
 from .passport_html import create_html_passport, create_public_html_passport
@@ -211,15 +212,29 @@ def cmd_review(args: argparse.Namespace) -> int:
 
     path = JsonCaseStore(args.out).save(case)
     payload = case.to_dict()
+    comment = render_review_comment(case)
+    comment_path = None
+    if comment is not None and args.comment_out:
+        comment_path = Path(args.comment_out).resolve()
+        comment_path.parent.mkdir(parents=True, exist_ok=True)
+        comment_path.write_text(comment)
     if args.events:
         _print_event({"event": "case", "case": payload})
     elif args.json:
         print(json.dumps(payload, indent=2, default=str))
+    elif comment is not None:
+        print(comment)
+        if comment_path is not None:
+            print(f"comment written to {comment_path}", file=sys.stderr)
     else:
-        print(f"\n=== REVIEW VERDICT: {case.verdict.value} ===")
-        print(f"case file: {path}")
-        if case.verdict is not Verdict.VERIFIED:
-            print(f"no comment: {case.silence_reason or 'nothing cleared the gate'}")
+        # Silence is the product working, so it is reported on stderr and leaves stdout
+        # empty: a caller can pipe stdout straight to a comment without checking first.
+        print(f"=== REVIEW VERDICT: {case.verdict.value} ===", file=sys.stderr)
+        print(f"case file: {path}", file=sys.stderr)
+        print(
+            f"no comment: {case.silence_reason or 'nothing cleared the gate'}",
+            file=sys.stderr,
+        )
     # Matches `repro`: the exit code reports whether evidence was produced, not whether
     # the pull request is sound. A caller deciding a check's outcome reads the verdict.
     return 0 if case.verdict in {Verdict.VERIFIED, Verdict.PARTIAL} else 1
@@ -1737,6 +1752,10 @@ def main(argv: list[str] | None = None) -> int:
     review.add_argument("--events", action="store_true", help="stream newline-delimited events")
     review.add_argument("--json", action="store_true", help="print the full Case JSON")
     review.add_argument("--out", default=".exhibit-a/reviews", help="Case output directory")
+    review.add_argument(
+        "--comment-out",
+        help="write the review comment here when one is earned; nothing is written otherwise",
+    )
     review.set_defaults(func=cmd_review)
 
     coverage = sub.add_parser(

@@ -131,3 +131,83 @@ def test_a_local_review_runs_in_prosecutor_mode_and_stays_silent_without_proof(
     assert case["verdict"] == "UNCERTAIN"
     assert case["silence_reason"]
     assert case["truth"]["execution"] == "COMPLETED"
+
+
+def _proven_case():
+    from exhibit_a.models.case import Case, Evidence, Verdict
+    from exhibit_a.models.case import TestArtifact as CaseTestArtifact
+
+    return Case(
+        id="c1",
+        mode=Mode.PROSECUTOR,
+        verdict=Verdict.VERIFIED,
+        claim_text="refactor the stock lookup",
+        run_command="python3 -m pytest -x -q test_repro.py",
+        test_file=CaseTestArtifact(path="test_repro.py", code="def test_x():\n    assert True\n"),
+        evidence=Evidence(
+            fail_log="E   KeyError: 'x'",
+            fail_signature="KeyError: 'x'",
+            pass_log="1 passed",
+            reruns=5,
+            deterministic=True,
+        ),
+    )
+
+
+class _ProvenEngine:
+    executor = None
+    generator = None
+
+    def investigate(self, *args, **kwargs):
+        return _proven_case()
+
+
+def test_a_proven_review_prints_the_comment_on_stdout(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    # stdout carries the comment and nothing else, so a caller can pipe it straight into
+    # a pull request without parsing anything first.
+    monkeypatch.setattr(cli, "_build_engine", lambda **kwargs: _ProvenEngine())
+    comment_out = tmp_path / "comment.md"
+
+    code, _ = _run(
+        capsys,
+        str(FIXTURES / "buggy_inventory"),
+        "--base",
+        str(FIXTURES / "fixed_inventory"),
+        "--claim",
+        "refactor the stock lookup",
+        "--no-sandbox",
+        "--out",
+        str(tmp_path / "reviews"),
+        "--comment-out",
+        str(comment_out),
+    )
+
+    assert code == 0
+    written = comment_out.read_text()
+    assert "proven regression" in written
+    assert "python3 -m pytest -x -q test_repro.py" in written
+
+
+def test_silence_writes_no_comment_file_at_all(capsys: pytest.CaptureFixture[str], tmp_path: Path):
+    # Not an empty file. A caller testing for existence must not find one.
+    comment_out = tmp_path / "comment.md"
+
+    code, _ = _run(
+        capsys,
+        str(FIXTURES / "buggy_inventory"),
+        "--base",
+        str(FIXTURES / "fixed_inventory"),
+        "--claim",
+        "refactor the stock lookup",
+        "--no-sandbox",
+        "--offline",
+        "--out",
+        str(tmp_path / "reviews"),
+        "--comment-out",
+        str(comment_out),
+    )
+
+    assert code == 1
+    assert not comment_out.exists()

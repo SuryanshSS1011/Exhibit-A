@@ -348,7 +348,7 @@ mode that does not pay the environment tax is also the mode nobody can run.
   refused outright rather than silently constructing one.
   Verify: end-to-end against the checked-in fixtures with the local executor.
 
-- [ ] **16. Render a review comment that can only speak with proof**
+- [x] **16. Render a review comment that can only speak with proof**
   Source refs: `passport.py` for the credential-free projection discipline, and
   `operations/policy.py`.
   What to build: A renderer from a Case to a pull-request comment containing the failing
