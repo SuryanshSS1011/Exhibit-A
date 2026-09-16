@@ -1,0 +1,3000 @@
+{
+  "exclusions": [
+    {
+      "detail": "outside registered cap of 5 PRs per repo",
+      "pull_number": 925,
+      "reason_code": "per_repository_cap",
+      "repository": "Alishahryar1/free-claude-code",
+      "source_url": "https://github.com/Alishahryar1/free-claude-code/pull/925"
+    },
+    {
+      "detail": "outside registered cap of 5 PRs per repo",
+      "pull_number": 926,
+      "reason_code": "per_repository_cap",
+      "repository": "Alishahryar1/free-claude-code",
+      "source_url": "https://github.com/Alishahryar1/free-claude-code/pull/926"
+    },
+    {
+      "detail": "outside registered cap of 5 PRs per repo",
+      "pull_number": 930,
+      "reason_code": "per_repository_cap",
+      "repository": "Alishahryar1/free-claude-code",
+      "source_url": "https://github.com/Alishahryar1/free-claude-code/pull/930"
+    },
+    {
+      "detail": "outside registered cap of 5 PRs per repo",
+      "pull_number": 932,
+      "reason_code": "per_repository_cap",
+      "repository": "Alishahryar1/free-claude-code",
+      "source_url": "https://github.com/Alishahryar1/free-claude-code/pull/932"
+    },
+    {
+      "detail": "outside registered cap of 5 PRs per repo",
+      "pull_number": 1875,
+      "reason_code": "per_repository_cap",
+      "repository": "bmad-code-org/BMAD-METHOD",
+      "source_url": "https://github.com/bmad-code-org/BMAD-METHOD/pull/1875"
+    },
+    {
+      "detail": "outside registered cap of 5 PRs per repo",
+      "pull_number": 1877,
+      "reason_code": "per_repository_cap",
+      "repository": "bmad-code-org/BMAD-METHOD",
+      "source_url": "https://github.com/bmad-code-org/BMAD-METHOD/pull/1877"
+    },
+    {
+      "detail": "outside registered cap of 5 PRs per repo",
+      "pull_number": 1878,
+      "reason_code": "per_repository_cap",
+      "repository": "bmad-code-org/BMAD-METHOD",
+      "source_url": "https://github.com/bmad-code-org/BMAD-METHOD/pull/1878"
+    },
+    {
+      "detail": "outside registered cap of 5 PRs per repo",
+      "pull_number": 1896,
+      "reason_code": "per_repository_cap",
+      "repository": "bmad-code-org/BMAD-METHOD",
+      "source_url": "https://github.com/bmad-code-org/BMAD-METHOD/pull/1896"
+    },
+    {
+      "detail": "outside registered cap of 5 PRs per repo",
+      "pull_number": 1924,
+      "reason_code": "per_repository_cap",
+      "repository": "bmad-code-org/BMAD-METHOD",
+      "source_url": "https://github.com/bmad-code-org/BMAD-METHOD/pull/1924"
+    },
+    {
+      "detail": "outside registered cap of 5 PRs per repo",
+      "pull_number": 1925,
+      "reason_code": "per_repository_cap",
+      "repository": "bmad-code-org/BMAD-METHOD",
+      "source_url": "https://github.com/bmad-code-org/BMAD-METHOD/pull/1925"
+    },
+    {
+      "detail": "outside registered cap of 5 PRs per repo",
+      "pull_number": 1928,
+      "reason_code": "per_repository_cap",
+      "repository": "bmad-code-org/BMAD-METHOD",
+      "source_url": "https://github.com/bmad-code-org/BMAD-METHOD/pull/1928"
+    },
+    {
+      "detail": "outside registered cap of 5 PRs per repo",
+      "pull_number": 1933,
+      "reason_code": "per_repository_cap",
+      "repository": "bmad-code-org/BMAD-METHOD",
+      "source_url": "https://github.com/bmad-code-org/BMAD-METHOD/pull/1933"
+    },
+    {
+      "detail": "outside registered cap of 5 PRs per repo",
+      "pull_number": 1934,
+      "reason_code": "per_repository_cap",
+      "repository": "bmad-code-org/BMAD-METHOD",
+      "source_url": "https://github.com/bmad-code-org/BMAD-METHOD/pull/1934"
+    },
+    {
+      "detail": "outside registered cap of 5 PRs per repo",
+      "pull_number": 1936,
+      "reason_code": "per_repository_cap",
+      "repository": "bmad-code-org/BMAD-METHOD",
+      "source_url": "https://github.com/bmad-code-org/BMAD-METHOD/pull/1936"
+    },
+    {
+      "detail": "outside registered cap of 5 PRs per repo",
+      "pull_number": 1937,
+      "reason_code": "per_repository_cap",
+      "repository": "bmad-code-org/BMAD-METHOD",
+      "source_url": "https://github.com/bmad-code-org/BMAD-METHOD/pull/1937"
+    },
+    {
+      "detail": "outside registered cap of 5 PRs per repo",
+      "pull_number": 1931,
+      "reason_code": "per_repository_cap",
+      "repository": "bmad-code-org/BMAD-METHOD",
+      "source_url": "https://github.com/bmad-code-org/BMAD-METHOD/pull/1931"
+    },
+    {
+      "detail": "no_production_python_change: no production Python file changed",
+      "pull_number": 3123,
+      "reason_code": "no_production_python_change",
+      "repository": "vinta/awesome-python",
+      "source_url": "https://github.com/vinta/awesome-python/pull/3123"
+    },
+    {
+      "detail": "uv.lock package 'torch' carries no artifact hash",
+      "pull_number": 11974,
+      "reason_code": "unsupported_or_invalid_pinned_environment",
+      "repository": "langflow-ai/langflow",
+      "source_url": "https://github.com/langflow-ai/langflow/pull/11974"
+    },
+    {
+      "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+      "pull_number": 775,
+      "reason_code": "unsupported_or_invalid_pinned_environment",
+      "repository": "Graphify-Labs/graphify",
+      "source_url": "https://github.com/Graphify-Labs/graphify/pull/775"
+    },
+    {
+      "detail": "uv.lock package 'metadrive-simulator' comes from 'git', which cannot be reproduced from an index",
+      "pull_number": 37260,
+      "reason_code": "unsupported_or_invalid_pinned_environment",
+      "repository": "commaai/openpilot",
+      "source_url": "https://github.com/commaai/openpilot/pull/37260"
+    },
+    {
+      "detail": "requirements.txt is not a self-contained pinned requirements file: 'requests>=2.32.5,<3.0.0'",
+      "pull_number": 952,
+      "reason_code": "unsupported_or_invalid_pinned_environment",
+      "repository": "sansan0/TrendRadar",
+      "source_url": "https://github.com/sansan0/TrendRadar/pull/952"
+    },
+    {
+      "detail": "requirements.txt is not a self-contained pinned requirements file: 'chromadb>=0.4.0'",
+      "pull_number": 22,
+      "reason_code": "unsupported_or_invalid_pinned_environment",
+      "repository": "MemPalace/mempalace",
+      "source_url": "https://github.com/MemPalace/mempalace/pull/22"
+    },
+    {
+      "detail": "uv.lock package 'torch' carries no artifact hash",
+      "pull_number": 147,
+      "reason_code": "unsupported_or_invalid_pinned_environment",
+      "repository": "Alishahryar1/free-claude-code",
+      "source_url": "https://github.com/Alishahryar1/free-claude-code/pull/147"
+    },
+    {
+      "detail": "no_production_python_change: no production Python file changed",
+      "pull_number": 1732,
+      "reason_code": "no_production_python_change",
+      "repository": "bmad-code-org/BMAD-METHOD",
+      "source_url": "https://github.com/bmad-code-org/BMAD-METHOD/pull/1732"
+    },
+    {
+      "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+      "pull_number": 62,
+      "reason_code": "unsupported_or_invalid_pinned_environment",
+      "repository": "bojieli/ai-agent-book",
+      "source_url": "https://github.com/bojieli/ai-agent-book/pull/62"
+    },
+    {
+      "detail": "no_production_python_change: no production Python file changed",
+      "pull_number": 13971,
+      "reason_code": "no_production_python_change",
+      "repository": "streamlit/streamlit",
+      "source_url": "https://github.com/streamlit/streamlit/pull/13971"
+    },
+    {
+      "detail": "no_production_python_change: no production Python file changed",
+      "pull_number": 2485,
+      "reason_code": "no_production_python_change",
+      "repository": "microsoft/graphrag",
+      "source_url": "https://github.com/microsoft/graphrag/pull/2485"
+    },
+    {
+      "detail": "no_production_python_change: no production Python file changed",
+      "pull_number": 576,
+      "reason_code": "no_production_python_change",
+      "repository": "OpenBMB/ChatDev",
+      "source_url": "https://github.com/OpenBMB/ChatDev/pull/576"
+    },
+    {
+      "detail": "no_production_python_change: no production Python file changed",
+      "pull_number": 359,
+      "reason_code": "no_production_python_change",
+      "repository": "p-e-w/heretic",
+      "source_url": "https://github.com/p-e-w/heretic/pull/359"
+    },
+    {
+      "detail": "uv.lock package 'torch' carries no artifact hash",
+      "pull_number": 12016,
+      "reason_code": "unsupported_or_invalid_pinned_environment",
+      "repository": "langflow-ai/langflow",
+      "source_url": "https://github.com/langflow-ai/langflow/pull/12016"
+    },
+    {
+      "detail": "no_production_python_change: no production Python file changed",
+      "pull_number": 1834,
+      "reason_code": "no_production_python_change",
+      "repository": "bmad-code-org/BMAD-METHOD",
+      "source_url": "https://github.com/bmad-code-org/BMAD-METHOD/pull/1834"
+    },
+    {
+      "detail": "no_production_python_change: no production Python file changed",
+      "pull_number": 14079,
+      "reason_code": "no_production_python_change",
+      "repository": "streamlit/streamlit",
+      "source_url": "https://github.com/streamlit/streamlit/pull/14079"
+    },
+    {
+      "detail": "no_production_python_change: no production Python file changed",
+      "pull_number": 15111,
+      "reason_code": "no_production_python_change",
+      "repository": "TheAlgorithms/Python",
+      "source_url": "https://github.com/TheAlgorithms/Python/pull/15111"
+    },
+    {
+      "detail": "no_production_python_change: no production Python file changed",
+      "pull_number": 1862,
+      "reason_code": "no_production_python_change",
+      "repository": "bmad-code-org/BMAD-METHOD",
+      "source_url": "https://github.com/bmad-code-org/BMAD-METHOD/pull/1862"
+    },
+    {
+      "detail": "no_production_python_change: no production Python file changed",
+      "pull_number": 1863,
+      "reason_code": "no_production_python_change",
+      "repository": "bmad-code-org/BMAD-METHOD",
+      "source_url": "https://github.com/bmad-code-org/BMAD-METHOD/pull/1863"
+    },
+    {
+      "detail": "no_production_python_change: no production Python file changed",
+      "pull_number": 1868,
+      "reason_code": "no_production_python_change",
+      "repository": "bmad-code-org/BMAD-METHOD",
+      "source_url": "https://github.com/bmad-code-org/BMAD-METHOD/pull/1868"
+    }
+  ],
+  "instances": [
+    {
+      "buggy_sha": "70b9e2fb3552a155f996ba09229af0207f042a9a",
+      "claim": "Clean up the networking_flow directory",
+      "commit_date": "2026-08-27T22:39:49+00:00",
+      "fix_sha": "8e0817e829cb0e622bfe45eaee8e085ccbba72fd",
+      "id": "thealgorithms-python-pr-15098",
+      "repository": "https://github.com/TheAlgorithms/Python.git",
+      "selection_basis": [
+        "refactor_title_prefix"
+      ],
+      "source_url": "https://github.com/TheAlgorithms/Python/pull/15098"
+    },
+    {
+      "buggy_sha": "1e80ee3f5201883c9e3dc4d8d222ebbe702bdfaf",
+      "claim": "style: apply ruff format to server.py",
+      "commit_date": "2026-04-16T23:53:35+00:00",
+      "fix_sha": "ff0788a275778393147504d76744fc81d921324d",
+      "id": "headroomlabs-ai-headroom-pr-189",
+      "repository": "https://github.com/headroomlabs-ai/headroom.git",
+      "selection_basis": [
+        "refactor_title_prefix"
+      ],
+      "source_url": "https://github.com/headroomlabs-ai/headroom/pull/189"
+    },
+    {
+      "buggy_sha": "c845f483d6c3df1eab8497ee0fafa4d6fae09f7f",
+      "claim": "refactor: drop requests dep, route all providers through stdlib http wrapper",
+      "commit_date": "2026-05-15T15:07:43+00:00",
+      "fix_sha": "80a1a47eef9504723f568f1fd0da04fa040da6ac",
+      "id": "mvanhorn-last30days-skill-pr-393",
+      "repository": "https://github.com/mvanhorn/last30days-skill.git",
+      "selection_basis": [
+        "refactor_title_prefix"
+      ],
+      "source_url": "https://github.com/mvanhorn/last30days-skill/pull/393"
+    },
+    {
+      "buggy_sha": "c9e806857824c3fe895e8eacb602e1920eb946de",
+      "claim": "refactor: implement lazy loading for heavy dependencies in Memory module",
+      "commit_date": "2026-02-27T06:20:02+00:00",
+      "fix_sha": "514c082882857fe82dfbb16bbe1d069764c4a575",
+      "id": "crewaiinc-crewai-pr-4632",
+      "repository": "https://github.com/crewAIInc/crewAI.git",
+      "selection_basis": [
+        "refactor_title_prefix"
+      ],
+      "source_url": "https://github.com/crewAIInc/crewAI/pull/4632"
+    },
+    {
+      "buggy_sha": "2a7bb7ba05a9a1c14b4fd7674d5356bc665a4182",
+      "claim": "cleanup: removed unused functions/classes and scripts",
+      "commit_date": "2026-03-18T06:58:22+00:00",
+      "fix_sha": "b5d14444c655c0a0e21c6ba8914539a13f84d103",
+      "id": "mitmproxy-mitmproxy-pr-8136",
+      "repository": "https://github.com/mitmproxy/mitmproxy.git",
+      "selection_basis": [
+        "refactor_title_prefix"
+      ],
+      "source_url": "https://github.com/mitmproxy/mitmproxy/pull/8136"
+    },
+    {
+      "buggy_sha": "4507ef323c4f65dfe43c50f2e217713578299bfe",
+      "claim": "refactor(rlm): enhance code fence parsing and REPL entry formatting",
+      "commit_date": "2026-02-20T15:08:58+00:00",
+      "fix_sha": "3109c61fa4e71b3cc73e63faa7ed288b27c5cef6",
+      "id": "stanfordnlp-dspy-pr-9309",
+      "repository": "https://github.com/stanfordnlp/dspy.git",
+      "selection_basis": [
+        "refactor_title_prefix"
+      ],
+      "source_url": "https://github.com/stanfordnlp/dspy/pull/9309"
+    },
+    {
+      "buggy_sha": "91e1658cc376fcbb5736790c30898f65f9684be5",
+      "claim": "refactor(globals): reduce cyclomatic complexity of split_esc",
+      "commit_date": "2026-03-01T08:54:00+00:00",
+      "fix_sha": "52698956dd673b1f7780163bc89f9b52ba75b9b5",
+      "id": "nicolargo-glances-pr-3461",
+      "repository": "https://github.com/nicolargo/glances.git",
+      "selection_basis": [
+        "refactor_title_prefix"
+      ],
+      "source_url": "https://github.com/nicolargo/glances/pull/3461"
+    },
+    {
+      "buggy_sha": "8e0817e829cb0e622bfe45eaee8e085ccbba72fd",
+      "claim": "Clean up the fractals directory",
+      "commit_date": "2026-08-28T06:10:48+00:00",
+      "fix_sha": "1813f7d7d8f5b725c233fec406624ea03ab1d5a8",
+      "id": "thealgorithms-python-pr-15099",
+      "repository": "https://github.com/TheAlgorithms/Python.git",
+      "selection_basis": [
+        "refactor_title_prefix"
+      ],
+      "source_url": "https://github.com/TheAlgorithms/Python/pull/15099"
+    },
+    {
+      "buggy_sha": "979aa26c3d74f96b9e06e9d9c8edea3e67a66b0c",
+      "claim": "refactor: update step callback methods to support asynchronous invocation",
+      "commit_date": "2026-02-27T10:35:03+00:00",
+      "fix_sha": "1bdb9496a32d6dd0e2821f4e31d3d16d805973ce",
+      "id": "crewaiinc-crewai-pr-4633",
+      "repository": "https://github.com/crewAIInc/crewAI.git",
+      "selection_basis": [
+        "refactor_title_prefix"
+      ],
+      "source_url": "https://github.com/crewAIInc/crewAI/pull/4633"
+    },
+    {
+      "buggy_sha": "492860cc3d6cdcfb3640b1049de51f3cd0c55173",
+      "claim": "Refactor provider transports into packages",
+      "commit_date": "2026-06-17T22:56:19+00:00",
+      "fix_sha": "fa01c2a3a6c5bfaca3104fd48cb81bd39969dfb1",
+      "id": "alishahryar1-free-claude-code-pr-845",
+      "repository": "https://github.com/Alishahryar1/free-claude-code.git",
+      "selection_basis": [
+        "refactor_title_prefix"
+      ],
+      "source_url": "https://github.com/Alishahryar1/free-claude-code/pull/845"
+    },
+    {
+      "buggy_sha": "b0ea262ca914cc754dca135fdc9511ead7de9855",
+      "claim": "Refactor: Make `DummyLM` and callbacks depend on `BaseLM` instead of `LM`",
+      "commit_date": "2026-03-26T00:05:33+00:00",
+      "fix_sha": "c8b3ebed1a21a6900df37ddfdca4334c0830f3ae",
+      "id": "stanfordnlp-dspy-pr-9515",
+      "repository": "https://github.com/stanfordnlp/dspy.git",
+      "selection_basis": [
+        "refactor_title_prefix"
+      ],
+      "source_url": "https://github.com/stanfordnlp/dspy/pull/9515"
+    },
+    {
+      "buggy_sha": "a445be73645f47fd5fe601987f89dfd3219a2a86",
+      "claim": "Cleanup",
+      "commit_date": "2026-08-24T18:28:19+00:00",
+      "fix_sha": "f40e9a26ce62ba0b3fef8837d24aafdcc6e6c704",
+      "id": "microsoft-graphrag-pr-2528",
+      "repository": "https://github.com/microsoft/graphrag.git",
+      "selection_basis": [
+        "refactor_title_prefix"
+      ],
+      "source_url": "https://github.com/microsoft/graphrag/pull/2528"
+    },
+    {
+      "buggy_sha": "11d66bc6e87bb5f505ea8ddbe6bc346ef5071f5b",
+      "claim": "refactor(programlist): reduce cyclomatic complexity of _msg_curse_header",
+      "commit_date": "2026-07-18T07:32:29+00:00",
+      "fix_sha": "872b551f2ed00cbeda9e6061f6946f973d7c46ab",
+      "id": "nicolargo-glances-pr-3614",
+      "repository": "https://github.com/nicolargo/glances.git",
+      "selection_basis": [
+        "refactor_title_prefix"
+      ],
+      "source_url": "https://github.com/nicolargo/glances/pull/3614"
+    },
+    {
+      "buggy_sha": "bc45a7fbe36361e80aa751c358940644b662bbe1",
+      "claim": "refactor(memory): convert memory classes to serializable",
+      "commit_date": "2026-03-09T03:08:10+00:00",
+      "fix_sha": "cd42bcf035c7e5b50ca6317da712d99394c75b44",
+      "id": "crewaiinc-crewai-pr-4761",
+      "repository": "https://github.com/crewAIInc/crewAI.git",
+      "selection_basis": [
+        "refactor_title_prefix"
+      ],
+      "source_url": "https://github.com/crewAIInc/crewAI/pull/4761"
+    },
+    {
+      "buggy_sha": "fa01c2a3a6c5bfaca3104fd48cb81bd39969dfb1",
+      "claim": "Refactor OpenAI Responses into modular adapter facade",
+      "commit_date": "2026-06-18T03:19:51+00:00",
+      "fix_sha": "8d2e5b95f7937cc7c49a54aa1e489313119573f1",
+      "id": "alishahryar1-free-claude-code-pr-847",
+      "repository": "https://github.com/Alishahryar1/free-claude-code.git",
+      "selection_basis": [
+        "refactor_title_prefix"
+      ],
+      "source_url": "https://github.com/Alishahryar1/free-claude-code/pull/847"
+    },
+    {
+      "buggy_sha": "0d390ad2151c7a512d1db1fb38442919358751ad",
+      "claim": "Refactor: Move model capability checks to BaseLM to remove litellm from adapters",
+      "commit_date": "2026-03-27T16:30:13+00:00",
+      "fix_sha": "d0b893209a3c55549064788d55d0f0757a59e4b7",
+      "id": "stanfordnlp-dspy-pr-9516",
+      "repository": "https://github.com/stanfordnlp/dspy.git",
+      "selection_basis": [
+        "refactor_title_prefix"
+      ],
+      "source_url": "https://github.com/stanfordnlp/dspy/pull/9516"
+    },
+    {
+      "buggy_sha": "f7de8b2d281cab673bee5b9c5fa2a8eedc9c08ac",
+      "claim": "refactor: replace Any-typed callback and model fields with serializable types",
+      "commit_date": "2026-03-20T19:18:50+00:00",
+      "fix_sha": "6495aff5286713fa5b488ffd714255b7cca80f76",
+      "id": "crewaiinc-crewai-pr-4969",
+      "repository": "https://github.com/crewAIInc/crewAI.git",
+      "selection_basis": [
+        "refactor_title_prefix"
+      ],
+      "source_url": "https://github.com/crewAIInc/crewAI/pull/4969"
+    },
+    {
+      "buggy_sha": "a97bf7f8b32418bacb12bbc9f554febde0917d0f",
+      "claim": "Refactor messaging platform bridge",
+      "commit_date": "2026-06-18T21:26:48+00:00",
+      "fix_sha": "92488456bcf67b2d75f9749f2490139d5e2ccccd",
+      "id": "alishahryar1-free-claude-code-pr-858",
+      "repository": "https://github.com/Alishahryar1/free-claude-code.git",
+      "selection_basis": [
+        "refactor_title_prefix"
+      ],
+      "source_url": "https://github.com/Alishahryar1/free-claude-code/pull/858"
+    },
+    {
+      "buggy_sha": "e24711af3fc91ad177a66cf9ce78b0c1fb804f26",
+      "claim": "Refactor CLI surfaces around launchers and managed Claude",
+      "commit_date": "2026-06-19T01:36:37+00:00",
+      "fix_sha": "6bee3104fe5f632cab6c0c7419101fcfa3b42cce",
+      "id": "alishahryar1-free-claude-code-pr-861",
+      "repository": "https://github.com/Alishahryar1/free-claude-code.git",
+      "selection_basis": [
+        "refactor_title_prefix"
+      ],
+      "source_url": "https://github.com/Alishahryar1/free-claude-code/pull/861"
+    }
+  ],
+  "preregistration": {
+    "path": "../studies/prosecutor/pilot-v9/preregistration.json",
+    "sha256": "21e6b486fe7beb79e7d3499475bded4d1dfa28286b83d1973c13528c04d55fd8"
+  },
+  "schema_version": "fix-coverage-corpus/v1",
+  "selection": {
+    "candidate_order": "merged_at ascending within repository, then round-robin by repository rank",
+    "candidate_rule": "behavior_preserving",
+    "environment_eligible_repositories": 50,
+    "github_transport_retry": "five attempts for URL/timeout failures with 1,2,4,8 second backoff",
+    "per_repository_cap": 5,
+    "prior_corpus_exclusion": {
+      "excludes_repositories": true,
+      "instances": 120,
+      "manifests": [
+        {
+          "instances": 30,
+          "path": "../studies/fix-coverage/pilot-v5/corpus.json",
+          "sha256": "b95789fa86a7c26268d8b237e9fe6656a77e661525536abecc332fcbbe653f58"
+        },
+        {
+          "instances": 30,
+          "path": "../studies/fix-coverage/pilot-v6/corpus.json",
+          "sha256": "64ca53193d5138200b98d21363cfd178e14fb49c8b87381d32a86e5026035aa8"
+        },
+        {
+          "instances": 30,
+          "path": "../studies/fix-coverage/pilot-v7/corpus.json",
+          "sha256": "f0cc23ecd53c4289da248904a9f38f90de56a9f7613f4e7c80704fe0d2d74282"
+        },
+        {
+          "instances": 30,
+          "path": "../studies/fix-coverage/pilot-v8/corpus.json",
+          "sha256": "edfbd4f423901b8729eaad6210c87c2d3ad5765610a04090f1d6defc0cc838af"
+        }
+      ],
+      "path": null,
+      "repositories": 46,
+      "rule": "exclude every repository named by a prior corpus before eligibility",
+      "sha256": null
+    },
+    "pull_request_rule": "first 100 GitHub results merged 2026-02-17..2026-08-31, sorted by updated ascending; exact case-insensitive bug label or title beginning fix/fixed/fixes/fixing",
+    "pull_request_search_cap_per_repository": 100,
+    "question": "How often does the engine speak when the change declares it changed nothing?",
+    "repositories": [
+      {
+        "default_branch": "master",
+        "default_head_sha": "536d5c4e5ff25e16c0f27e6bda4c9308ffc5fd33",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "public-apis/public-apis",
+        "html_url": "https://github.com/public-apis/public-apis",
+        "rank": 1,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 480920
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "75784265b8c87560c18c19cc4d1ef66366ac938b",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "EbookFoundation/free-programming-books",
+        "html_url": "https://github.com/EbookFoundation/free-programming-books",
+        "rank": 2,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 396981
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "ae9bbd7b02d90b9866215de185217d33f39ab733",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "donnemartin/system-design-primer",
+        "html_url": "https://github.com/donnemartin/system-design-primer",
+        "rank": 3,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 370386
+      },
+      {
+        "candidate_prs": 1,
+        "candidate_prs_after_cap": 1,
+        "candidate_prs_after_prior_exclusion": 1,
+        "default_branch": "master",
+        "default_head_sha": "fde943c5f2f6fa0128b12f68db9ddad7232d2e60",
+        "eligible": true,
+        "full_name": "vinta/awesome-python",
+        "has_matching_candidates": true,
+        "html_url": "https://github.com/vinta/awesome-python",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 4,
+        "stars_at_selection": 321087
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "fcd321e0cf091914417a10948f6a9284276adf1c",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "practical-tutorials/project-based-learning",
+        "html_url": "https://github.com/practical-tutorials/project-based-learning",
+        "rank": 5,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 283564
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "8c8003f80b528377d4387b96faa2c00283168d68",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "NousResearch/hermes-agent",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/NousResearch/hermes-agent",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 6,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 246177
+      },
+      {
+        "candidate_prs": 3,
+        "candidate_prs_after_cap": 3,
+        "candidate_prs_after_prior_exclusion": 3,
+        "default_branch": "master",
+        "default_head_sha": "78d335823dd8aa854faae6b6558e5f3ebcbd9630",
+        "eligible": true,
+        "full_name": "TheAlgorithms/Python",
+        "has_matching_candidates": true,
+        "html_url": "https://github.com/TheAlgorithms/Python",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 7,
+        "stars_at_selection": 224646
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "c7fb478d21e9e59524befbe23f7801bb267fb880",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "yt-dlp/yt-dlp",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/yt-dlp/yt-dlp",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 8,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 191628
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "98381ab27f733468bfe1f9c4f4942b4b416d9a8b",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "Significant-Gravitas/AutoGPT",
+        "html_url": "https://github.com/Significant-Gravitas/AutoGPT",
+        "rank": 9,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 187395
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "945314a45ddbe02935f2fd287b797dc0ba4a01e4",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "microsoft/markitdown",
+        "html_url": "https://github.com/microsoft/markitdown",
+        "rank": 10,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 184793
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "75c87e759278c36c479849d65eae8e2a08bb9c33",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "521xueweihan/HelloGitHub",
+        "html_url": "https://github.com/521xueweihan/HelloGitHub",
+        "rank": 11,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 176919
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "34040c9c568585f6929bedeaad110ad08f079624",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "anthropics/skills",
+        "html_url": "https://github.com/anthropics/skills",
+        "rank": 12,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 176707
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "dbea10932a0e18f40d8103a3bae6fa7927f8d36e",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "huggingface/transformers",
+        "html_url": "https://github.com/huggingface/transformers",
+        "rank": 13,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 166259
+      },
+      {
+        "candidate_prs": 2,
+        "candidate_prs_after_cap": 2,
+        "candidate_prs_after_prior_exclusion": 2,
+        "default_branch": "main",
+        "default_head_sha": "5621dcfd84e11108e4cc1ecb0c51f41053c4211c",
+        "eligible": true,
+        "full_name": "langflow-ai/langflow",
+        "has_matching_candidates": true,
+        "html_url": "https://github.com/langflow-ai/langflow",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 14,
+        "stars_at_selection": 154894
+      },
+      {
+        "default_branch": "main",
+        "detail": "mechanically excluded by the registered fresh-repository rule",
+        "eligible": false,
+        "full_name": "open-webui/open-webui",
+        "html_url": "https://github.com/open-webui/open-webui",
+        "rank": 15,
+        "reason_code": "prior_corpus_repository",
+        "stars_at_selection": 152299
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "5c1f28271295bb13034f4cf8964f74c117357d40",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "langchain-ai/langchain",
+        "html_url": "https://github.com/langchain-ai/langchain",
+        "rank": 16,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 146470
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "f163bb5a92111cee4610ac98e5dce4c6a2a09c26",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "Shubhamsaboo/awesome-llm-apps",
+        "html_url": "https://github.com/Shubhamsaboo/awesome-llm-apps",
+        "rank": 17,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 138513
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "d743a695e46d6decfeb48fb2a641913ff5ab9ac5",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "github/spec-kit",
+        "html_url": "https://github.com/github/spec-kit",
+        "rank": 18,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 137359
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "8ad078bbf81b966cc3c1e96ad9d2d13293f91347",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: 'torch'",
+        "eligible": false,
+        "full_name": "Comfy-Org/ComfyUI",
+        "html_url": "https://github.com/Comfy-Org/ComfyUI",
+        "rank": 19,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 133533
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "15de38fb70bc80ae9276fa7703b48ae861a672e6",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "nextlevelbuilder/ui-ux-pro-max-skill",
+        "html_url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+        "rank": 20,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 128182
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "a76b61da5969bfc2bb8d9e169aa8609d9258273f",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "harry0703/MoneyPrinterTurbo",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/harry0703/MoneyPrinterTurbo",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 21,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 124258
+      },
+      {
+        "candidate_prs": 1,
+        "candidate_prs_after_cap": 1,
+        "candidate_prs_after_prior_exclusion": 1,
+        "default_branch": "v8",
+        "default_head_sha": "26b02b5e3430e4ab85dd7e72c7b98836d8e65c48",
+        "eligible": true,
+        "full_name": "Graphify-Labs/graphify",
+        "has_matching_candidates": true,
+        "html_url": "https://github.com/Graphify-Labs/graphify",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 22,
+        "stars_at_selection": 118417
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "d8110c5ff87ccba887aaa726cdb780f2f84bef8d",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "browser-use/browser-use",
+        "html_url": "https://github.com/browser-use/browser-use",
+        "rank": 23,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 114828
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "86098128c0b4f24f0e2aa2994de830614b474227",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: 'numba'",
+        "eligible": false,
+        "full_name": "openai/whisper",
+        "html_url": "https://github.com/openai/whisper",
+        "rank": 24,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 109221
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "be952b8eccb49720509af544c6675233bc1f10d0",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: '.'",
+        "eligible": false,
+        "full_name": "TauricResearch/TradingAgents",
+        "html_url": "https://github.com/TauricResearch/TradingAgents",
+        "rank": 25,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 106987
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "d4f6c8c25df7fb13f234f6f97398e69a44acbd40",
+        "detail": "requirements-build.txt is not a self-contained pinned requirements file: 'scikit-build-core>=1.0'",
+        "eligible": false,
+        "full_name": "pytorch/pytorch",
+        "html_url": "https://github.com/pytorch/pytorch",
+        "rank": 26,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 103059
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "50113da16fec53b66b80d75e80a89296de4fa5a5",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "fastapi/fastapi",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/fastapi/fastapi",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 27,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 102369
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "d759e31b11d9432afdfddce698c0f7c9a715e086",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: 'numpy>=2.0,<3'",
+        "eligible": false,
+        "full_name": "hacksider/Deep-Live-Cam",
+        "html_url": "https://github.com/hacksider/Deep-Live-Cam",
+        "rank": 28,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 96675
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "fafa083a4fb274bba9cabde0b6e2f50ba6da0622",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: 'addict'",
+        "eligible": false,
+        "full_name": "3b1b/manim",
+        "html_url": "https://github.com/3b1b/manim",
+        "rank": 29,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 93978
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "5a6ccc589281b4302791cc301e258adcbcc5fead",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "vllm-project/vllm",
+        "html_url": "https://github.com/vllm-project/vllm",
+        "rank": 30,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 91938
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "376018708c0f6948d3f978a9ae2915024e794654",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "sherlock-project/sherlock",
+        "html_url": "https://github.com/sherlock-project/sherlock",
+        "rank": 31,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 91831
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "8cbdd4a814397f81adf0129288f32b615bd1f94f",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "django/django",
+        "html_url": "https://github.com/django/django",
+        "rank": 32,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 91081
+      },
+      {
+        "default_branch": "dev",
+        "default_head_sha": "8f4c394961405acec82bc01f24620359736617b3",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: '-c homeassistant/package_constraints.txt'",
+        "eligible": false,
+        "full_name": "home-assistant/core",
+        "html_url": "https://github.com/home-assistant/core",
+        "rank": 33,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 90566
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "dab3fe35379033fdcb2d0e9572fac0b36c9a9ebf",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: 'shapely'",
+        "eligible": false,
+        "full_name": "PaddlePaddle/PaddleOCR",
+        "html_url": "https://github.com/PaddlePaddle/PaddleOCR",
+        "rank": 34,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 89658
+      },
+      {
+        "default_branch": "dev",
+        "default_head_sha": "3b6c169162330cd35c4ce6d14949ef15fd3208a2",
+        "detail": "requirements-optional.txt is not a self-contained pinned requirements file: 'faster-whisper'",
+        "eligible": false,
+        "full_name": "odysseus-dev/odysseus",
+        "html_url": "https://github.com/odysseus-dev/odysseus",
+        "rank": 35,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 87322
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "862f6bccb9c063f49b9d42701baa0eea17a4993f",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "unclecode/crawl4ai",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/unclecode/crawl4ai",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 36,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 83690
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "0efdf8e7d8d2c4f976abd2f4c05fd012e6c317c4",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "bytedance/deer-flow",
+        "html_url": "https://github.com/bytedance/deer-flow",
+        "rank": 37,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 82545
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "a19a171fa980a0785849596492e0af4db800c82f",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "Panniantong/Agent-Reach",
+        "html_url": "https://github.com/Panniantong/Agent-Reach",
+        "rank": 38,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 82499
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "2b160ee18bfee79bb0115e2d9e9c746c8d9bf4c9",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "D4Vinci/Scrapling",
+        "html_url": "https://github.com/D4Vinci/Scrapling",
+        "rank": 39,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 81456
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "3ac27901c711bdf3f5b65a7b1d1820a1f65bd09a",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "swisskyrepo/PayloadsAllTheThings",
+        "html_url": "https://github.com/swisskyrepo/PayloadsAllTheThings",
+        "rank": 40,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 80915
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "22f5abb681c2314feffb9353fdff919d52dd8369",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "opendatalab/MinerU",
+        "html_url": "https://github.com/opendatalab/MinerU",
+        "rank": 41,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 80050
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "ef5334f8d37e5be2eecbf56e334f5e3f0f6817ec",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "Z4nzu/hackingtool",
+        "html_url": "https://github.com/Z4nzu/hackingtool",
+        "rank": 42,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 79564
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "4f7682ceafe573d07cd8a7d0b89908500e83227d",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "datawhalechina/hello-agents",
+        "html_url": "https://github.com/datawhalechina/hello-agents",
+        "rank": 43,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 79389
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "d026163f586dfa8c5c10d28c36edd59a9d3b0e88",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "abi/screenshot-to-code",
+        "html_url": "https://github.com/abi/screenshot-to-code",
+        "rank": 44,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 79054
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "8b12ae202a3ccf8f965c730a4e7617204e32000b",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "tensorflow/models",
+        "html_url": "https://github.com/tensorflow/models",
+        "rank": 45,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 77657
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "d8a1072491069b825edcfef66a06761e074da18a",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "python/cpython",
+        "html_url": "https://github.com/python/cpython",
+        "rank": 46,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 77204
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "0dcafa2ae053a1ddd6a72f265431104b08a5aa13",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: 'anthropic>=0.25.0'",
+        "eligible": false,
+        "full_name": "shareAI-lab/learn-claude-code",
+        "html_url": "https://github.com/shareAI-lab/learn-claude-code",
+        "rank": 47,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 76962
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "38d4a4869ad3173ba7cad99682f5c8726e72f14d",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "unslothai/unsloth",
+        "html_url": "https://github.com/unslothai/unsloth",
+        "rank": 48,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 76244
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "be2a406907dbc61b73e6827ded415c96139d13a2",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "ComposioHQ/awesome-claude-skills",
+        "html_url": "https://github.com/ComposioHQ/awesome-claude-skills",
+        "rank": 49,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 75210
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "97b32d3133b501432141a82949d5c7bc4d94f23a",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "hiyouga/LlamaFactory",
+        "html_url": "https://github.com/hiyouga/LlamaFactory",
+        "rank": 50,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 74816
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "2884e4815bd837c2c23a89840099c7dcd9bdb925",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "apache/superset",
+        "html_url": "https://github.com/apache/superset",
+        "rank": 51,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 74792
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "d73fa1cdcbd8b1465c151db8924ba58b1dd14e35",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "pallets/flask",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/pallets/flask",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 52,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 74748
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "2cd5162e73dcc1d6b08e45e2b2df72f44449f2f3",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "josephmisiti/awesome-machine-learning",
+        "html_url": "https://github.com/josephmisiti/awesome-machine-learning",
+        "rank": 53,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 74356
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "3eba3a7cc190a14b348623f4d7159ad8b15a1ae5",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "Asabeneh/30-Days-Of-Python",
+        "html_url": "https://github.com/Asabeneh/30-Days-Of-Python",
+        "rank": 54,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 73932
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "39d849138ef254f6c737ab4c4705e5545dbe31d4",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "666ghj/MiroFish",
+        "html_url": "https://github.com/666ghj/MiroFish",
+        "rank": 55,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 73792
+      },
+      {
+        "default_branch": "develop",
+        "default_head_sha": "3e071fcc2cd9f891cac6040ae60296dba76dab46",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "OpenBB-finance/OpenBB",
+        "html_url": "https://github.com/OpenBB-finance/OpenBB",
+        "rank": 56,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 73085
+      },
+      {
+        "candidate_prs": 1,
+        "candidate_prs_after_cap": 1,
+        "candidate_prs_after_prior_exclusion": 1,
+        "default_branch": "main",
+        "default_head_sha": "35b11564c6217c358094732618d21eb74503aa47",
+        "eligible": true,
+        "full_name": "headroomlabs-ai/headroom",
+        "has_matching_candidates": true,
+        "html_url": "https://github.com/headroomlabs-ai/headroom",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 57,
+        "stars_at_selection": 72486
+      },
+      {
+        "default_branch": "devel",
+        "default_head_sha": "b84e2cb6adbaee7fb064d137ca2be38cc530e36c",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: 'jinja2 >= 3.1.0  # Jinja2 native macro support fixed in 3.1.0'",
+        "eligible": false,
+        "full_name": "ansible/ansible",
+        "html_url": "https://github.com/ansible/ansible",
+        "rank": 58,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 70700
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "4358542a1bd39af2e7e1cbace8b9fed067473c5b",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "scikit-learn/scikit-learn",
+        "html_url": "https://github.com/scikit-learn/scikit-learn",
+        "rank": 59,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 67279
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "8b3787416bbcbae9216d9f03cfd78220355831a1",
+        "detail": "requirements-min.txt is not a self-contained pinned requirements file: 'requests'",
+        "eligible": false,
+        "full_name": "xtekky/gpt4free",
+        "html_url": "https://github.com/xtekky/gpt4free",
+        "rank": 60,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 66695
+      },
+      {
+        "default_branch": "main",
+        "detail": "mechanically excluded by the registered fresh-repository rule",
+        "eligible": false,
+        "full_name": "docling-project/docling",
+        "html_url": "https://github.com/docling-project/docling",
+        "rank": 61,
+        "reason_code": "prior_corpus_repository",
+        "stars_at_selection": 66508
+      },
+      {
+        "default_branch": "main",
+        "detail": "mechanically excluded by the registered fresh-repository rule",
+        "eligible": false,
+        "full_name": "mem0ai/mem0",
+        "html_url": "https://github.com/mem0ai/mem0",
+        "rank": 62,
+        "reason_code": "prior_corpus_repository",
+        "stars_at_selection": 65430
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "1168e316269baa38752a8901331a4d7aa8b1fd07",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: 'python-dotenv>=1.0.0        # Environment variable configuration'",
+        "eligible": false,
+        "full_name": "ZhuLinsen/daily_stock_analysis",
+        "html_url": "https://github.com/ZhuLinsen/daily_stock_analysis",
+        "rank": 63,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 65147
+      },
+      {
+        "default_branch": "main",
+        "detail": "mechanically excluded by the registered fresh-repository rule",
+        "eligible": false,
+        "full_name": "NanmiCoder/MediaCrawler",
+        "html_url": "https://github.com/NanmiCoder/MediaCrawler",
+        "rank": 64,
+        "reason_code": "prior_corpus_repository",
+        "stars_at_selection": 65096
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "cace2dad8fd835f31c7e2d8f4cf2a9c7a0252627",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "scrapy/scrapy",
+        "html_url": "https://github.com/scrapy/scrapy",
+        "rank": 65,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 64370
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "5edcf00a9e818838988c8c0cf45a79e279851803",
+        "detail": "requirements-common.txt is not a self-contained pinned requirements file: 'pre-commit'",
+        "eligible": false,
+        "full_name": "keras-team/keras",
+        "html_url": "https://github.com/keras-team/keras",
+        "rank": 66,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 64319
+      },
+      {
+        "candidate_prs": 1,
+        "candidate_prs_after_cap": 1,
+        "candidate_prs_after_prior_exclusion": 1,
+        "default_branch": "master",
+        "default_head_sha": "6080cc6168023229437b0ff06cf35bead00a5d0d",
+        "eligible": true,
+        "full_name": "commaai/openpilot",
+        "has_matching_candidates": true,
+        "html_url": "https://github.com/commaai/openpilot",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 67,
+        "stars_at_selection": 63666
+      },
+      {
+        "default_branch": "main",
+        "detail": "mechanically excluded by the registered fresh-repository rule",
+        "eligible": false,
+        "full_name": "virattt/ai-hedge-fund",
+        "html_url": "https://github.com/virattt/ai-hedge-fund",
+        "rank": 68,
+        "reason_code": "prior_corpus_repository",
+        "stars_at_selection": 63418
+      },
+      {
+        "default_branch": "main",
+        "detail": "mechanically excluded by the registered fresh-repository rule",
+        "eligible": false,
+        "full_name": "usestrix/strix",
+        "html_url": "https://github.com/usestrix/strix",
+        "rank": 69,
+        "reason_code": "prior_corpus_repository",
+        "stars_at_selection": 63040
+      },
+      {
+        "candidate_prs": 1,
+        "candidate_prs_after_cap": 1,
+        "candidate_prs_after_prior_exclusion": 1,
+        "default_branch": "master",
+        "default_head_sha": "792bcc3928b1617bba09df34989fd5675c159b86",
+        "eligible": true,
+        "full_name": "sansan0/TrendRadar",
+        "has_matching_candidates": true,
+        "html_url": "https://github.com/sansan0/TrendRadar",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 70,
+        "stars_at_selection": 62299
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "1732059908a2ab780b20eb0f03b76d086c87d018",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "pathwaycom/pathway",
+        "html_url": "https://github.com/pathwaycom/pathway",
+        "rank": 71,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 62279
+      },
+      {
+        "candidate_prs": 1,
+        "candidate_prs_after_cap": 1,
+        "candidate_prs_after_prior_exclusion": 1,
+        "default_branch": "main",
+        "default_head_sha": "ee1080cce34d06cff2f74c45a1fe5cc525e90523",
+        "eligible": true,
+        "full_name": "mvanhorn/last30days-skill",
+        "has_matching_candidates": true,
+        "html_url": "https://github.com/mvanhorn/last30days-skill",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 72,
+        "stars_at_selection": 62151
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "48b1a0169a28582a8984402f82cf438d3bfa6aca",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: '--no-binary=opencc'",
+        "eligible": false,
+        "full_name": "RVC-Boss/GPT-SoVITS",
+        "html_url": "https://github.com/RVC-Boss/GPT-SoVITS",
+        "rank": 73,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 61819
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "181e5bcedfb19bbe59ed6a90b7103a331c4e535f",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "ultralytics/ultralytics",
+        "html_url": "https://github.com/ultralytics/ultralytics",
+        "rank": 74,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 61686
+      },
+      {
+        "default_branch": "master",
+        "detail": "mechanically excluded by the registered fresh-repository rule",
+        "eligible": false,
+        "full_name": "jingyaogong/minimind",
+        "html_url": "https://github.com/jingyaogong/minimind",
+        "rank": 75,
+        "reason_code": "prior_corpus_repository",
+        "stars_at_selection": 61341
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "08e2151fa02de28a5d6a312b3d575692bf147ad7",
+        "detail": "requirements-dev.txt is not a self-contained pinned requirements file: '-r requirements.txt'",
+        "eligible": false,
+        "full_name": "calesthio/OpenMontage",
+        "html_url": "https://github.com/calesthio/OpenMontage",
+        "rank": 76,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 59567
+      },
+      {
+        "candidate_prs": 1,
+        "candidate_prs_after_cap": 1,
+        "candidate_prs_after_prior_exclusion": 1,
+        "default_branch": "develop",
+        "default_head_sha": "25203ed6ee1a739103a77e87219a1f679dee81e9",
+        "eligible": true,
+        "full_name": "MemPalace/mempalace",
+        "has_matching_candidates": true,
+        "html_url": "https://github.com/MemPalace/mempalace",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 77,
+        "stars_at_selection": 59101
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "f62f140f75f14047586f1eb85ce7a877c6f268d2",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "BerriAI/litellm",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/BerriAI/litellm",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 78,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 58913
+      },
+      {
+        "candidate_prs": 4,
+        "candidate_prs_after_cap": 4,
+        "candidate_prs_after_prior_exclusion": 4,
+        "default_branch": "main",
+        "default_head_sha": "64ab0112bd3e065ed715fbf5ed7d89fad7032ec8",
+        "eligible": true,
+        "full_name": "crewAIInc/crewAI",
+        "has_matching_candidates": true,
+        "html_url": "https://github.com/crewAIInc/crewAI",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 79,
+        "stars_at_selection": 58662
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "3309bf4e416fb1c74b008f3e86494439a31bad53",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: 'pydantic~=2.10.6'",
+        "eligible": false,
+        "full_name": "FoundationAgents/OpenManus",
+        "html_url": "https://github.com/FoundationAgents/OpenManus",
+        "rank": 80,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 58324
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "92d63d4e8bb4df75c3b71618f31ddde2378b2bcd",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "karpathy/nanochat",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/karpathy/nanochat",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 81,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 58072
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "402e17ddf820996f51a191cbb798376e1144f069",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: 'matplotlib>=3.3'",
+        "eligible": false,
+        "full_name": "ultralytics/yolov5",
+        "html_url": "https://github.com/ultralytics/yolov5",
+        "rank": 82,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 58021
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "f530cb7508ae670f6474f8a7d9c4df94705cf96b",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "deepfakes/faceswap",
+        "html_url": "https://github.com/deepfakes/faceswap",
+        "rank": 83,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 57554
+      },
+      {
+        "default_branch": "main",
+        "detail": "mechanically excluded by the registered fresh-repository rule",
+        "eligible": false,
+        "full_name": "zylon-ai/private-gpt",
+        "html_url": "https://github.com/zylon-ai/private-gpt",
+        "rank": 84,
+        "reason_code": "prior_corpus_repository",
+        "stars_at_selection": 57516
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "9d8f9a372cc5916fd4781fec207ced7ddac2f08f",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "Textualize/rich",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/Textualize/rich",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 85,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 57370
+      },
+      {
+        "default_branch": "develop",
+        "default_head_sha": "049548f3f3f35e67ba8d3181c71fdc71d11cf260",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: 'dukpy'",
+        "eligible": false,
+        "full_name": "soimort/you-get",
+        "html_url": "https://github.com/soimort/you-get",
+        "rank": 86,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 56874
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "9f3061aaeed9a8756d2c970f5dfe066617a8281d",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: 'face_recognition_models'",
+        "eligible": false,
+        "full_name": "ageitgey/face_recognition",
+        "html_url": "https://github.com/ageitgey/face_recognition",
+        "rank": 87,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 56752
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "94007c1445d9258a7da116646b79473e7c7c3282",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "Zie619/n8n-workflows",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/Zie619/n8n-workflows",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 88,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 56642
+      },
+      {
+        "candidate_prs": 9,
+        "candidate_prs_after_cap": 5,
+        "candidate_prs_after_prior_exclusion": 9,
+        "default_branch": "main",
+        "default_head_sha": "927299b4b3d2ef6ae2613c37856be932bcdbbcf8",
+        "eligible": true,
+        "full_name": "Alishahryar1/free-claude-code",
+        "has_matching_candidates": true,
+        "html_url": "https://github.com/Alishahryar1/free-claude-code",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 89,
+        "stars_at_selection": 55207
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "3b45af2c3dab15626b1d499ea60ce689b7f97a5a",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: '-r skills/ppt-master/requirements.txt'",
+        "eligible": false,
+        "full_name": "hugohe3/ppt-master",
+        "html_url": "https://github.com/hugohe3/ppt-master",
+        "rank": 90,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 54806
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "d18b8fe5a913c46011a3b06cb6ebd6a924414fd3",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: 'numpy>=1.24'",
+        "eligible": false,
+        "full_name": "rohitg00/ai-engineering-from-scratch",
+        "html_url": "https://github.com/rohitg00/ai-engineering-from-scratch",
+        "rank": 91,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 54801
+      },
+      {
+        "default_branch": "develop",
+        "default_head_sha": "175ed3db469d1451224f0ab7677271bcc332c37e",
+        "detail": "requirements-dev.txt is not a self-contained pinned requirements file: '-r requirements.txt'",
+        "eligible": false,
+        "full_name": "freqtrade/freqtrade",
+        "html_url": "https://github.com/freqtrade/freqtrade",
+        "rank": 92,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 54449
+      },
+      {
+        "default_branch": "19.0",
+        "default_head_sha": "9ec0530afd37c93f828021546fadd9a83a6aa136",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: \"lxml-html-clean; python_version >= '3.12' # (Noble - removed from lxml, unpinned for futur security patches)\"",
+        "eligible": false,
+        "full_name": "odoo/odoo",
+        "html_url": "https://github.com/odoo/odoo",
+        "rank": 93,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 54400
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "1541f590c7099820f10ea012f48d2399282df69f",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "microsoft/VibeVoice",
+        "html_url": "https://github.com/microsoft/VibeVoice",
+        "rank": 94,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 54346
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "dae7ef63b4df6eded86637f251fc4e3a06c3b479",
+        "detail": "requirements-dev.txt is not a self-contained pinned requirements file: '-e .[socks]'",
+        "eligible": false,
+        "full_name": "psf/requests",
+        "html_url": "https://github.com/psf/requests",
+        "rank": 95,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 54306
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "79253cad143b7f1279b06060cd9bacc41e716916",
+        "detail": "requirements-dev.txt is not a self-contained pinned requirements file: '-r requirements.txt'",
+        "eligible": false,
+        "full_name": "hesreallyhim/awesome-claude-code",
+        "html_url": "https://github.com/hesreallyhim/awesome-claude-code",
+        "rank": 96,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 54172
+      },
+      {
+        "candidate_prs": 17,
+        "candidate_prs_after_cap": 5,
+        "candidate_prs_after_prior_exclusion": 17,
+        "default_branch": "main",
+        "default_head_sha": "0a00053409731db811f2595ceb521dff9dde9a19",
+        "eligible": true,
+        "full_name": "bmad-code-org/BMAD-METHOD",
+        "has_matching_candidates": true,
+        "html_url": "https://github.com/bmad-code-org/BMAD-METHOD",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 97,
+        "stars_at_selection": 53106
+      },
+      {
+        "default_branch": "main",
+        "detail": "mechanically excluded by the registered fresh-repository rule",
+        "eligible": false,
+        "full_name": "run-llama/llama_index",
+        "html_url": "https://github.com/run-llama/llama_index",
+        "rank": 98,
+        "reason_code": "prior_corpus_repository",
+        "stars_at_selection": 52191
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "486c1547c9b9131efd68f353e4d5e3e02f927dda",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "charlax/professional-programming",
+        "html_url": "https://github.com/charlax/professional-programming",
+        "rank": 99,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 51517
+      },
+      {
+        "default_branch": "develop",
+        "detail": "mechanically excluded by the registered fresh-repository rule",
+        "eligible": false,
+        "full_name": "roboflow/supervision",
+        "html_url": "https://github.com/roboflow/supervision",
+        "rank": 100,
+        "reason_code": "prior_corpus_repository",
+        "stars_at_selection": 50569
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "baac16ef9eb46b14abdebca405b8f2cf2a2c8e8d",
+        "detail": "requirements-dev.txt is not a self-contained pinned requirements file: 'pip'",
+        "eligible": false,
+        "full_name": "pandas-dev/pandas",
+        "html_url": "https://github.com/pandas-dev/pandas",
+        "rank": 101,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 49733
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "810c18b0d1ab9b234bc996c9fd999318523a3ef0",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "HKUDS/CLI-Anything",
+        "html_url": "https://github.com/HKUDS/CLI-Anything",
+        "rank": 102,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 49499
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "9862685f575c65a8247f90369951df1b3416e3d6",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "blader/humanizer",
+        "html_url": "https://github.com/blader/humanizer",
+        "rank": 103,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 49135
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "be725493eb1a6bbb42bf11b37aa7669f59610ff1",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "microsoft/qlib",
+        "html_url": "https://github.com/microsoft/qlib",
+        "rank": 104,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 48613
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "3c546bc08c56f79e0068f1ea4f0acedf5bf69b5e",
+        "detail": "requirements-dev.txt is not a self-contained pinned requirements file: 'pyyaml'",
+        "eligible": false,
+        "full_name": "Imbad0202/academic-research-skills",
+        "html_url": "https://github.com/Imbad0202/academic-research-skills",
+        "rank": 105,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 48338
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "2fb16593988b9e85131e02f395bb9a5108e220e7",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "HKUDS/nanobot",
+        "html_url": "https://github.com/HKUDS/nanobot",
+        "rank": 106,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 48228
+      },
+      {
+        "candidate_prs": 1,
+        "candidate_prs_after_cap": 1,
+        "candidate_prs_after_prior_exclusion": 1,
+        "default_branch": "main",
+        "default_head_sha": "33918d7e4f6a6c0f29ac883a2496627756ba9f1d",
+        "eligible": true,
+        "full_name": "bojieli/ai-agent-book",
+        "has_matching_candidates": true,
+        "html_url": "https://github.com/bojieli/ai-agent-book",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 107,
+        "stars_at_selection": 48000
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "c93f8871239550de2ccfe1e95d469aa82616f07e",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "oobabooga/textgen",
+        "html_url": "https://github.com/oobabooga/textgen",
+        "rank": 108,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 47674
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "21a54c5ea0230a3bec1e1a786d200126c7e34ec6",
+        "detail": "uv.lock package 'mflux' comes from 'git', which cannot be reproduced from an index",
+        "eligible": false,
+        "full_name": "exo-explore/exo",
+        "html_url": "https://github.com/exo-explore/exo",
+        "rank": 109,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 47469
+      },
+      {
+        "default_branch": "dev",
+        "default_head_sha": "9e2a4bd54f0d0f9d0d874b06096a4ce9f18ee4a3",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "SimplifyJobs/Summer2027-Internships",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/SimplifyJobs/Summer2027-Internships",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 110,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 47467
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "5fd138cf26d1f0f8e79b8f22b9e49f6de81e9b55",
+        "detail": "requirements-optional.txt is not a self-contained pinned requirements file: 'tiktoken>=0.3.2 # openai calculate token'",
+        "eligible": false,
+        "full_name": "zhayujie/CowAgent",
+        "html_url": "https://github.com/zhayujie/CowAgent",
+        "rank": 111,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 47003
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "386132ef49f474add5509cf206cfed936a4645bf",
+        "detail": "uv.lock package 'sphinx-airflow-theme' comes from 'url', which cannot be reproduced from an index",
+        "eligible": false,
+        "full_name": "apache/airflow",
+        "html_url": "https://github.com/apache/airflow",
+        "rank": 112,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 46872
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "b15d0be58f55b33972ba3e39709e0e5208ef30cb",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "ayghri/i-have-adhd",
+        "html_url": "https://github.com/ayghri/i-have-adhd",
+        "rank": 113,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 46859
+      },
+      {
+        "default_branch": "hovudstraum",
+        "default_head_sha": "bfc3cff8482a70653ad380bd94660013d2569ff5",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "9001/copyparty",
+        "html_url": "https://github.com/9001/copyparty",
+        "rank": 114,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 46710
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "fd1fdf5bddeb31a61f333e7777aa53a2cf0f8f6d",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "sickn33/agentic-awesome-skills",
+        "html_url": "https://github.com/sickn33/agentic-awesome-skills",
+        "rank": 115,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 46501
+      },
+      {
+        "candidate_prs": 2,
+        "candidate_prs_after_cap": 2,
+        "candidate_prs_after_prior_exclusion": 2,
+        "default_branch": "develop",
+        "default_head_sha": "e27d8a32f089f469ac62939b0911abb265f96bc3",
+        "eligible": true,
+        "full_name": "streamlit/streamlit",
+        "has_matching_candidates": true,
+        "html_url": "https://github.com/streamlit/streamlit",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 116,
+        "stars_at_selection": 45768
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "fa5206fe63836f3f8cd1ebd7168fbd19a5e2ff09",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "vnpy/vnpy",
+        "html_url": "https://github.com/vnpy/vnpy",
+        "rank": 117,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 45406
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "330c8e764435a731eff571e3efdda70b363d0792",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "K-Dense-AI/scientific-agent-skills",
+        "html_url": "https://github.com/K-Dense-AI/scientific-agent-skills",
+        "rank": 118,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 45229
+      },
+      {
+        "default_branch": "dev",
+        "default_head_sha": "420bf503e8fab29996140e32ba7ee78cb598eaed",
+        "detail": "uv.lock package 'microsoft-python-type-stubs' comes from 'git', which cannot be reproduced from an index",
+        "eligible": false,
+        "full_name": "paperless-ngx/paperless-ngx",
+        "html_url": "https://github.com/paperless-ngx/paperless-ngx",
+        "rank": 119,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 45220
+      },
+      {
+        "candidate_prs": 1,
+        "candidate_prs_after_cap": 1,
+        "candidate_prs_after_prior_exclusion": 1,
+        "default_branch": "main",
+        "default_head_sha": "b506c68108e287104045333ade476d92c39c275e",
+        "eligible": true,
+        "full_name": "mitmproxy/mitmproxy",
+        "has_matching_candidates": true,
+        "html_url": "https://github.com/mitmproxy/mitmproxy",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 120,
+        "stars_at_selection": 45074
+      },
+      {
+        "default_branch": "master",
+        "detail": "mechanically excluded by the registered fresh-repository rule",
+        "eligible": false,
+        "full_name": "getsentry/sentry",
+        "html_url": "https://github.com/getsentry/sentry",
+        "rank": 121,
+        "reason_code": "prior_corpus_repository",
+        "stars_at_selection": 44781
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "1d08db64c050bce0bf6e5abb5ab47ef295ac912e",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "ray-project/ray",
+        "html_url": "https://github.com/ray-project/ray",
+        "rank": 122,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 43834
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "d5c36b96b6af56ead122707559d2c16d5130da70",
+        "detail": "requirements-mcp.txt is not a self-contained pinned requirements file: 'mcp>=1.21.0,<2.0.0'",
+        "eligible": false,
+        "full_name": "gradio-app/gradio",
+        "html_url": "https://github.com/gradio-app/gradio",
+        "rank": 123,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 43550
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "f5af15c2b4da10411e340850c00ba0cb5b14fd87",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "deepspeedai/DeepSpeed",
+        "html_url": "https://github.com/deepspeedai/DeepSpeed",
+        "rank": 124,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 43125
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "09435eb1a572eddbd0180e8ea9c3acf84f90604a",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "MadsLorentzen/ai-job-search",
+        "html_url": "https://github.com/MadsLorentzen/ai-job-search",
+        "rank": 125,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 43110
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "47f7390d01f5d69a15fba915fb50e257b13d7864",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "faif/python-patterns",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/faif/python-patterns",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 126,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 42990
+      },
+      {
+        "default_branch": "master",
+        "detail": "mechanically excluded by the registered fresh-repository rule",
+        "eligible": false,
+        "full_name": "mingrammer/diagrams",
+        "html_url": "https://github.com/mingrammer/diagrams",
+        "rank": 127,
+        "reason_code": "prior_corpus_repository",
+        "stars_at_selection": 42621
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "2375e0abdf42158ef149256f2c64b1f759a0d274",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "Yuan1z0825/nature-skills",
+        "html_url": "https://github.com/Yuan1z0825/nature-skills",
+        "rank": 128,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 42514
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "c4ca6360489b53c38d3d41d213a67b50d2fcb883",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: 'aiohttp>=3.8.0'",
+        "eligible": false,
+        "full_name": "666ghj/BettaFish",
+        "html_url": "https://github.com/666ghj/BettaFish",
+        "rank": 129,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 42232
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "cbc10df7c7d377ce86f8d8f9c1e8c364fd94334d",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "agno-agi/agno",
+        "html_url": "https://github.com/agno-agi/agno",
+        "rank": 130,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 42202
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "acd6198877ced2d8126b9b3958bb17f4a65ef0d1",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "psf/black",
+        "html_url": "https://github.com/psf/black",
+        "rank": 131,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 41842
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "230927fb3a9ac9b2893a30322b4dfea7cdea9a8f",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "langchain-ai/langgraph",
+        "html_url": "https://github.com/langchain-ai/langgraph",
+        "rank": 132,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 41776
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "97bfb0685e03112ad39845889061d02cef6e534c",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "luongnv89/claude-howto",
+        "html_url": "https://github.com/luongnv89/claude-howto",
+        "rank": 133,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 41521
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "4f9953be335ef371b3848719ddafe596c01ecd37",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "hpcaitech/ColossalAI",
+        "html_url": "https://github.com/hpcaitech/ColossalAI",
+        "rank": 134,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 41440
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "485c226168e9c189512b22468de89b18dbc1780e",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "ManimCommunity/manim",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/ManimCommunity/manim",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 135,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 40875
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "e0aa8d386121ead06825fb6d1e423a41a3d14a83",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: 'aiocqhttp>=1.4.4'",
+        "eligible": false,
+        "full_name": "AstrBotDevs/AstrBot",
+        "html_url": "https://github.com/AstrBotDevs/AstrBot",
+        "rank": 136,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 40583
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "947b32b479ddd3e07756a8b90b5137b86e41c8de",
+        "detail": "uv.lock package 'infi-clickhouse-orm' comes from 'git', which cannot be reproduced from an index",
+        "eligible": false,
+        "full_name": "PostHog/posthog",
+        "html_url": "https://github.com/PostHog/posthog",
+        "rank": 137,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 39817
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "897fce52f24bf22e6e50d8a3e4df532632a26322",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: '-r requirements/partners.txt'",
+        "eligible": false,
+        "full_name": "HKUDS/DeepTutor",
+        "html_url": "https://github.com/HKUDS/DeepTutor",
+        "rank": 138,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 39808
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "8a1d2344de25d7ec4c5209133aed7af565874ff0",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "datalab-to/marker",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/datalab-to/marker",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 139,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 39781
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "4236bb91f8395b0435f1d8b8baf9e8e4c69a8620",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "wshobson/agents",
+        "html_url": "https://github.com/wshobson/agents",
+        "rank": 140,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 39737
+      },
+      {
+        "default_branch": "main",
+        "detail": "mechanically excluded by the registered fresh-repository rule",
+        "eligible": false,
+        "full_name": "HKUDS/LightRAG",
+        "html_url": "https://github.com/HKUDS/LightRAG",
+        "rank": 141,
+        "reason_code": "prior_corpus_repository",
+        "stars_at_selection": 39707
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "947a785415c6c35ab2ae8157222b4720b0710b4d",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "The-Vibe-Company/quivr",
+        "html_url": "https://github.com/The-Vibe-Company/quivr",
+        "rank": 142,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 39528
+      },
+      {
+        "default_branch": "develop",
+        "default_head_sha": "1d8ce1ee8c2e6d8223db7d837f434e7f8df6bbb1",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "frappe/erpnext",
+        "html_url": "https://github.com/frappe/erpnext",
+        "rank": 143,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 39288
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "f2ace2d90ea2f153d7f47edc368586ce8f15d8d7",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "gto76/python-cheatsheet",
+        "html_url": "https://github.com/gto76/python-cheatsheet",
+        "rank": 144,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 38675
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "70cfb988cc25f15d8b04a1e57bd52a777207c0c6",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "google/langextract",
+        "html_url": "https://github.com/google/langextract",
+        "rank": 145,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 38595
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "fa96906f76301fc7932c9f7a0c5c5277234677a2",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "sqlmapproject/sqlmap",
+        "html_url": "https://github.com/sqlmapproject/sqlmap",
+        "rank": 146,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 38457
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "81eed5e8f68b6bed1789f682fe78cdd324495afc",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "RVC-Project/Retrieval-based-Voice-Conversion-WebUI",
+        "html_url": "https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI",
+        "rank": 147,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 38294
+      },
+      {
+        "candidate_prs": 3,
+        "candidate_prs_after_cap": 3,
+        "candidate_prs_after_prior_exclusion": 3,
+        "default_branch": "main",
+        "default_head_sha": "9675ed0798181201c55bfdd7165d114403af3eb2",
+        "eligible": true,
+        "full_name": "stanfordnlp/dspy",
+        "has_matching_candidates": true,
+        "html_url": "https://github.com/stanfordnlp/dspy",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 148,
+        "stars_at_selection": 38073
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "9beeb721c2af551bacaab827a76bddaecaa0ca5e",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "ashishpatel26/500-AI-Agents-Projects",
+        "html_url": "https://github.com/ashishpatel26/500-AI-Agents-Projects",
+        "rank": 149,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 37789
+      },
+      {
+        "default_branch": "main",
+        "detail": "mechanically excluded by the registered fresh-repository rule",
+        "eligible": false,
+        "full_name": "volcengine/OpenViking",
+        "html_url": "https://github.com/volcengine/OpenViking",
+        "rank": 150,
+        "reason_code": "prior_corpus_repository",
+        "stars_at_selection": 37762
+      },
+      {
+        "default_branch": "main",
+        "detail": "mechanically excluded by the registered fresh-repository rule",
+        "eligible": false,
+        "full_name": "OpenBMB/VoxCPM",
+        "html_url": "https://github.com/OpenBMB/VoxCPM",
+        "rank": 151,
+        "reason_code": "prior_corpus_repository",
+        "stars_at_selection": 37668
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "edec3a508f84947bfc9aa197067e1e9329b21eb9",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "soxoj/maigret",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/soxoj/maigret",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 152,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 37651
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "ae229ca894c0b80ad84664afcfdde523b5e87057",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "khoj-ai/khoj",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/khoj-ai/khoj",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 153,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 37368
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "06dbeef4bb70fb718236aa418ed658ef4667a126",
+        "detail": "invalid uv.lock: 'package'",
+        "eligible": false,
+        "full_name": "Textualize/textual",
+        "html_url": "https://github.com/Textualize/textual",
+        "rank": 154,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 37248
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "461f174b09fc151f49257aa5206417aca8930efa",
+        "detail": "requirements-dev.txt is not a self-contained pinned requirements file: 'docutils>=0.21.2;python_version <= \"3.11\"'",
+        "eligible": false,
+        "full_name": "searxng/searxng",
+        "html_url": "https://github.com/searxng/searxng",
+        "rank": 155,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 37234
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "9a4bc93ea7a8f1c83686bcf1695f098e81ac79fc",
+        "detail": "requirements-dev.txt is not a self-contained pinned requirements file: 'pytest'",
+        "eligible": false,
+        "full_name": "huggingface/pytorch-image-models",
+        "html_url": "https://github.com/huggingface/pytorch-image-models",
+        "rank": 156,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 37147
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "1598cafc1413af45036a57cfd90d55b512b2061e",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "PDFMathTranslate/PDFMathTranslate",
+        "html_url": "https://github.com/PDFMathTranslate/PDFMathTranslate",
+        "rank": 157,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 37002
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "f785de1a9374c835a407577e35d233d63cf52b9b",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "hankcs/HanLP",
+        "html_url": "https://github.com/hankcs/HanLP",
+        "rank": 158,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 36486
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "b1aabc22ac9995a458838f479272fc3a3453a567",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "anthropics/claude-plugins-official",
+        "html_url": "https://github.com/anthropics/claude-plugins-official",
+        "rank": 159,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 36430
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "8ea741157c6741a8a4bdfe2921c1fbeeb4c1b119",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "jax-ml/jax",
+        "html_url": "https://github.com/jax-ml/jax",
+        "rank": 160,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 36307
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "13d593b6cf885c5c4d50eea88c82b9e28cf5941e",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "sgl-project/sglang",
+        "html_url": "https://github.com/sgl-project/sglang",
+        "rank": 161,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 36062
+      },
+      {
+        "candidate_prs": 2,
+        "candidate_prs_after_cap": 2,
+        "candidate_prs_after_prior_exclusion": 2,
+        "default_branch": "main",
+        "default_head_sha": "1877d7256b4db4d66f64c491a9b559ef2470d338",
+        "eligible": true,
+        "full_name": "microsoft/graphrag",
+        "has_matching_candidates": true,
+        "html_url": "https://github.com/microsoft/graphrag",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 162,
+        "stars_at_selection": 35998
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "8fede179c6f8bf0df6d7b4fcab5ce44d5d455d6e",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: 'openai>=1.70.0'",
+        "eligible": false,
+        "full_name": "VectifyAI/PageIndex",
+        "html_url": "https://github.com/VectifyAI/PageIndex",
+        "rank": 163,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 35661
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "808584709a9b710d7e0ece36a6ea4ffcf109b537",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: 'pafy'",
+        "eligible": false,
+        "full_name": "geekcomputers/Python",
+        "html_url": "https://github.com/geekcomputers/Python",
+        "rank": 164,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 35349
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "1d67ecd47c0bd68951868c363baa92039d936572",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "kovidgoyal/kitty",
+        "html_url": "https://github.com/kovidgoyal/kitty",
+        "rank": 165,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 34928
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "35c80df9f4fb49f7888c681242a690dcde403f24",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "anthropics/financial-services",
+        "html_url": "https://github.com/anthropics/financial-services",
+        "rank": 166,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 34874
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "5f410e97b8ce3e4f987cf40d7230e7394e292181",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "ocrmypdf/OCRmyPDF",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/ocrmypdf/OCRmyPDF",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 167,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 34780
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "a2f4a8771ab77e8411c26b27f24f9489a28a2453",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "facebookresearch/detectron2",
+        "html_url": "https://github.com/facebookresearch/detectron2",
+        "rank": 168,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 34712
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "ae2e4c7907ccc21e52ebe86b349d67e9b0b9f316",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "huggingface/diffusers",
+        "html_url": "https://github.com/huggingface/diffusers",
+        "rank": 169,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 34531
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "5af6bba8c5df11e8b364fb254d2947c48117af84",
+        "detail": "requirements-dev.txt is not a self-contained pinned requirements file: '-r requirements.txt'",
+        "eligible": false,
+        "full_name": "dgtlmoon/changedetection.io",
+        "html_url": "https://github.com/dgtlmoon/changedetection.io",
+        "rank": 170,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 34332
+      },
+      {
+        "candidate_prs": 1,
+        "candidate_prs_after_cap": 1,
+        "candidate_prs_after_prior_exclusion": 1,
+        "default_branch": "main",
+        "default_head_sha": "4fb2db0ea90375ce1059f44fe03ffbd191a7a169",
+        "eligible": true,
+        "full_name": "OpenBMB/ChatDev",
+        "has_matching_candidates": true,
+        "html_url": "https://github.com/OpenBMB/ChatDev",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 171,
+        "stars_at_selection": 34326
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "be56ff07db06e9b82574648433ca228e4cac549b",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "python-poetry/poetry",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/python-poetry/poetry",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 172,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 34303
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "008b91bfe8c0e2daca0ab69061efd9ea1ad71bd2",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "MetaCubeX/mihomo",
+        "html_url": "https://github.com/MetaCubeX/mihomo",
+        "rank": 173,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 34150
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "26b4d1dc04a812f426e4bef3e8a1b6f159d6f048",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: 'spacy-legacy>=3.0.11,<3.1.0'",
+        "eligible": false,
+        "full_name": "explosion/spaCy",
+        "html_url": "https://github.com/explosion/spaCy",
+        "rank": 174,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 33902
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "9b763fdaf0020c7d8abacc7b58b2b09e57494623",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "Pythagora-io/gpt-pilot",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/Pythagora-io/gpt-pilot",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 175,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 33678
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "bbf7b35db4a5890e67af06073272582fa789e659",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "tinygrad/tinygrad",
+        "html_url": "https://github.com/tinygrad/tinygrad",
+        "rank": 176,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 33609
+      },
+      {
+        "candidate_prs": 2,
+        "candidate_prs_after_cap": 2,
+        "candidate_prs_after_prior_exclusion": 2,
+        "default_branch": "develop",
+        "default_head_sha": "06f6adb7a4140691eb08b70bd54e51487a1ecabd",
+        "eligible": true,
+        "full_name": "nicolargo/glances",
+        "has_matching_candidates": true,
+        "html_url": "https://github.com/nicolargo/glances",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 177,
+        "stars_at_selection": 33585
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "269d8ce3d1b9ba80c4306585b813cb58520dca9a",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "HKUDS/Vibe-Trading",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/HKUDS/Vibe-Trading",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 178,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 33568
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "a902b543748f34fae3aa7d72f982fdefcfe20f95",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "0xAX/linux-insides",
+        "html_url": "https://github.com/0xAX/linux-insides",
+        "rank": 179,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 33504
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "cfa5bc17b67676e467f37ec50766127e0ab5f0aa",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: 'pyOpenSSL'",
+        "eligible": false,
+        "full_name": "XX-net/XX-Net",
+        "html_url": "https://github.com/XX-net/XX-Net",
+        "rank": 180,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 33450
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "485649333422392901e7ef891630f0129985df8e",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "certbot/certbot",
+        "html_url": "https://github.com/certbot/certbot",
+        "rank": 181,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 33237
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "8aaf426de610ea603c21cf6a75222a6b7a30f820",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "OWASP/CheatSheetSeries",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/OWASP/CheatSheetSeries",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 182,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 33191
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "54a798831d2266a3ca61ce68a7acb80b81160d57",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "mukul975/Anthropic-Cybersecurity-Skills",
+        "html_url": "https://github.com/mukul975/Anthropic-Cybersecurity-Skills",
+        "rank": 183,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 32871
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "e31dadd84cb26bd5153fde6687502b8312e918fb",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "google-research/timesfm",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/google-research/timesfm",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 184,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 32827
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "fe0374687037c4cc51a65c1e0c145afe2981dc69",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "alchaincyf/nuwa-skill",
+        "html_url": "https://github.com/alchaincyf/nuwa-skill",
+        "rank": 185,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 32764
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "9e5c44c061f04992033e852aadc405b5b3b31564",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "numpy/numpy",
+        "html_url": "https://github.com/numpy/numpy",
+        "rank": 186,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 32754
+      },
+      {
+        "default_branch": "main",
+        "detail": "mechanically excluded by the registered fresh-repository rule",
+        "eligible": false,
+        "full_name": "fishaudio/fish-speech",
+        "html_url": "https://github.com/fishaudio/fish-speech",
+        "rank": 187,
+        "reason_code": "prior_corpus_repository",
+        "stars_at_selection": 32717
+      },
+      {
+        "default_branch": "main",
+        "detail": "mechanically excluded by the registered fresh-repository rule",
+        "eligible": false,
+        "full_name": "onyx-dot-app/onyx",
+        "html_url": "https://github.com/onyx-dot-app/onyx",
+        "rank": 188,
+        "reason_code": "prior_corpus_repository",
+        "stars_at_selection": 32136
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "135ccd09ec98c81d75d338da32018e8a84c8b349",
+        "detail": "uv.lock package 'en-core-web-sm' comes from 'url', which cannot be reproduced from an index",
+        "eligible": false,
+        "full_name": "debpalash/VoiceStudio",
+        "html_url": "https://github.com/debpalash/VoiceStudio",
+        "rank": 189,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 31976
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "a734fa924adb9ffe5ab8472aa5526e469e42a8b5",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: 'wheel'",
+        "eligible": false,
+        "full_name": "FujiwaraChoki/MoneyPrinterV2",
+        "html_url": "https://github.com/FujiwaraChoki/MoneyPrinterV2",
+        "rank": 190,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 31912
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "74783e8817d6cf6de29867880631cc555153f36b",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "hsliuping/TradingAgents-CN",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/hsliuping/TradingAgents-CN",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 191,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 31832
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "3ae8a1f4eca2dec6a519753e0c1f0e76ef83731f",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "agentscope-ai/agentscope",
+        "html_url": "https://github.com/agentscope-ai/agentscope",
+        "rank": 192,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 31815
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "b77076d23b6f3e34453b0fadd8cd2a001627e365",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "openai/openai-python",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/openai/openai-python",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 193,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 31629
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "5b1e86298ff62270555db04e386c4f4a172b8be4",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "feder-cr/AIHawk",
+        "html_url": "https://github.com/feder-cr/AIHawk",
+        "rank": 194,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 31609
+      },
+      {
+        "candidate_prs": 1,
+        "candidate_prs_after_cap": 1,
+        "candidate_prs_after_prior_exclusion": 1,
+        "default_branch": "master",
+        "default_head_sha": "3521f8648a0dccf6e12a92666862632235fac7e6",
+        "eligible": true,
+        "full_name": "p-e-w/heretic",
+        "has_matching_candidates": true,
+        "html_url": "https://github.com/p-e-w/heretic",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 195,
+        "stars_at_selection": 31604
+      },
+      {
+        "default_branch": "dev",
+        "default_head_sha": "6e8cb53afc28530dccf23fc3d0e313ab25ca5adf",
+        "detail": "uv.lock package 'ansible-core' comes from 'url', which cannot be reproduced from an index",
+        "eligible": false,
+        "full_name": "jumpserver/jumpserver",
+        "html_url": "https://github.com/jumpserver/jumpserver",
+        "rank": 196,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 31538
+      },
+      {
+        "default_branch": "staging",
+        "default_head_sha": "3528e2d2c380c88e95af388d62de1abe05f2542e",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "tirth8205/code-review-graph",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/tirth8205/code-review-graph",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 197,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 31507
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "ba6e2c5e3be217bbcd67a8c58a5966c7508a8db4",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "CloakHQ/CloakBrowser",
+        "html_url": "https://github.com/CloakHQ/CloakBrowser",
+        "rank": 198,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 31501
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "320e79704a9e921b3a11d8a1d1ba685e6b7ebc69",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: '-r ./requirements/fabric/base.txt'",
+        "eligible": false,
+        "full_name": "Lightning-AI/pytorch-lightning",
+        "html_url": "https://github.com/Lightning-AI/pytorch-lightning",
+        "rank": 199,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 31346
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "9cf5a12b1f955468a17f0ba3c59092b23e4258ac",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "tqdm/tqdm",
+        "html_url": "https://github.com/tqdm/tqdm",
+        "rank": 200,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 31336
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "5d601830bfadf8e264a304d0ba8bd0fc3fda03c2",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: 'requests ~=2.32'",
+        "eligible": false,
+        "full_name": "StevenBlack/hosts",
+        "html_url": "https://github.com/StevenBlack/hosts",
+        "rank": 201,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 31069
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "c75c8084fae2d4f5ba01a8c218bc1168b67e3569",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "ScrapeGraphAI/Scrapegraph-ai",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/ScrapeGraphAI/Scrapegraph-ai",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 202,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 31038
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "c035afb7990b6077331a81e98b04efcfd9bf8184",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "getzep/graphiti",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/getzep/graphiti",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 203,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 30941
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "abc666bb7e1c37aa4b2f960aa1159db9f23744dd",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "virgiliojr94/book-to-skill",
+        "html_url": "https://github.com/virgiliojr94/book-to-skill",
+        "rank": 204,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 30905
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "c1f24a0169c2317ffca1dc1a6881d159bc93d132",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "davila7/claude-code-templates",
+        "html_url": "https://github.com/davila7/claude-code-templates",
+        "rank": 205,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 30760
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "c0d18c80e24b7b78918e7642c03f6f128fdd2aee",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "topoteretes/cognee",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/topoteretes/cognee",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 206,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 30746
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "08b453a8e3b7a161b6fbbe6b73737758a8ec3482",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "AtsushiSakai/PythonRobotics",
+        "html_url": "https://github.com/AtsushiSakai/PythonRobotics",
+        "rank": 207,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 30528
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "20e22a8715c198b38c01c1ca62d0953b93587a74",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "trailofbits/algo",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/trailofbits/algo",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 208,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 30383
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "b92edf53e21b2de16af5d13529591f1c0d415f93",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "encode/django-rest-framework",
+        "html_url": "https://github.com/encode/django-rest-framework",
+        "rank": 209,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 30182
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "453510e72181c8c7f0a370cdf552a8d41bb9e841",
+        "detail": "no uv.lock, poetry.lock, Pipfile.lock, or requirements*.txt was found; dependency discovery is intentionally disabled",
+        "eligible": false,
+        "full_name": "Genesis-Embodied-AI/genesis-world",
+        "html_url": "https://github.com/Genesis-Embodied-AI/genesis-world",
+        "rank": 210,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 29952
+      },
+      {
+        "default_branch": "master",
+        "detail": "mechanically excluded by the registered fresh-repository rule",
+        "eligible": false,
+        "full_name": "facefusion/facefusion",
+        "html_url": "https://github.com/facefusion/facefusion",
+        "rank": 211,
+        "reason_code": "prior_corpus_repository",
+        "stars_at_selection": 29929
+      },
+      {
+        "default_branch": "master",
+        "default_head_sha": "1480e705287bc5d59f923b46c260ec6e3e4150f6",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: 'Cython>=0.29.28'",
+        "eligible": false,
+        "full_name": "deepinsight/insightface",
+        "html_url": "https://github.com/deepinsight/insightface",
+        "rank": 212,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 29755
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "90f6cef6ef37c5811fa55f46d696e3f8299afcb2",
+        "detail": "requirements.txt is not a self-contained pinned requirements file: 'lxml_html_clean'",
+        "eligible": false,
+        "full_name": "521xueweihan/GitHub520",
+        "html_url": "https://github.com/521xueweihan/GitHub520",
+        "rank": 213,
+        "reason_code": "repository_no_supported_pinned_lock",
+        "stars_at_selection": 29715
+      },
+      {
+        "default_branch": "main",
+        "default_head_sha": "5f9899d584c5cfc879d3579352eb929fd4b34756",
+        "detail": "no merged PR with exact bug label in the registered window",
+        "eligible": true,
+        "full_name": "openai/openai-agents-python",
+        "has_matching_candidates": false,
+        "html_url": "https://github.com/openai/openai-agents-python",
+        "prior_corpus_candidates_excluded": 0,
+        "rank": 214,
+        "reason_code": "repository_no_matching_bug_prs",
+        "stars_at_selection": 29496
+      }
+    ],
+    "repositories_scanned": 214,
+    "repository_count": 50,
+    "repository_count_definition": "first star-ranked repositories passing pinned-environment eligibility",
+    "repository_order": "stars descending at selection time",
+    "repository_query": "language:Python fork:false archived:false pushed:>=2026-06-01",
+    "repository_scan_limit": 800,
+    "selected_at": "2026-09-16T22:02:23.559625+00:00",
+    "source": "GitHub REST API and Git smart HTTP",
+    "stopping_reason": "registered_candidate_universe_exhausted",
+    "subject_meaning": "buggy_sha is the revision before the change and fix_sha the merge commit, keeping the corpus schema stable. Neither names a bug here: the subject declares itself behaviour-preserving, so evidence of a flip is a candidate false conviction rather than a find.",
+    "target_instances": 30
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "schema_version": "fix-coverage-preregistration-amendment/v1",
+  "recorded_at": "2026-09-16T22:02:13Z",
+  "prior_corpus_sha256": "ef15e050b40649364b8fa19684e9e9be007a165416516d9fefdae39e78c15cba",
+  "trigger": "The registered frame yielded 12 instances against a target of 30, across only 4 repositories. The scan limit was not the constraint: selection screened 394 of a registered 800 and stopped on registered_candidate_universe_exhausted with the 50-repository frame full. 40 of those 50 retained repositories produced no qualifying pull request.",
+  "observations_before_amendment": {
+    "instances_attempted": 0,
+    "probe_outcomes_observed": 0,
+    "provider_calls": 0,
+    "verdicts_observed": 0
+  },
+  "diagnosis": "Not scarcity of refactors but scarcity of merged work. Sampling the repositories that yielded nothing found 0, 0 and 1 merged pull requests respectively in the whole six-month window: faif/python-patterns, satwikkansal/wtfpython and Pythagora-io/gpt-pilot are reference and teaching repositories. Star rank is a proxy for popularity, not for whether anything is merged. The fix corpora inherited the same frame and it held only because fix pull requests are common enough to find even in quiet repositories.",
+  "why_not_publish_the_shortfall": "A 12-instance study finding zero false convictions bounds the true rate at 24% with 95% confidence, which is consistent with the engine falsely convicting one change in four. The registered 30 would bound it at 11%. Across 4 repositories it is not a claim about a population in any case.",
+  "change": {
+    "field": "selection.repository_query",
+    "before": "language:Python fork:false archived:false",
+    "after": "language:Python fork:false archived:false pushed:>=2026-06-01",
+    "mechanism": "select-fix-corpus --repository-active-since 2026-06-01"
+  },
+  "what_is_not_changed": "The admission rule is untouched. Loosening what counts as behaviour-preserving to reach 30 would admit real behaviour changes and count the engine wrong for being right, which is the failure the rule is deliberately biased against. The date window, ordering, per-repository cap, eligibility rules, exclusions and target size are also unchanged.",
+  "analysis_effect": "None available to influence it: no instance has been attempted, no probe run, and no provider called. The superseded manifest is retained for audit."
+}

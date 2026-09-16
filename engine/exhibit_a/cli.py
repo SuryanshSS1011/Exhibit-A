@@ -1138,6 +1138,7 @@ def cmd_select_fix_corpus(args: argparse.Namespace) -> int:
             exclude_manifest=args.exclude_manifest,
             exclude_prior_repositories=args.exclude_prior_repositories,
             candidate_rule=args.candidate_rule,
+            repository_active_since=args.repository_active_since,
         )
     except (OSError, RuntimeError, TypeError, ValueError, subprocess.SubprocessError) as exc:
         print(f"error: fix-coverage corpus selection failed: {exc}", file=sys.stderr)
@@ -1751,6 +1752,13 @@ def main(argv: list[str] | None = None) -> int:
         help=(
             "prior corpus whose PRs are mechanically excluded before the repository cap; "
             "repeat to exclude several"
+        ),
+    )
+    select_corpus.add_argument(
+        "--repository-active-since",
+        help=(
+            "only consider repositories pushed to since this date (YYYY-MM-DD); star rank "
+            "is a proxy for popularity, not for whether anything is merged there"
         ),
     )
     select_corpus.add_argument(

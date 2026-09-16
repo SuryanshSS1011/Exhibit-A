@@ -190,6 +190,7 @@ def select_fix_corpus(
     exclude_manifest: str | Path | Sequence[str | Path] | None = None,
     exclude_prior_repositories: bool = False,
     candidate_rule: str = "fix",
+    repository_active_since: str | None = None,
 ) -> dict:
     """Select a stable manifest without executing Exhibit A or observing outcomes."""
     try:
@@ -217,7 +218,7 @@ def select_fix_corpus(
     )
     cache_root = Path(cache).resolve()
     api = GitHubClient(cache_root / "github-api", token_env)
-    repositories = _top_repositories(api, repository_scan_limit)
+    repositories = _top_repositories(api, repository_scan_limit, repository_active_since)
     repository_records = []
     queues: list[tuple[dict, deque[dict], Path]] = []
     exclusions: list[dict] = []
@@ -386,7 +387,10 @@ def select_fix_corpus(
             "github_transport_retry": (
                 "five attempts for URL/timeout failures with 1,2,4,8 second backoff"
             ),
-            "repository_query": "language:Python fork:false archived:false",
+            "repository_query": (
+                "language:Python fork:false archived:false"
+                + (f" pushed:>={repository_active_since}" if repository_active_since else "")
+            ),
             "repository_order": "stars descending at selection time",
             "repository_count": repository_count,
             "repository_count_definition": (
@@ -502,13 +506,26 @@ def _exclude_prior_candidates(
     return kept, excluded
 
 
-def _top_repositories(api: GitHubClient, count: int) -> list[dict]:
+def _top_repositories(api: GitHubClient, count: int, active_since: str | None = None) -> list[dict]:
+    """Star-ranked Python repositories, optionally only those pushed to since a date.
+
+    Star rank is a proxy for popularity rather than for development. A corpus of rare
+    pull-request shapes exposes the difference: pilot v9's first frame retained 50
+    eligible repositories of which 40 had no qualifying pull request at all, several
+    having fewer than five merged pull requests in a six-month window because they are
+    reference and teaching repositories rather than worked-on software. `pushed` filters
+    those out without disturbing the ordering.
+    """
     repositories = []
+    terms = "language:Python fork:false archived:false"
+    if active_since is not None:
+        _date(active_since)
+        terms = f"{terms} pushed:>={active_since}"
     for page in range(1, (count + 99) // 100 + 1):
         requested = min(100, count - len(repositories))
         query = urllib.parse.urlencode(
             {
-                "q": "language:Python fork:false archived:false",
+                "q": terms,
                 "sort": "stars",
                 "order": "desc",
                 "per_page": requested,
