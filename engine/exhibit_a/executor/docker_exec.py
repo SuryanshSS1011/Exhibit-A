@@ -677,16 +677,32 @@ def _requirements_from_poetry(path: Path) -> str:
         if not isinstance(name, str) or not isinstance(version, str):
             raise EnvironmentSetupError("poetry.lock contains an unpinned package")
         line = f"{name}=={version}"
-        # Lock format 2.1 spells this `markers`, and the old singular key is simply absent
-        # there. Reading only `marker` dropped every environment marker in a modern
-        # lockfile, which is how pywin32 came to be installed into a Linux container.
-        marker = package.get("markers", package.get("marker"))
-        if isinstance(marker, str) and marker.strip():
+        marker = _poetry_marker(package)
+        if marker:
             line += f"; {marker}"
         lines.append(line)
     if not lines:
         raise EnvironmentSetupError("poetry.lock contains no installable main dependencies")
     return "\n".join(sorted(lines)) + "\n"
+
+
+def _poetry_marker(package: dict) -> str | None:
+    """The environment marker constraining this package in the main dependency group.
+
+    Lock format 2.1 spells this `markers`, and the old singular `marker` is simply absent
+    there; reading only the old key dropped every marker in a modern lockfile, which is how
+    pywin32 came to be installed into a Linux container. The same format also lets `markers`
+    be a table keyed by dependency group, because a package can be constrained differently
+    in each -- `colorama` is `platform_system == "Windows"` under main and
+    `sys_platform == "win32"` under dev. Only main is installed, so only main's entry
+    applies; a table naming no main constraint does not constrain main.
+    """
+    markers = package.get("markers", package.get("marker"))
+    if isinstance(markers, dict):
+        markers = markers.get("main")
+    if isinstance(markers, str) and markers.strip():
+        return markers
+    return None
 
 
 def _poetry_is_main(package: dict) -> bool:

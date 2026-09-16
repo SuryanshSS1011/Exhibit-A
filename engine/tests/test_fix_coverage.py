@@ -1119,10 +1119,20 @@ def test_a_memory_kill_is_named_rather_than_counted_as_a_dependency_problem() ->
     for text in (
         'process "/bin/sh -c python -m pip install -r reqs.txt" did not complete '
         "successfully: cannot allocate memory",
-        "did not complete successfully: exit code: 137",
         "Container OOMKilled while resolving dependencies",
+        "Killed by the OOM killer",
     ):
         assert classify_environment_install_failure(text) == "host_memory_exhausted", text
+
+
+def test_a_bare_sigkill_is_not_evidence_of_a_memory_kill() -> None:
+    # 137 establishes SIGKILL and nothing more. A per-instance timeout or any other cgroup
+    # limit produces it too, and filing one of those under a category that means "ignore
+    # this observation" would hide a real finding rather than surface a spoiled one.
+    assert (
+        classify_environment_install_failure("did not complete successfully: exit code: 137")
+        != "host_memory_exhausted"
+    )
 
 
 def test_a_memory_kill_outranks_whatever_it_was_doing_when_it_died() -> None:
@@ -1150,3 +1160,57 @@ def test_ordinary_install_failures_keep_their_categories() -> None:
         classify_environment_install_failure("metadata-generation-failed for widget")
         == "package_build_backend_or_metadata_failure"
     )
+
+
+def test_an_unusable_instance_is_removed_from_the_attributable_denominator(
+    tmp_path: Path,
+) -> None:
+    """An instance the host could not hold is not evidence about a repository.
+
+    The published denominator stays at the corpus size so the pilot series remains
+    comparable; the attributable figures say how much of it rests on observations the
+    machine spoiled, and the count stays visible because a study that discarded a third of
+    its corpus this way is reporting on a machine rather than a population.
+    """
+    corpus = _corpus_of(tmp_path, 4)
+    scripted = [
+        {
+            "verdict": "VERIFIED",
+            "hypotheses": [{"reason": None}],
+            "evidence": {},
+            "proposal_runs": [],
+        },
+        # An environment failure is a silence_reason with no hypotheses. Putting the text
+        # on a hypothesis instead makes it a candidate rejection, a different branch of
+        # the classifier entirely.
+        _uncertain(
+            silence_reason=(
+                "could not build environment: pinned dependency image failed to build: "
+                "pip install did not complete successfully: cannot allocate memory"
+            )
+        ),
+        _uncertain(
+            silence_reason=(
+                "could not build environment: pip install failed: "
+                "No matching distribution found for widget==1.0"
+            )
+        ),
+        _silent("test does not fail on the target (buggy) state"),
+    ]
+    calls: list[str] = []
+
+    def runner(instance: FixInstance, root: Path, timeout_s: float) -> WorkerResult:
+        case = scripted[len(calls)]
+        calls.append(instance.id)
+        return replace(_result(case=case), instance_id=instance.id)
+
+    report = run_fix_coverage_study(
+        corpus=corpus, output_root=tmp_path / "run", config=_config(), runner=runner
+    )
+    headline = report["headline"]
+
+    assert headline["denominator"] == 4
+    assert headline["verified_fraction"] == 0.25
+    assert headline["host_memory_exhausted"] == 1
+    assert headline["attributable_denominator"] == 3
+    assert headline["verified_fraction_of_attributable"] == 1 / 3

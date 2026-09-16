@@ -51,7 +51,50 @@ on:
     types: [completed]
 permissions:
   pull-requests: write
+jobs:
+  comment:
+    # workflow_run runs with write access and secrets even though the workflow that
+    # triggered it had neither, so everything it touches is untrusted input.
+    if: github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      # Download by run id from the exact triggering run. A name alone can be satisfied
+      # by an artifact from a different run.
+      - uses: actions/download-artifact@v4
+        with:
+          name: exhibit-a-comment
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      # Post as data, never as a shell argument or an expression. Bound to the pull
+      # request the triggering run actually belongs to, not one named in the artifact.
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('comment.md', 'utf8');
+            if (body.length > 65000) { core.setFailed('comment too large'); return; }
+            const prs = context.payload.workflow_run.pull_requests;
+            if (prs.length !== 1) { core.setFailed('no single originating pull request'); return; }
+            await github.rest.issues.createComment({
+              ...context.repo, issue_number: prs[0].number, body,
+            });
 ```
+
+Pin every action to a commit SHA rather than a tag in a job that holds write access.
+
+## What this pattern does not give you
+
+Stage one checks out the contribution, including its copy of `.github/actions/review`.
+A contribution can therefore replace the action and write whatever it likes into
+`exhibit-a-comment.md`. Posting that as comment *text* is not repository code execution,
+which is why the split still matters, but a bot-authored comment is not by itself proof
+that Exhibit A's judge produced it.
+
+Treat a posted comment as a claim to be checked by re-running the test it contains, which
+is the only thing this project ever asks anyone to trust. If you need the comment itself
+to be authenticated, stage one must run a trusted checkout of the action rather than the
+contribution's copy, and that is not yet built.
 
 For a repository that accepts no fork contributions the two stages can be one, but the
 split is the default because the failure mode of getting it wrong is handing a stranger

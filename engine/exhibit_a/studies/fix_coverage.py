@@ -81,16 +81,18 @@ _SHA = re.compile(r"^[0-9a-f]{40}$")
 # records and our generated requirements do not use. Pooling that with a distribution that
 # has no artifact anywhere hides the difference between a gap we could close by honouring
 # the lockfile's index and a platform ceiling we cannot close at all.
-# A container killed by the kernel out-of-memory killer exits 137, and pip reports the
-# allocation failure verbatim. Both were observed on an 8 GiB workstation whose Docker
-# daemon holds 3.83 GiB, which is not enough for the largest dependency trees.
+# Observed on an 8 GiB workstation whose Docker daemon holds 3.83 GiB, which is not enough
+# for the largest dependency trees. `exit code: 137` is deliberately absent: it only
+# establishes SIGKILL, which a per-instance timeout or any other cgroup limit produces
+# just as readily, and mislabelling a timeout as an out-of-memory kill would hide a real
+# finding behind a category that says "ignore this observation".
 _MEMORY_EXHAUSTION_MARKERS = (
     "cannot allocate memory",
     "out of memory",
     "memoryerror",
     "oomkilled",
     "oom-kill",
-    "exit code: 137",
+    "oom killer",
 )
 
 _LOCAL_VERSION_PIN = re.compile(r"==\s*[0-9][^\s;,+)]*\+[0-9a-z][0-9a-z.]*", re.IGNORECASE)
@@ -978,6 +980,18 @@ def _aggregate(corpus: FixCorpus, config: RunConfig, state: dict, records: dict[
     }
     catch_all = sum(failures[name] for name in _CATCH_ALL)
     failure_total = sum(failures.values())
+    # An instance the host could not hold is not a fact about the repository, so it is
+    # named in the taxonomy and removed from the denominators that carry a claim. The
+    # count stays visible: a study that discarded a third of its corpus this way is
+    # reporting on a machine rather than on a population.
+    unusable = sum(
+        1
+        for item in ordered
+        if item.get("failure_category") == "environment_dependency_install_failed"
+        and classify_environment_install_failure(item.get("failure_reason"))
+        == "host_memory_exhausted"
+    )
+    attributable = requested - unusable
     interval = _wilson(verified, requested)
     judged = verified + partial + sum(failures[name] for name in _JUDGED_FAILURE_CATEGORIES)
     provider_unavailable = sum(failures[name] for name in _PROVIDER_UNAVAILABLE_CATEGORIES)
@@ -1053,6 +1067,17 @@ def _aggregate(corpus: FixCorpus, config: RunConfig, state: dict, records: dict[
             ),
             "verified_judged_wilson_95": (
                 None if config.probe_only or not judged else list(_wilson(verified, judged))
+            ),
+            # An instance the host could not hold is not evidence about a repository. The
+            # published denominator is unchanged so the pilot series stays comparable;
+            # these say how much of it rests on observations the machine spoiled.
+            "host_memory_exhausted": unusable,
+            "attributable_denominator": attributable,
+            "verified_fraction_of_attributable": (
+                None if config.probe_only or not attributable else verified / attributable
+            ),
+            "reached_judge_fraction_of_attributable": (
+                judged / attributable if attributable else None
             ),
             "provider_unavailable": provider_unavailable,
             # Surfaced rather than folded into either side: a large value here means the
