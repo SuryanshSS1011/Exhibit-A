@@ -15,6 +15,7 @@ import urllib.parse
 import urllib.request
 from collections import deque
 from datetime import datetime, timezone
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
 
@@ -27,6 +28,22 @@ _API = "https://api.github.com"
 # to a hyphen; see _slug.
 _SLUG_ALPHABET = frozenset("abcdefghijklmnopqrstuvwxyz0123456789-")
 _FIX_TITLE = re.compile(r"^fix(?:e[ds]?|ing)?(?:\b|\s|[:([])", re.IGNORECASE)
+# Conventional-commit style prefixes whose whole point is that behaviour does not move.
+# `chore` is deliberately absent: it covers dependency bumps, which move behaviour freely.
+_REFACTOR_TITLE = re.compile(
+    r"^(?:refactor|rename|cleanup|clean[ -]up|tidy|reformat|style)(?:\b|\s|[:([])",
+    re.IGNORECASE,
+)
+# Anywhere, not only as a prefix. "refactor: extract the resolver and fix the crash"
+# announces a behaviour change in its second clause, and admitting it would count a real
+# find as a false conviction. A body saying "fixes #123" is the same signal. Over-rejecting
+# is the safe direction: a smaller corpus of genuinely behaviour-preserving changes beats a
+# larger one that quietly contains behaviour changes.
+_MENTIONS_A_FIX = re.compile(r"\b(?:fix(?:e[sd]|ing)?|bugs?|regressions?)\b", re.IGNORECASE)
+_NO_FUNCTIONAL_CHANGE = re.compile(
+    r"no\s+(?:functional|behaviou?ral)\s+change|non[- ]functional\s+change|pure\s+refactor",
+    re.IGNORECASE,
+)
 _PRODUCTION_EXCLUDED_PARTS = {
     "benchmarks",
     "docs",
@@ -85,6 +102,79 @@ class GitHubClient:
         return payload
 
 
+@dataclass(frozen=True)
+class CandidateRule:
+    """Which merged pull requests a corpus admits, and what the corpus is asking.
+
+    The rest of selection -- repository frame, eligibility, revisions, exclusions -- is
+    the same whatever the corpus is for. Only the question differs, so only the question
+    is parameterised.
+    """
+
+    name: str
+    question: str
+    subject_meaning: str
+
+    def basis(self, title: str, body: str, labels: list) -> list[str]:
+        """Why this pull request qualifies, empty when it does not."""
+        raise NotImplementedError
+
+
+@dataclass(frozen=True)
+class _FixRule(CandidateRule):
+    def basis(self, title: str, body: str, labels: list) -> list[str]:
+        found = []
+        if any(
+            isinstance(label, dict) and str(label.get("name", "")).casefold() == "bug"
+            for label in labels
+        ):
+            found.append("exact_bug_label")
+        if _FIX_TITLE.match(title) is not None:
+            found.append("fix_title_prefix")
+        return found
+
+
+@dataclass(frozen=True)
+class _BehaviorPreservingRule(CandidateRule):
+    def basis(self, title: str, body: str, labels: list) -> list[str]:
+        # A pull request that also announces a fix is not declaring itself
+        # behaviour-preserving, whatever else it says. Counting a genuine behaviour change
+        # as a false conviction would measure the engine as worse than it is, so the rule
+        # is deliberately conservative about what it admits.
+        if _MENTIONS_A_FIX.search(f"{title}\n{body}") is not None:
+            return []
+        if any(
+            isinstance(label, dict) and str(label.get("name", "")).casefold() == "bug"
+            for label in labels
+        ):
+            return []
+        found = []
+        if _REFACTOR_TITLE.match(title) is not None:
+            found.append("refactor_title_prefix")
+        if _NO_FUNCTIONAL_CHANGE.search(f"{title}\n{body}") is not None:
+            found.append("declared_no_functional_change")
+        return found
+
+
+CANDIDATE_RULES: dict[str, CandidateRule] = {
+    "fix": _FixRule(
+        name="fix",
+        question="How often can the engine prove a real fix's regression?",
+        subject_meaning="buggy_sha is the revision before the fix; fix_sha is the merge commit.",
+    ),
+    "behavior_preserving": _BehaviorPreservingRule(
+        name="behavior_preserving",
+        question="How often does the engine speak when the change declares it changed nothing?",
+        subject_meaning=(
+            "buggy_sha is the revision before the change and fix_sha the merge commit, "
+            "keeping the corpus schema stable. Neither names a bug here: the subject "
+            "declares itself behaviour-preserving, so evidence of a flip is a candidate "
+            "false conviction rather than a find."
+        ),
+    ),
+}
+
+
 def select_fix_corpus(
     *,
     output: str | Path,
@@ -99,8 +189,15 @@ def select_fix_corpus(
     token_env: str = "GITHUB_TOKEN",
     exclude_manifest: str | Path | Sequence[str | Path] | None = None,
     exclude_prior_repositories: bool = False,
+    candidate_rule: str = "fix",
 ) -> dict:
     """Select a stable manifest without executing Exhibit A or observing outcomes."""
+    try:
+        rule = CANDIDATE_RULES[candidate_rule]
+    except KeyError:
+        raise ValueError(
+            f"unknown candidate rule {candidate_rule!r}; choose one of {sorted(CANDIDATE_RULES)!r}"
+        ) from None
     if not 1 <= repository_count <= 100:
         raise ValueError("repository_count must be between 1 and 100")
     if not repository_count <= repository_scan_limit <= 1000:
@@ -180,7 +277,7 @@ def select_fix_corpus(
             repository_records.append(record)
             continue
         environment_eligible += 1
-        candidates = _candidate_prs(api, str(repository["full_name"]), date_from, date_to)
+        candidates = _candidate_prs(api, str(repository["full_name"]), date_from, date_to, rule)
         candidates, prior_candidates = _exclude_prior_candidates(candidates, excluded_sources)
         for candidate in prior_candidates:
             exclusions.append(
@@ -307,6 +404,12 @@ def select_fix_corpus(
             "candidate_order": (
                 "merged_at ascending within repository, then round-robin by repository rank"
             ),
+            # What this corpus is asking, recorded rather than left implicit. The subject
+            # field names are stable across rules, so a reader needs to be told what a
+            # revision pair means here.
+            "candidate_rule": rule.name,
+            "question": rule.question,
+            "subject_meaning": rule.subject_meaning,
             "per_repository_cap": per_repository_cap,
             "target_instances": target_instances,
             "prior_corpus_exclusion": exclusion_provenance,
@@ -429,6 +532,7 @@ def _candidate_prs(
     full_name: str,
     date_from: str,
     date_to: str,
+    rule: CandidateRule,
 ) -> list[dict]:
     candidates = []
     query = urllib.parse.urlencode(
@@ -449,21 +553,13 @@ def _candidate_prs(
             continue
         labels = item.get("labels", [])
         title = str(item.get("title", ""))
-        exact_bug_label = any(
-            isinstance(label, dict) and str(label.get("name", "")).casefold() == "bug"
-            for label in labels
-        )
-        fix_title = _FIX_TITLE.match(title) is not None
-        if not exact_bug_label and not fix_title:
+        body = str(item.get("body") or "")
+        basis = rule.basis(title, body, labels if isinstance(labels, list) else [])
+        if not basis:
             continue
         pull = item.get("pull_request")
         merged_at = pull.get("merged_at") if isinstance(pull, dict) else None
         if merged_at:
-            basis = []
-            if exact_bug_label:
-                basis.append("exact_bug_label")
-            if fix_title:
-                basis.append("fix_title_prefix")
             candidates.append(
                 {
                     "number": int(item["number"]),

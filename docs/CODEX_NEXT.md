@@ -403,6 +403,15 @@ mode that does not pay the environment tax is also the mode nobody can run.
   Owner: the Codex session. Needs a live provider and real compute.
   Source refs: `operations/policy.py` `semantic_precision`, `studies/self_audit.py`, and the
   v8 preregistration for the discipline to copy.
+  Selection is built: `select-fix-corpus --candidate-rule behavior_preserving` admits
+  merged pull requests that declare themselves behaviour-preserving and rejects anything
+  mentioning a fix, bug or regression anywhere in title or body, plus anything carrying a
+  bug label. The bias is deliberate. A pull request that quietly does change behaviour
+  would have its proven flip counted as a false conviction, measuring the engine as worse
+  than it is, so a smaller clean corpus beats a larger contaminated one.
+  `semantic_precision` consumes human labels and there are none; do not have the model
+  label its own flags. Measure the false-conviction count, which needs no label beyond the
+  pull request's own declaration, and the silence rate over a second undeclared sample.
   What to build: A preregistered study over real merged pull requests with known outcomes,
   reporting human-confirmed regressions divided by all human-judged flags, with Wilson
   intervals. Silence is the default and is not a failure. Report the count of pull requests

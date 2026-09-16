@@ -8,6 +8,7 @@ import pytest
 
 from exhibit_a.studies import fix_corpus
 from exhibit_a.studies.fix_corpus import (
+    CANDIDATE_RULES,
     GitHubClient,
     _candidate_prs,
     _date,
@@ -510,7 +511,9 @@ def test_candidate_rule_accepts_exact_bug_label_or_fix_title() -> None:
                 ]
             }
 
-    candidates = _candidate_prs(Client(), "owner/repo", "2026-02-17", "2026-08-31")
+    candidates = _candidate_prs(
+        Client(), "owner/repo", "2026-02-17", "2026-08-31", CANDIDATE_RULES["fix"]
+    )
 
     assert [candidate["number"] for candidate in candidates] == [2, 1]
     assert candidates[0]["selection_basis"] == ["fix_title_prefix"]

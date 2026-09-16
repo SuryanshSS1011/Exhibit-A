@@ -1137,6 +1137,7 @@ def cmd_select_fix_corpus(args: argparse.Namespace) -> int:
             token_env=args.github_token_env,
             exclude_manifest=args.exclude_manifest,
             exclude_prior_repositories=args.exclude_prior_repositories,
+            candidate_rule=args.candidate_rule,
         )
     except (OSError, RuntimeError, TypeError, ValueError, subprocess.SubprocessError) as exc:
         print(f"error: fix-coverage corpus selection failed: {exc}", file=sys.stderr)
@@ -1750,6 +1751,15 @@ def main(argv: list[str] | None = None) -> int:
         help=(
             "prior corpus whose PRs are mechanically excluded before the repository cap; "
             "repeat to exclude several"
+        ),
+    )
+    select_corpus.add_argument(
+        "--candidate-rule",
+        default="fix",
+        choices=["fix", "behavior_preserving"],
+        help=(
+            "which merged pull requests the corpus admits: fixes, or changes that declare "
+            "themselves behaviour-preserving and on which the engine should stay silent"
         ),
     )
     select_corpus.add_argument(
