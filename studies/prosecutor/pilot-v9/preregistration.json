@@ -1,0 +1,68 @@
+{
+  "schema_version": "prosecutor-precision-preregistration/v9",
+  "registered_at": "2026-09-16T21:43:33Z",
+  "parent_commit": "74fe4b3",
+  "claim_measured": "Given a merged pull request that declares it changed no behaviour, how often does Exhibit A speak anyway? Every proven flip here is a candidate false conviction.",
+  "why_this_and_not_precision": "operations.policy.semantic_precision consumes human labels and there are none. A model labelling its own flags is not a precision measurement, so it is not done. What needs no label beyond the pull request's own declaration is the false-conviction count, and that is the primary figure. Regression precision -- whether a flip the engine proves on an undeclared change is a regression or an intended change -- stays out of scope until human labels exist.",
+  "measures_only_half": "This measures whether the engine stays quiet when it should, not whether it catches what it should. A reviewer that never speaks scores perfectly here. The silence rate over the undeclared sample is reported alongside for that reason, and a good false-conviction figure alone must not be read as the reviewer working.",
+  "prior_corpora": {
+    "rule": "Every repository named by any listed corpus is excluded before eligibility.",
+    "distinct_repositories_excluded": 46,
+    "manifests": [
+      {
+        "path": "studies/fix-coverage/pilot-v5/corpus.json",
+        "sha256": "b95789fa86a7c26268d8b237e9fe6656a77e661525536abecc332fcbbe653f58"
+      },
+      {
+        "path": "studies/fix-coverage/pilot-v6/corpus.json",
+        "sha256": "64ca53193d5138200b98d21363cfd178e14fb49c8b87381d32a86e5026035aa8"
+      },
+      {
+        "path": "studies/fix-coverage/pilot-v7/corpus.json",
+        "sha256": "f0cc23ecd53c4289da248904a9f38f90de56a9f7613f4e7c80704fe0d2d74282"
+      },
+      {
+        "path": "studies/fix-coverage/pilot-v8/corpus.json",
+        "sha256": "edfbd4f423901b8729eaad6210c87c2d3ad5765610a04090f1d6defc0cc838af"
+      }
+    ]
+  },
+  "selection": {
+    "candidate_rule": "behavior_preserving",
+    "admits": "A conventional refactor, rename, cleanup, tidy or style title prefix, or an explicit declaration of no functional change in the body.",
+    "rejects": "Any mention of a fix, bug or regression anywhere in title or body; any exact bug label; and chore, which covers dependency bumps that move behaviour freely.",
+    "rejection_bias_is_deliberate": "A pull request that quietly did change behaviour would have its proven flip counted as a false conviction, measuring the engine as worse than it is. A smaller corpus of genuinely behaviour-preserving changes is worth more than a larger one that silently contains behaviour changes.",
+    "repository_query": "language:Python fork:false archived:false",
+    "repository_order": "stargazers_count descending",
+    "repository_frame": "First 50 repositories accepted by the current root pinned-environment parser and named by no prior corpus, scanning at most 800.",
+    "scan_limit_basis": "v8 screened 333 repositories to retain 50 eligible, an eligibility rate near 15%, while excluding 29 used repositories. v9 excludes 46. Reaching 50 fresh eligible repositories is therefore expected to need roughly 400 screened; 800 is registered as headroom. Fixed before selection runs so a thin yield cannot motivate widening it afterwards.",
+    "date_window": "2026-02-17 through 2026-08-31 inclusive",
+    "date_window_basis": "Held at the v6-v8 window so the cached public metadata and clones are reusable. No comparison with the fix pilots is intended or permitted; this is a different claim on a different population.",
+    "target_instances": 30,
+    "per_repository_cap": 5,
+    "undeclared_sample": "A second corpus of the same size selected under the ordinary rule over the same frame, used only to report how often the engine says nothing. It is not a control and no difference between the two is tested.",
+    "short_yield_rule": "A shortfall is published as the result with its exclusion counts. Widening the frame afterwards requires a recorded pre-execution amendment and is permitted only while no instance outcome has been observed, as in v2 and v3."
+  },
+  "probe": {
+    "required_before_provider_run": true,
+    "mode": "fix-coverage --probe, stub proposer, no provider",
+    "decision_rule": "Publish the probe before any provider call. Unlike a coverage pilot there is no reach floor to stop at: an instance that cannot reach the judge also cannot produce a false conviction, so low reach caps what this study can observe and must be reported as the bound on it rather than treated as failure."
+  },
+  "execution": {
+    "host": "The workstation, using the Codex CLI on the existing ChatGPT subscription. An API key would bill a second time for it, and transporting the credential cache to a runner is standing account access that goes stale on refresh.",
+    "platform_rule": "Record host machine/system, Docker daemon OS/architecture, and the daemon's memory allocation. Results are scoped to the recorded platform.",
+    "memory_rule": "An instance failing with host_memory_exhausted is an unusable observation, excluded from attributable_denominator and reported by count.",
+    "existing_suite_preflight": true,
+    "reruns": 5,
+    "max_refine": 3,
+    "execution_timeout_seconds": 120,
+    "per_instance_wall_clock_ceiling_seconds": 720,
+    "minimize_verified": false
+  },
+  "analysis": {
+    "primary": "Count of instances reaching VERIFIED, each a candidate false conviction, with a Wilson 95% interval over the attributable denominator.",
+    "required_evidence": "Publish each VERIFIED instance's test, run command and both execution logs so a human can adjudicate whether the declaration or the engine was wrong.",
+    "secondary": "Silence rate over the undeclared sample.",
+    "forbidden_comparison": "Do not compare any figure here with the v5-v8 coverage numbers. Different claim, different population, different selection rule."
+  }
+}
