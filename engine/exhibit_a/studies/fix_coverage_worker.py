@@ -77,7 +77,7 @@ def run_request(request: dict) -> WorkerResult:
             claim = Claim(instance.claim, target.path)
             case = engine.investigate(
                 claim,
-                mode=Mode.DETECTIVE,
+                mode=Mode.PROSECUTOR if config.mode == "prosecutor" else Mode.DETECTIVE,
                 target=target,
                 base=base,
                 repo_source=instance.repository,

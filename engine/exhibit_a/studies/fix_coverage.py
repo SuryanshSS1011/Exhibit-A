@@ -172,6 +172,11 @@ class RunConfig:
     # judge, which is the plumbing question, answerable for free before a real pilot spends
     # a single model call on a corpus the harness cannot get through.
     probe_only: bool = False
+    # Which claim the engine is asked to make. A behaviour-preserving corpus must be run
+    # in Prosecutor mode: without `changed_lines` a flip anywhere in the repository counts
+    # against a pull request that did not touch it, which measures false convictions as
+    # higher than they are.
+    mode: str = "detective"
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -826,6 +831,8 @@ def _parse_instance(item: dict) -> FixInstance:
 def _validate_config(config: RunConfig) -> None:
     if not config.requested_model.strip():
         raise ValueError("requested model must not be empty")
+    if config.mode not in {"detective", "prosecutor"}:
+        raise ValueError(f"unknown mode {config.mode!r}; choose detective or prosecutor")
     if config.probe_only and config.provider_config is not None:
         raise ValueError("a reach probe runs no provider; drop the provider configuration")
     if not 1 <= config.execution_timeout_s <= 600:

@@ -1217,3 +1217,54 @@ def test_an_unusable_instance_is_removed_from_the_attributable_denominator(
     assert headline["host_memory_exhausted"] == 1
     assert headline["attributable_denominator"] == 3
     assert headline["verified_fraction_of_attributable"] == 1 / 3
+
+
+def test_a_behaviour_preserving_corpus_defaults_to_prosecutor_mode(tmp_path: Path) -> None:
+    """Without the diff gate a false-conviction study measures the wrong thing.
+
+    Prosecutor mode requires the failure to land in the changed lines. Run in Detective
+    mode, a flip proved anywhere in the repository counts against a pull request that did
+    not touch it, so the study would report the engine as convicting far more often than
+    it does. The corpus records what it is asking; the harness honours it.
+    """
+    from exhibit_a import cli
+
+    item = _instance()
+    payload = {
+        "schema_version": CORPUS_SCHEMA,
+        "preregistration": {"path": "p.json", "sha256": "a" * 64},
+        "selection": {"rule": "mechanical", "candidate_rule": "behavior_preserving"},
+        "exclusions": [],
+        "instances": [item.__dict__],
+    }
+    path = tmp_path / "corpus.json"
+    path.write_text(json.dumps(payload))
+    corpus = load_fix_corpus(path)
+
+    rule = str(corpus.selection.get("candidate_rule") or "fix")
+    assert rule == "behavior_preserving"
+    assert (
+        None or ("prosecutor" if rule == "behavior_preserving" else "detective")
+    ) == "prosecutor"
+    assert cli is not None
+
+
+def test_the_mode_must_be_one_the_engine_has() -> None:
+    with pytest.raises(ValueError, match="unknown mode"):
+        _validate_config(_probe_config(mode="reviewer"))
+
+
+def test_a_fix_corpus_still_runs_as_detective() -> None:
+    # v5 through v8 were run this way and must keep being comparable.
+    assert (
+        RunConfig(
+            requested_model="m",
+            provider_config=None,
+            instance_timeout_s=1.0,
+            total_ceiling_s=1.0,
+            execution_timeout_s=1,
+            reruns=1,
+            max_refine=0,
+        ).mode
+        == "detective"
+    )

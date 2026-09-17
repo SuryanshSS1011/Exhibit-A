@@ -57,7 +57,8 @@
     "max_refine": 3,
     "execution_timeout_seconds": 120,
     "per_instance_wall_clock_ceiling_seconds": 720,
-    "minimize_verified": false
+    "minimize_verified": false,
+    "mode": "Prosecutor. The corpus manifest's candidate_rule is behavior_preserving and the study runner defaults the mode from it, because Detective mode applies no changed-lines gate: a flip proved anywhere in the repository would count against a pull request that did not touch it, reporting false convictions as higher than they are."
   },
   "analysis": {
     "primary": "Count of instances reaching VERIFIED, each a candidate false conviction, with a Wilson 95% interval over the attributable denominator.",

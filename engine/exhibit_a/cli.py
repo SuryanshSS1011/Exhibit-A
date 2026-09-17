@@ -1166,6 +1166,13 @@ def cmd_fix_coverage(args: argparse.Namespace) -> int:
                     f"--model {requested_model!r} disagrees with provider model {provider_model!r}"
                 )
             requested_model = provider_model
+        corpus = load_fix_corpus(args.manifest)
+        # The corpus records what it is asking. A behaviour-preserving corpus run in
+        # Detective mode has no diff gate, so a flip anywhere counts against a pull
+        # request that did not touch it; defaulting from the manifest stops that being a
+        # silent mistake, and an explicit --mode still overrides.
+        rule = str(corpus.selection.get("candidate_rule") or "fix")
+        mode = args.mode or ("prosecutor" if rule == "behavior_preserving" else "detective")
         config = FixCoverageRunConfig(
             requested_model=requested_model
             or ("none (reach probe)" if args.probe else "gpt-5.6-sol"),
@@ -1176,8 +1183,8 @@ def cmd_fix_coverage(args: argparse.Namespace) -> int:
             reruns=args.reruns,
             max_refine=args.max_refine,
             probe_only=args.probe,
+            mode=mode,
         )
-        corpus = load_fix_corpus(args.manifest)
         report = run_fix_coverage_study(
             corpus=corpus,
             output_root=args.out,
@@ -1850,6 +1857,14 @@ def main(argv: list[str] | None = None) -> int:
         "--out",
         default=".exhibit-a/research/fix-coverage",
         help="private resumable study directory",
+    )
+    coverage.add_argument(
+        "--mode",
+        choices=["detective", "prosecutor"],
+        help=(
+            "claim to make; defaults from the corpus manifest's candidate rule, which is "
+            "prosecutor for a behaviour-preserving corpus"
+        ),
     )
     coverage.add_argument(
         "--probe",
