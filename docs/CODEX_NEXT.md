@@ -459,6 +459,33 @@ is the defect.
   Acceptance: no assertion of a property survives without either an enforcing test or a
   pointer to the boundary that does enforce it.
 
+- [ ] **23. Reconcile a uv closure with what pip demands of it**
+  Source refs: `_uv_combined_marker` and `_uv_dependency_edges` in `executor/docker_exec.py`,
+  and the pilot v9 probe checkpoints for `crewaiinc-crewai-*` and `stanfordnlp-dspy-*`.
+  The failure: seven of nineteen v9 instances died on
+  `ERROR: In --require-hashes mode, all requirements must have their versions pinned with
+  ==. These do not: onnxruntime>=1.14.1`. Our conversion is *faithful*: crewai's lockfile
+  declares chromadb's dependency on onnxruntime under `python_full_version < '3.11'`, and
+  we emit exactly that marker, so on 3.12 pip skips onnxruntime. But pip then installs
+  chromadb's published wheel, whose own metadata requires onnxruntime unconditionally, and
+  refuses the now-unpinned transitive requirement. uv resolved one graph; the wheel
+  declares another.
+  What makes this hard: three obvious repairs are each wrong. Dropping `--require-hashes`
+  trades away the integrity property the environment exists to have. Emitting every closure
+  package unconditionally reinstates the pywin32-into-Linux failure that markers were added
+  to stop. Propagating "unconditional parent implies unconditional child" also drops
+  platform markers, because in a uv lockfile the marker lives on the *edge*, so pywin32's
+  Windows-only marker sits on an edge from an unconditional parent and would be dropped
+  too.
+  The distinction that probably matters is between markers that say a package is
+  *unnecessary* here (interpreter version) and markers that say it is *uninstallable* here
+  (sys_platform, platform_system, os_name, platform_machine). The first class can only
+  cause the failure above; the second is load-bearing. Verify that against real lockfiles
+  before building on it.
+  Acceptance: the seven instances build, pywin32 is still absent on Linux, and
+  `--require-hashes` is still passed.
+  Worth roughly seven of nineteen instances on v9, and the class is not specific to v9.
+
 ## Deferred until the milestones are complete
 
 - Migration reversibility needs an explicit database threat model, engine/version pinning,
