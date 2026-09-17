@@ -399,7 +399,7 @@ mode that does not pay the environment tax is also the mode nobody can run.
 
 ## Milestone 7 — Measure Prosecutor precision the way coverage was measured
 
-- [ ] **18. Preregister and run a Prosecutor precision pilot**
+- [~] **18. Preregister and run a Prosecutor precision pilot**
   Owner: the Codex session. Needs a live provider and real compute.
   Source refs: `operations/policy.py` `semantic_precision`, `studies/self_audit.py`, and the
   v8 preregistration for the discipline to copy.
@@ -421,6 +421,43 @@ mode that does not pay the environment tax is also the mode nobody can run.
   provider call, and the report records the platform and the daemon's memory allocation.
   Non-goal: Do not compare this figure with the Detective coverage figures. They measure
   different claims on different populations.
+
+
+## Milestone 8 — Make the application's claims match what it enforces
+
+Surveying the whole application rather than the study pipeline found the same failure
+three more times, and it is worth naming as a class. This project's product *is*
+trustworthy claims, so a claim nothing enforces is not a documentation problem here; it
+is the defect.
+
+- [x] **19. Gate every route that serves private research output**
+  Two of four web API routes required a token and two gated on an environment flag alone,
+  so an enabled dashboard served the Silence Ledger to anything that could reach the port.
+  The routes also had no tests, and the cause was structural: vitest ran with no config,
+  so the `@/` alias every route imports through could not resolve and every module using
+  it was untestable. An untestable module is not a module that happens to lack tests.
+
+- [x] **20. Pin what the Case revision fields mean**
+  `base_commit` and `target_commit` were undocumented and were read as reversed in review.
+  They are not: checked against a real pilot v8 Case, the corpus's buggy_sha is the Case's
+  base_commit. `RepoState.label` uses the same two words for the opposite things, which is
+  the trap. Swapping them on the reading would have corrupted every archive ever produced,
+  and no consumer would have failed, because they all treat the fields as opaque hex.
+
+- [x] **21. Restore the platform qualifier to the published figure**
+  The README's coverage headline had lost its `linux/arm64` qualifier, asserting more
+  generality than the evidence supports, while a probe of the same corpus on x86_64
+  reached the judge on 24 of 30 rather than 17. The figure is a floor under its platform.
+
+- [ ] **22. Audit the remaining assertions of a property**
+  Source refs: every "by construction", "never", and "cannot" in README.md, docs/, and
+  module docstrings.
+  What to build: For each, either a test that fails when the property is violated, or a
+  rewording that says what is actually true. `review_comment.py` already lost a "public by
+  construction" it could not support; `passport.py` keeps its equivalent claim because
+  `test_passport.py` asserts it negatively. That asymmetry is the standard.
+  Acceptance: no assertion of a property survives without either an enforcing test or a
+  pointer to the boundary that does enforce it.
 
 ## Deferred until the milestones are complete
 

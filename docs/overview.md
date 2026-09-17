@@ -239,5 +239,19 @@ is allowed to speak.
 This is a working, verified system. The engine and typed web test suites are green in CI,
 which runs engine lint, format, and tests alongside the web build. The
 deterministic verdict core, Docker sandboxing, two-SHA git intake, git-bisect culprit
-attribution, mutation scoring, evidence minimization, and a full research-instrumentation
-layer are implemented and tested.
+attribution, mutation scoring, evidence minimization, Prosecutor review of a pull request
+inside an environment the caller supplies, and a full research-instrumentation layer are
+implemented and tested.
+
+Working is not the same as broadly capable, and the measured position belongs here rather
+than only in the README. On the latest preregistered, repository-disjoint corpus, running
+on `linux/arm64`, the deterministic judge was reached on 15 of 30 real fixes and proved 9
+of them. Environment construction rather than the judge is the binding constraint: of the
+judged candidates, 9 of 15 verified. Results are scoped to their recorded platform, and a
+later provider-free probe of the same corpus on `x86_64` reached the judge on 24 of 30,
+so the published figure is a floor rather than a platform-independent measurement. See
+the [coverage results](./FIX_COVERAGE_RESULTS.html).
+
+What has not been measured is the other half of the claim. The product's argument is that
+silence is a feature, and no study has yet asked how often the engine speaks about a
+change that declares it changed nothing. A corpus for that is frozen and unrun.
