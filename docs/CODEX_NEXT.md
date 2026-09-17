@@ -459,7 +459,7 @@ is the defect.
   Acceptance: no assertion of a property survives without either an enforcing test or a
   pointer to the boundary that does enforce it.
 
-- [ ] **23. Reconcile a uv closure with what pip demands of it**
+- [x] **23. Reconcile a uv closure with what pip demands of it**
   Source refs: `_uv_combined_marker` and `_uv_dependency_edges` in `executor/docker_exec.py`,
   and the pilot v9 probe checkpoints for `crewaiinc-crewai-*` and `stanfordnlp-dspy-*`.
   The failure: seven of nineteen v9 instances died on
@@ -477,11 +477,12 @@ is the defect.
   platform markers, because in a uv lockfile the marker lives on the *edge*, so pywin32's
   Windows-only marker sits on an edge from an unconditional parent and would be dropped
   too.
-  The distinction that probably matters is between markers that say a package is
-  *unnecessary* here (interpreter version) and markers that say it is *uninstallable* here
-  (sys_platform, platform_system, os_name, platform_machine). The first class can only
-  cause the failure above; the second is load-bearing. Verify that against real lockfiles
-  before building on it.
+  Resolved: the distinction is *unnecessary here* against *uninstallable here*, but the
+  marker's variable does not decide it. `audioop-lts` is gated on
+  `python_full_version >= '3.13'` and genuinely cannot install on 3.12, so an
+  interpreter-version marker is sometimes telling the truth. The artifacts decide it. A
+  version marker is honoured only when the lockfile lists no wheel the chosen interpreter
+  could install, which is the question pip asks and answers from the same evidence.
   Acceptance: the seven instances build, pywin32 is still absent on Linux, and
   `--require-hashes` is still passed.
   Worth roughly seven of nineteen instances on v9, and the class is not specific to v9.

@@ -328,3 +328,100 @@ def test_a_lockfile_with_no_workspace_root_keeps_every_package(tmp_path: Path):
 
     assert _requirement(text, "one") is not None
     assert _requirement(text, "two") is not None
+
+
+def _wheeled(name: str, tags: str, version: str = "1.0.0") -> str:
+    """A package whose wheel filenames declare which interpreters it supports."""
+    urls = ", ".join(
+        f'{{ url = "https://x/{name}-{version}-{tag}-none-any.whl", hash = "{WHEEL}" }}'
+        for tag in tags.split()
+    )
+    return (
+        f'\n[[package]]\nname = "{name}"\nversion = "{version}"\n'
+        f'source = {{ registry = "https://pypi.org/simple" }}\n'
+        f"wheels = [{urls}]\n"
+    )
+
+
+def test_a_version_marker_does_not_exclude_a_package_this_interpreter_can_install(
+    tmp_path: Path,
+):
+    """The closure must satisfy pip, not merely mirror uv.
+
+    crewai's lockfile gates chromadb's dependency on onnxruntime behind
+    `python_full_version < '3.11'`. Honouring that on 3.12 emitted chromadb and not
+    onnxruntime, and pip then installed chromadb's published wheel, whose own metadata
+    wants onnxruntime unconditionally, and refused the transitive requirement nothing
+    pinned. uv resolved one graph and the wheel declares another.
+    """
+    lock = (
+        ROOT
+        + 'dependencies = [\n  { name = "parent" },\n]\n'
+        + _wheeled("parent", "cp311 cp312")
+        + 'dependencies = [{ name = "gated", marker = "python_full_version < \'3.11\'" }]\n'
+        + _wheeled("gated", "cp310 cp311 cp312")
+    )
+
+    text = _requirements_from_uv(_write(tmp_path, lock), (3, 12))
+
+    # It has a cp312 wheel, so it installs here and the marker may not remove it.
+    assert _requirement(text, "gated") == "gated==1.0.0 \\"
+
+
+def test_a_version_marker_still_excludes_a_package_this_interpreter_cannot_install(
+    tmp_path: Path,
+):
+    # audioop-lts exists only because audioop left the standard library in 3.13. Forcing
+    # it onto 3.12 fails, so here the marker is telling the truth and must be honoured.
+    lock = (
+        ROOT
+        + 'dependencies = [{ name = "audioop-lts", marker = "python_full_version >= \'3.13\'" }]\n'
+        + _wheeled("audioop-lts", "cp313 cp314")
+    )
+
+    text = _requirements_from_uv(_write(tmp_path, lock), (3, 12))
+
+    assert "python_full_version >= '3.13'" in (_requirement(text, "audioop-lts") or "")
+
+
+def test_the_same_package_is_judged_against_the_interpreter_actually_chosen(tmp_path: Path):
+    # On 3.13 the same entry is installable, so the marker stops excluding it.
+    lock = (
+        ROOT
+        + 'dependencies = [{ name = "audioop-lts", marker = "python_full_version >= \'3.13\'" }]\n'
+        + _wheeled("audioop-lts", "cp313 cp314")
+    )
+
+    text = _requirements_from_uv(_write(tmp_path, lock), (3, 13))
+
+    assert _requirement(text, "audioop-lts") == "audioop-lts==1.0.0 \\"
+
+
+def test_a_platform_marker_is_honoured_whatever_wheels_exist(tmp_path: Path):
+    # pywin32 ships cp312 wheels; they are win32 wheels. Installability here is decided by
+    # the platform, and that marker is never dropped.
+    lock = (
+        ROOT
+        + 'dependencies = [{ name = "pywin32", marker = "sys_platform == \'win32\'" }]\n'
+        + _wheeled("pywin32", "cp311 cp312 cp313")
+    )
+
+    text = _requirements_from_uv(_write(tmp_path, lock), (3, 12))
+
+    assert "sys_platform == 'win32'" in (_requirement(text, "pywin32") or "")
+
+
+def test_a_package_with_no_wheels_keeps_its_marker(tmp_path: Path):
+    # Only an sdist, so there is no positive evidence this interpreter can install it, and
+    # an sdist would still be refused by its own Requires-Python. Keep the marker.
+    lock = (
+        ROOT
+        + 'dependencies = [{ name = "sourceonly", marker = "python_full_version >= \'3.13\'" }]\n'
+        + '\n[[package]]\nname = "sourceonly"\nversion = "1.0.0"\n'
+        + 'source = { registry = "https://pypi.org/simple" }\n'
+        + f'sdist = {{ url = "https://x/s.tar.gz", hash = "{WHEEL}" }}\n'
+    )
+
+    text = _requirements_from_uv(_write(tmp_path, lock), (3, 12))
+
+    assert "python_full_version >= '3.13'" in (_requirement(text, "sourceonly") or "")

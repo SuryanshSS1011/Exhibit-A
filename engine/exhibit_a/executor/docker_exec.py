@@ -29,6 +29,7 @@ from collections import deque
 from pathlib import Path
 
 from ..replay_environment import PINNED_PYTEST_VERSION
+from .python_version import DEFAULT as DEFAULT_PYTHON
 from .python_version import declared_python, image_for, select_python
 from .source_roots import pythonpath
 from .base import (
@@ -99,7 +100,9 @@ class DockerExecutor(Executor):
             )
         base_image = image_for(version)
         environment = _environment_spec(
-            repo, base_reference=_base_reference(self.docker_bin, base_image)
+            repo,
+            base_reference=_base_reference(self.docker_bin, base_image),
+            python_version=version,
         )
         inspect = subprocess.run(
             [self.docker_bin, "image", "inspect", environment.image],
@@ -437,7 +440,12 @@ def _inspect_base_digest(docker_bin: str, base_image: str = _BASE_IMAGE) -> str 
     return reference
 
 
-def _environment_spec(repo: RepoState, *, base_reference: str) -> _EnvironmentSpec:
+def _environment_spec(
+    repo: RepoState,
+    *,
+    base_reference: str,
+    python_version: tuple[int, int] = DEFAULT_PYTHON,
+) -> _EnvironmentSpec:
     root = Path(repo.path).resolve()
     if not root.is_dir():
         raise EnvironmentSetupError(f"repo checkout not found: {root}")
@@ -448,7 +456,9 @@ def _environment_spec(repo: RepoState, *, base_reference: str) -> _EnvironmentSp
     # uv.lock is tried first: it is a complete resolution and carries artifact hashes, so
     # it pins bytes rather than versions.
     if uv_lock.is_file():
-        requirements = (_requirements_from_uv(uv_lock),)
+        # The interpreter decides which artifacts exist, and therefore which markers
+        # may exclude a package. See _uv_marker_constrains_installability.
+        requirements = (_requirements_from_uv(uv_lock, python_version),)
     elif poetry_lock.is_file():
         requirements = (_requirements_from_poetry(poetry_lock),)
     elif pipfile_lock.is_file():
@@ -480,7 +490,7 @@ def _environment_spec(repo: RepoState, *, base_reference: str) -> _EnvironmentSp
     )
 
 
-def _requirements_from_uv(path: Path) -> str:
+def _requirements_from_uv(path: Path, python_version: tuple[int, int] = DEFAULT_PYTHON) -> str:
     """Convert a uv lockfile into an exactly pinned, hash-bearing requirements file.
 
     A uv lockfile is a complete resolution: every transitive dependency is present with an
@@ -497,6 +507,14 @@ def _requirements_from_uv(path: Path) -> str:
         raise EnvironmentSetupError("uv.lock package table is invalid")
 
     conditions = _uv_reachability(packages)
+    # Names the lockfile holds at more than one version. Only for these do
+    # resolution-markers do the job they exist for rather than merely narrowing.
+    counts: dict[str, int] = {}
+    for package in packages:
+        candidate = package.get("name") if isinstance(package, dict) else None
+        if isinstance(candidate, str):
+            counts[candidate] = counts.get(candidate, 0) + 1
+    ambiguous = frozenset(name for name, count in counts.items() if count > 1)
 
     entries: list[str] = []
     for package in packages:
@@ -525,7 +543,7 @@ def _requirements_from_uv(path: Path) -> str:
         if not hashes:
             raise EnvironmentSetupError(f"uv.lock package {name!r} carries no artifact hash")
         requirement = f"{name}=={version}"
-        marker = _uv_combined_marker(package, conditions)
+        marker = _uv_combined_marker(package, conditions, ambiguous, python_version)
         if marker:
             requirement += f" ; {marker}"
         entries.append(" \\\n    ".join([requirement, *(f"--hash={digest}" for digest in hashes)]))
@@ -613,25 +631,110 @@ def _uv_reachability(packages: list) -> dict[str, set[frozenset[str]]] | None:
     return conditions or None
 
 
-def _uv_combined_marker(package: dict, conditions: dict | None) -> str | None:
-    """Render every condition on a package -- path, declared, and resolution -- for pip.
+# Marker variables that decide whether a distribution can be installed here at all. A
+# Windows-only package has no Linux artifact, so honouring these is what keeps pywin32 out
+# of a Linux container.
+_UV_PLATFORM_MARKER_VARIABLES = (
+    "sys_platform",
+    "platform_system",
+    "platform_machine",
+    "platform_release",
+    "platform_python_implementation",
+    "os_name",
+    "implementation_name",
+)
 
-    `resolution-markers` is what makes a lockfile able to hold the same package at several
-    versions at once, one per resolution context. Dropping it asks pip to install both, and
-    pip refuses with a resolution conflict.
+
+def _uv_wheel_python_tags(package: dict) -> frozenset[str]:
+    """The interpreter tags of every wheel the lockfile lists for a package."""
+    tags: set[str] = set()
+    for wheel in package.get("wheels") or []:
+        url = wheel.get("url") if isinstance(wheel, dict) else None
+        if not isinstance(url, str):
+            continue
+        parts = url.rsplit("/", 1)[-1].removesuffix(".whl").split("-")
+        if len(parts) >= 4:
+            tags.update(parts[-3].split("."))
+    return frozenset(tags)
+
+
+def _uv_has_wheel_for(package: dict, python_version: tuple[int, int]) -> bool:
+    """Whether the lockfile lists a wheel this interpreter could install."""
+    major, minor = python_version
+    accepted = {f"cp{major}{minor}", f"py{major}{minor}", f"py{major}", "py2"}
+    tags = _uv_wheel_python_tags(package)
+    return bool(tags & accepted) or any(tag == f"cp{major}" for tag in tags)
+
+
+def _uv_marker_constrains_installability(
+    marker: str, package: dict, python_version: tuple[int, int]
+) -> bool:
+    """Whether a marker says a package is *uninstallable* here, not merely *unneeded*.
+
+    A platform marker always does: a Windows-only distribution has no Linux artifact, and
+    honouring it is what keeps pywin32 out of a Linux container.
+
+    An interpreter-version marker usually does not, and acting on it is how the closure
+    comes apart. crewai's lockfile puts chromadb's dependency on onnxruntime under
+    `python_full_version < '3.11'`, so on 3.12 we emitted chromadb unconditionally and
+    onnxruntime never; pip then installed chromadb's published wheel, whose own metadata
+    wants onnxruntime unconditionally, and refused the transitive requirement nothing
+    pinned. uv resolved one graph and the wheel declares another, which under
+    --require-hashes is fatal.
+
+    But some version-gated packages genuinely cannot install here -- audioop-lts exists
+    only because audioop left the standard library in 3.13, and forcing it onto 3.12 fails.
+    The marker cannot tell those apart; the artifacts can. A version marker is therefore
+    honoured only when the lockfile lists no wheel this interpreter could install, which is
+    the same question pip asks and answers from the same evidence. Absent any wheel at all,
+    the marker is kept, because an sdist would still be refused by its own Requires-Python.
+    """
+    if any(variable in marker for variable in _UV_PLATFORM_MARKER_VARIABLES):
+        return True
+    return not _uv_has_wheel_for(package, python_version)
+
+
+def _uv_combined_marker(
+    package: dict,
+    conditions: dict | None,
+    ambiguous_names: frozenset[str] = frozenset(),
+    python_version: tuple[int, int] = DEFAULT_PYTHON,
+) -> str | None:
+    """Render the conditions that can stop a package installing here, and only those.
+
+    Only markers naming a platform variable survive; see
+    `_uv_marker_constrains_installability` for why an interpreter-version marker must not
+    be allowed to remove anything from the closure.
+
+    `resolution-markers` is the exception. It is what lets a lockfile hold the same package
+    at several versions at once, one per resolution context, and dropping it for such a
+    package asks pip to install both, which pip refuses as a conflict. It is therefore kept
+    for a package the lockfile defines more than once -- the only case it exists for -- and
+    dropped otherwise, where it can only narrow.
     """
     clauses: set[frozenset[str]] = set()
     if conditions is not None:
-        clauses = set(conditions.get(package.get("name"), ()) or ())
+        clauses = {
+            frozenset(
+                m
+                for m in clause
+                if _uv_marker_constrains_installability(m, package, python_version)
+            )
+            for clause in (conditions.get(package.get("name"), ()) or ())
+        }
     if not clauses:
         clauses = {frozenset()}
 
     conjuncts: list[str] = []
     declared = package.get("marker")
-    if isinstance(declared, str) and declared.strip():
+    if (
+        isinstance(declared, str)
+        and declared.strip()
+        and _uv_marker_constrains_installability(declared, package, python_version)
+    ):
         conjuncts.append(declared.strip())
     resolution = package.get("resolution-markers")
-    if isinstance(resolution, list):
+    if isinstance(resolution, list) and package.get("name") in ambiguous_names:
         contexts = [m.strip() for m in resolution if isinstance(m, str) and m.strip()]
         if contexts:
             conjuncts.append(" or ".join(f"({context})" for context in contexts))
