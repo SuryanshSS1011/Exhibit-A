@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * The API routes were the only executable surface here with no tests at all, and one of
@@ -96,3 +96,63 @@ describe("the investigate route drives the engine", () => {
     expect((await (await route()).POST(post())).status).toBe(401);
   });
 });
+
+describe("the investigate route never offers host execution", () => {
+  // The README promises "host execution is an explicit --no-sandbox opt-in, and the web
+  // API never offers the choice". That was true and pinned by nothing, so adding the flag
+  // to this route would have broken a published security claim silently. Running an
+  // untrusted checkout's suite on the host executes whatever its conftest imports.
+  const spawned: string[][] = [];
+
+  beforeEach(() => {
+    spawned.length = 0;
+    vi.doMock("node:child_process", () => ({
+      spawn: (_cmd: string, args: string[]) => {
+        spawned.push(args);
+        return {
+          stdout: { on() {} },
+          stderr: { on() {} },
+          on() {},
+          kill() {},
+          unref() {},
+          pid: 1234,
+        };
+      },
+    }));
+  });
+
+  it("builds an argv that cannot select the host executor", async () => {
+    vi.stubEnv("EXHIBIT_A_API_TOKEN", TOKEN);
+    const { POST } = (await import("./investigate/route")) as {
+      POST(req: Request): Promise<Response>;
+    };
+
+    const headers = new Headers({
+      "content-type": "application/json",
+      authorization: `Bearer ${TOKEN}`,
+    });
+    await POST(
+      new Request("http://localhost/api/investigate", {
+        method: "POST",
+        headers,
+        // Every field a caller controls, including ones that look like a way to ask.
+        body: JSON.stringify({
+          claim: "anything",
+          repoUrl: "https://github.com/owner/repo.git",
+          baseSha: "a".repeat(40),
+          fixSha: "b".repeat(40),
+          noSandbox: true,
+          sandbox: false,
+          args: ["--no-sandbox"],
+        }),
+      }),
+    );
+
+    expect(spawned.length).toBeGreaterThan(0);
+    for (const args of spawned) {
+      expect(args).not.toContain("--no-sandbox");
+      expect(args.join(" ")).not.toContain("no-sandbox");
+    }
+  });
+});
+
