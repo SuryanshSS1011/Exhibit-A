@@ -33,7 +33,9 @@ def test_the_default_is_kept_whenever_it_qualifies(specifier: str):
     [
         (">=3.11, <3.12", (3, 11)),  # serena and private-gpt, verbatim
         ("==3.11.*", (3, 11)),  # what their uv.lock resolved against
-        (">=3.13", (3, 13)),  # sentry's lock
+        (">=3.13", (3, 13)),  # sentry's lock; adding 3.14 must not steal this
+        (">=3.14.0", (3, 14)),  # four pilot v9 instances, refused until 3.14 was supported
+        (">=3.14", (3, 14)),
         ("<3.12", (3, 11)),
         ("==3.13", (3, 13)),
     ],
@@ -84,6 +86,23 @@ def test_a_checkout_that_declares_nothing_reads_as_none(tmp_path: Path):
     assert declared_python(tmp_path) is None
 
 
+def test_widening_the_supported_list_does_not_move_anything_already_chosen():
+    """Adding an interpreter must only make previously unservable projects servable.
+
+    The rule keeps the default whenever it qualifies and otherwise takes the nearest,
+    so a newer entry can only be chosen by a project that excluded everything closer.
+    """
+    for specifier, expected in (
+        (None, (3, 12)),
+        (">=3.10", (3, 12)),
+        (">=3.11, <3.12", (3, 11)),
+        (">=3.13", (3, 13)),
+        ("<3.12", (3, 11)),
+    ):
+        assert select_python(specifier) == expected, specifier
+
+
 def test_image_names_follow_the_official_slim_tags():
     assert image_for((3, 11)) == "python:3.11-slim"
     assert image_for(DEFAULT) == "python:3.12-slim"
+    assert image_for((3, 14)) == "python:3.14-slim"

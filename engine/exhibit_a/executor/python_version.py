@@ -16,7 +16,10 @@ from pathlib import Path
 
 # Interpreters this sandbox is willing to build on. Adding one is a deliberate act: it
 # widens what the engine claims to support and every image is rebuilt against it.
-SUPPORTED = ((3, 11), (3, 12), (3, 13))
+# 3.14 earned its place: four pilot v9 instances were refused with "requires Python
+# '>=3.14.0', which this sandbox does not provide", which was this module working
+# correctly against a list that had fallen behind the language.
+SUPPORTED = ((3, 11), (3, 12), (3, 13), (3, 14))
 DEFAULT = (3, 12)
 
 _REQUIRES = re.compile(r'^\s*requires-python\s*=\s*"([^"]+)"', re.MULTILINE)
