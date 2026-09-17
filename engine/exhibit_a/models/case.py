@@ -310,6 +310,15 @@ class Case:
 
     # --- provenance ---
     repo: Optional[str] = None  # url or local path
+    # Revisions, named from the change's point of view: base is what the code was before,
+    # target is what it became. For a Detective run that means base_commit is the buggy
+    # revision and target_commit the fixed one; for a Prosecutor run, the pull request's
+    # base and its head.
+    #
+    # `RepoState.label` uses the opposite words for the opposite thing -- the state under
+    # test is labelled "target" and the comparison state "base", so the buggy revision is
+    # a RepoState labelled "target" and lands in `base_commit`. That collision has already
+    # been read as a bug once. It is not one, and `test_case_revisions.py` pins it.
     base_commit: Optional[str] = None
     target_commit: Optional[str] = None
     culprit_commit: Optional[str] = None
