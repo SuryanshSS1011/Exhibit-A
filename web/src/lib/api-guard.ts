@@ -3,10 +3,14 @@ import path from "node:path";
 import { NextResponse } from "next/server";
 
 /**
- * Server-side gate for the routes that spawn work or write to disk.
+ * Server-side gate for every route that drives the engine or serves private data.
  *
- * These routes drive the engine and persist private research labels, so an unconfigured
- * deployment must be inert rather than open. The token is a deployment guard, not user
+ * These routes drive the engine, persist private research labels, or read back research
+ * output that is private by design, so an unconfigured deployment must be inert rather
+ * than open. Reading is gated as firmly as spawning: the Silence Ledger records what was
+ * suspected and not proved, which on a real repository can amount to unconfirmed
+ * vulnerability leads, and reading it leaves no trace where spawning work at least
+ * announces itself. The token is a deployment guard, not user
  * authentication: the browser UI is handed the same token, so the API is exactly as
  * private as the page that carries it. Put real authentication in front of the page for
  * any deployment reachable by someone who should not run investigations.

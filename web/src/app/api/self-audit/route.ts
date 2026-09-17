@@ -2,6 +2,8 @@ import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
 
+import { refuse } from "@/lib/api-guard";
+
 const REPORT_DIR = path.resolve(
   process.env.EXHIBIT_A_SELF_AUDIT_DIR ??
     path.join(process.cwd(), "..", "engine", ".exhibit-a", "research", "self-audit"),
@@ -10,7 +12,12 @@ const ENABLED = process.env.EXHIBIT_A_RESEARCH_DASHBOARD === "1";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
+  // The environment flag says this deployment intends to serve it; the token says
+  // the caller is the deployment's own UI. Both are required.
+  const refusal = refuse(req);
+  if (refusal) return refusal;
+
   if (!ENABLED) {
     return NextResponse.json(
       {

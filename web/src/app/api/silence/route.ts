@@ -1,6 +1,8 @@
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
+
+import { refuse } from "@/lib/api-guard";
 import { normalizeCasePayload } from "@/lib/case";
 
 const CASE_DIR = path.resolve(process.cwd(), "..", "engine", ".exhibit-a", "cases");
@@ -14,7 +16,12 @@ export const dynamic = "force-dynamic";
 // never be posted to a public PR.
 const SILENCE_LOG_ENABLED = process.env.EXHIBIT_A_SILENCE_LOG === "1";
 
-export async function GET() {
+export async function GET(req: Request) {
+  // The environment flag says this deployment intends to serve it; the token says
+  // the caller is the deployment's own UI. Both are required.
+  const refusal = refuse(req);
+  if (refusal) return refusal;
+
   if (!SILENCE_LOG_ENABLED) {
     return NextResponse.json(
       {
