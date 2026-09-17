@@ -16,13 +16,17 @@
 
 ---
 
-> **Measured real-fix coverage (September 2026): the judge was reached on 15/30 fixes
-> (50.0%); 9/30 VERIFIED (30.0%) and 0/30 were PARTIAL.** Pilot v8's 17 repositories
-> were excluded whole from every prior corpus, so this is the first result that measures
-> generalization beyond repositories used to develop the engine changes. The defensible
-> position is a **narrow, silence-tolerant product backed by research instrumentation**,
-> not a broad Python verifier. [Read the complete preregistered v8 pilot, probe, and
-> exclusions.](./docs/FIX_COVERAGE_RESULTS.md)
+> **Measured real-fix coverage (September 2026, `linux/arm64`): the judge was reached on
+> 15/30 fixes (50.0%); 9/30 VERIFIED (30.0%) and 0/30 were PARTIAL.** Pilot v8's 17
+> repositories were excluded whole from every prior corpus, so this is the first result
+> that measures generalization beyond repositories used to develop the engine changes.
+> The platform qualifier is load-bearing: a later provider-free probe of the same corpus
+> on `x86_64` reached the judge on 24 of 30 rather than 17, two of the differences being
+> distributions with no arm64 build at all. The published figure is therefore a floor
+> under its recorded platform, and no corrected figure is claimed without a pilot to earn
+> it. The defensible position is a **narrow, silence-tolerant product backed by research
+> instrumentation**, not a broad Python verifier. [Read the complete preregistered v8
+> pilot, probe, and exclusions.](./docs/FIX_COVERAGE_RESULTS.md)
 
 ## The problem
 
@@ -101,9 +105,13 @@ Verdicts are tiered so the tool never overclaims:
 
 **Intended scope:** deterministic functional bugs in Python repositories that build in a
 sandbox. In the latest preregistered, repository-disjoint pilot, 15/30 reached the judge
-and 9/30 produced VERIFIED evidence. Ten dependency installations, three checkouts, and
-two provider-run timeouts stopped before the judge; six judged candidates were honestly
-rejected. That makes the scope measurable and promising, but not yet broadly demonstrated.
+and 9/30 produced VERIFIED evidence on `linux/arm64`. Ten dependency installations, three
+checkouts, and two provider-run timeouts stopped before the judge; six judged candidates
+were honestly rejected. Environment construction, not the judge, is the binding
+constraint, and it is partly a property of the machine: the three checkout failures were
+a missing Git LFS filter and two of the dependency failures were distributions with no
+arm64 build. That makes the scope measurable and promising, but not yet broadly
+demonstrated.
 It cannot speak to race conditions, performance regressions, or most security issues, and
 it stays silent instead of guessing.
 

@@ -144,6 +144,26 @@ Thirty instances and one architecture still leave a wide interval. A larger
 repository-disjoint replication and an amd64 run are the next steps before treating 30%
 as a stable coverage constant.
 
+
+## Postscript: the platform is not neutral
+
+Added after publication and deliberately separate from the result above, which is not
+restated or revised.
+
+Every pilot from v5 to v8 ran on `linux/arm64`, and each report records that. A later
+provider-free probe of v8's frozen corpus on `x86_64` reached the deterministic judge on
+24 of 30 instances where the same corpus reached 17 on arm64. Three of the differences
+were checkout failures caused by a missing Git LFS filter rather than by anything in the
+repositories, and two were distributions with no arm64 build at all: `daal`, which is
+Intel's, and `cel-expr-python`.
+
+That probe is not a coverage result and cannot be compared with the 9/30 above. It ran
+with a stub proposer, made no model call, and was executed at a later revision with
+engine changes the pilot did not have. What it establishes is narrower and still
+important: **the published figure is a floor under its recorded platform, not a
+platform-independent measurement.** A corrected figure needs a pilot preregistered on
+`x86_64` to earn it, and none is claimed here.
+
 Historical results remain available for [v7](./FIX_COVERAGE_V7_RESULTS.html),
 [v6](./FIX_COVERAGE_V6_RESULTS.html), [v5](./FIX_COVERAGE_V5_RESULTS.html), and
 [v4](./FIX_COVERAGE_V4_RESULTS.html).
