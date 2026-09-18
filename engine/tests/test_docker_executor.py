@@ -213,12 +213,25 @@ def test_base_reference_fails_closed_when_the_image_cannot_be_resolved(
         _base_reference("docker")
 
 
+def _install_line(dockerfile: str, name: str) -> str:
+    """The RUN line installing one requirements file.
+
+    Asserting on the whole Dockerfile couples a test to the order of pip's flags, which
+    is not what any of these are about.
+    """
+    return next(
+        line
+        for line in dockerfile.splitlines()
+        if f"/tmp/locks/{name}" in line and "pip install" in line
+    )
+
+
 def test_hashes_are_enforced_when_the_lockfile_ships_them():
     """Ignoring pinned hashes would accept an index serving different bytes."""
     hashed = _dockerfile(["requirements-0.txt"], BASE_DIGEST, (True,))
     plain = _dockerfile(["requirements-0.txt"], BASE_DIGEST, (False,))
 
-    assert "--require-hashes --requirement /tmp/locks/requirements-0.txt" in hashed
+    assert _install_line(hashed, "requirements-0.txt").count("--require-hashes") == 1
     assert "--require-hashes" not in plain
 
 
@@ -227,8 +240,8 @@ def test_hash_enforcement_is_decided_per_lockfile():
         ["requirements-0.txt", "requirements-1.txt"], BASE_DIGEST, (False, True)
     )
 
-    assert "--no-cache-dir --requirement /tmp/locks/requirements-0.txt" in dockerfile
-    assert "--require-hashes --requirement /tmp/locks/requirements-1.txt" in dockerfile
+    assert "--require-hashes" not in _install_line(dockerfile, "requirements-0.txt")
+    assert "--require-hashes" in _install_line(dockerfile, "requirements-1.txt")
 
 
 def test_carries_hashes_detects_both_layouts():

@@ -330,98 +330,69 @@ def test_a_lockfile_with_no_workspace_root_keeps_every_package(tmp_path: Path):
     assert _requirement(text, "two") is not None
 
 
-def _wheeled(name: str, tags: str, version: str = "1.0.0") -> str:
-    """A package whose wheel filenames declare which interpreters it supports."""
-    urls = ", ".join(
-        f'{{ url = "https://x/{name}-{version}-{tag}-none-any.whl", hash = "{WHEEL}" }}'
-        for tag in tags.split()
-    )
-    return (
-        f'\n[[package]]\nname = "{name}"\nversion = "{version}"\n'
-        f'source = {{ registry = "https://pypi.org/simple" }}\n'
-        f"wheels = [{urls}]\n"
-    )
+def test_the_closure_installs_without_letting_pip_resolve_it():
+    """A uv lockfile is a complete resolution, so pip has nothing left to work out.
 
-
-def test_a_version_marker_does_not_exclude_a_package_this_interpreter_can_install(
-    tmp_path: Path,
-):
-    """The closure must satisfy pip, not merely mirror uv.
-
-    crewai's lockfile gates chromadb's dependency on onnxruntime behind
-    `python_full_version < '3.11'`. Honouring that on 3.12 emitted chromadb and not
-    onnxruntime, and pip then installed chromadb's published wheel, whose own metadata
-    wants onnxruntime unconditionally, and refused the transitive requirement nothing
-    pinned. uv resolved one graph and the wheel declares another.
+    Letting it try asks it to re-derive the graph from published wheel metadata, which is
+    a different graph. crewai's lockfile gates chromadb's dependency on onnxruntime behind
+    an interpreter version while chromadb's own wheel declares it unconditionally, and
+    under --require-hashes that disagreement killed seven of nineteen pilot v9 instances
+    with "all requirements must have their versions pinned with ==".
     """
+    from exhibit_a.executor.docker_exec import _dockerfile
+
+    dockerfile = _dockerfile(["requirements-0.txt"], "python:3.12-slim@sha256:x", (True,))
+    install = next(line for line in dockerfile.splitlines() if "requirement /tmp/locks" in line)
+
+    assert "--no-deps" in install
+    assert "--require-hashes" in install
+
+
+def test_a_requirements_file_without_hashes_still_lets_pip_resolve():
+    # Only a uv lockfile gives a complete closure. A plain requirements.txt may name direct
+    # dependencies alone, so pip still has to find the rest.
+    from exhibit_a.executor.docker_exec import _dockerfile
+
+    dockerfile = _dockerfile(["requirements-0.txt"], "python:3.12-slim@sha256:x", (False,))
+    install = next(line for line in dockerfile.splitlines() if "requirement /tmp/locks" in line)
+
+    assert "--no-deps" not in install
+
+
+def test_markers_pass_through_as_the_lockfile_wrote_them(tmp_path: Path):
+    # With --no-deps a marker can only remove a package uv did not select for this
+    # environment, which is its job. audioop-lts exists because audioop left the standard
+    # library in 3.13; pywin32 has no Linux artifact. Both must keep their markers.
     lock = (
-        ROOT
-        + 'dependencies = [\n  { name = "parent" },\n]\n'
-        + _wheeled("parent", "cp311 cp312")
-        + 'dependencies = [{ name = "gated", marker = "python_full_version < \'3.11\'" }]\n'
-        + _wheeled("gated", "cp310 cp311 cp312")
+        ROOT + "dependencies = [\n"
+        '  { name = "audioop-lts", marker = "python_full_version >= \'3.13\'" },\n'
+        '  { name = "pywin32", marker = "sys_platform == \'win32\'" },\n'
+        "]\n" + _pkg("audioop-lts") + _pkg("pywin32")
     )
 
-    text = _requirements_from_uv(_write(tmp_path, lock), (3, 12))
-
-    # It has a cp312 wheel, so it installs here and the marker may not remove it.
-    assert _requirement(text, "gated") == "gated==1.0.0 \\"
-
-
-def test_a_version_marker_still_excludes_a_package_this_interpreter_cannot_install(
-    tmp_path: Path,
-):
-    # audioop-lts exists only because audioop left the standard library in 3.13. Forcing
-    # it onto 3.12 fails, so here the marker is telling the truth and must be honoured.
-    lock = (
-        ROOT
-        + 'dependencies = [{ name = "audioop-lts", marker = "python_full_version >= \'3.13\'" }]\n'
-        + _wheeled("audioop-lts", "cp313 cp314")
-    )
-
-    text = _requirements_from_uv(_write(tmp_path, lock), (3, 12))
+    text = _requirements_from_uv(_write(tmp_path, lock))
 
     assert "python_full_version >= '3.13'" in (_requirement(text, "audioop-lts") or "")
-
-
-def test_the_same_package_is_judged_against_the_interpreter_actually_chosen(tmp_path: Path):
-    # On 3.13 the same entry is installable, so the marker stops excluding it.
-    lock = (
-        ROOT
-        + 'dependencies = [{ name = "audioop-lts", marker = "python_full_version >= \'3.13\'" }]\n'
-        + _wheeled("audioop-lts", "cp313 cp314")
-    )
-
-    text = _requirements_from_uv(_write(tmp_path, lock), (3, 13))
-
-    assert _requirement(text, "audioop-lts") == "audioop-lts==1.0.0 \\"
-
-
-def test_a_platform_marker_is_honoured_whatever_wheels_exist(tmp_path: Path):
-    # pywin32 ships cp312 wheels; they are win32 wheels. Installability here is decided by
-    # the platform, and that marker is never dropped.
-    lock = (
-        ROOT
-        + 'dependencies = [{ name = "pywin32", marker = "sys_platform == \'win32\'" }]\n'
-        + _wheeled("pywin32", "cp311 cp312 cp313")
-    )
-
-    text = _requirements_from_uv(_write(tmp_path, lock), (3, 12))
-
     assert "sys_platform == 'win32'" in (_requirement(text, "pywin32") or "")
 
 
-def test_a_package_with_no_wheels_keeps_its_marker(tmp_path: Path):
-    # Only an sdist, so there is no positive evidence this interpreter can install it, and
-    # an sdist would still be refused by its own Requires-Python. Keep the marker.
+def test_resolution_markers_apply_only_to_a_package_held_at_two_versions(tmp_path: Path):
+    """They exist to choose between entries, so on a single entry they can only narrow.
+
+    A lockfile holds the same package at several versions under disjoint resolution
+    contexts, and without them pip is asked to install both. On a package defined once
+    there is nothing to choose, and applying them removes it for no reason.
+    """
     lock = (
         ROOT
-        + 'dependencies = [{ name = "sourceonly", marker = "python_full_version >= \'3.13\'" }]\n'
-        + '\n[[package]]\nname = "sourceonly"\nversion = "1.0.0"\n'
+        + 'dependencies = [{ name = "solo" }]\n'
+        + '\n[[package]]\nname = "solo"\nversion = "1.0.0"\n'
         + 'source = { registry = "https://pypi.org/simple" }\n'
-        + f'sdist = {{ url = "https://x/s.tar.gz", hash = "{WHEEL}" }}\n'
+        + "resolution-markers = [\"python_full_version < '3.11'\"]\n"
+        + f'wheels = [{{ url = "https://x", hash = "{WHEEL}" }}]\n'
     )
 
-    text = _requirements_from_uv(_write(tmp_path, lock), (3, 12))
+    text = _requirements_from_uv(_write(tmp_path, lock))
 
-    assert "python_full_version >= '3.13'" in (_requirement(text, "sourceonly") or "")
+    assert (_requirement(text, "solo") or "").startswith("solo==1.0.0")
+    assert ";" not in (_requirement(text, "solo") or "")
